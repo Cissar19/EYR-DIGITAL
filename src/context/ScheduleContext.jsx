@@ -1,0 +1,184 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'sonner';
+
+const ScheduleContext = createContext();
+
+// ============================================
+// SCHEDULE BLOCKS (Real Chilean School Structure)
+// ============================================
+export const SCHEDULE_BLOCKS = [
+    { id: 'jefatura', start: '08:00', end: '08:10', label: 'Jefatura', type: 'special' },
+    { id: 'hora1', start: '08:10', end: '08:55', label: '1° Hora', type: 'class' },
+    { id: 'hora2', start: '08:55', end: '09:40', label: '2° Hora', type: 'class' },
+    { id: 'recreo1', start: '09:40', end: '09:55', label: 'Recreo', type: 'break' },
+    { id: 'hora3', start: '09:55', end: '10:40', label: '3° Hora', type: 'class' },
+    { id: 'hora4', start: '10:40', end: '11:25', label: '4° Hora', type: 'class' },
+    { id: 'recreo2', start: '11:25', end: '11:40', label: 'Recreo', type: 'break' },
+    { id: 'hora5', start: '11:40', end: '12:25', label: '5° Hora', type: 'class' },
+    { id: 'hora6', start: '12:25', end: '13:10', label: '6° Hora', type: 'class' },
+    { id: 'almuerzo', start: '13:10', end: '13:55', label: 'Almuerzo', type: 'break' },
+    { id: 'hora7', start: '13:55', end: '14:40', label: '7° Hora', type: 'class' },
+    { id: 'hora8', start: '14:40', end: '15:25', label: '8° Hora', type: 'class' },
+];
+
+export const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+
+// ============================================
+// COURSES (Chilean Education Levels)
+// ============================================
+export const COURSES_LIST = [
+    'Pre-Kinder',
+    'Kinder',
+    '1° Básico',
+    '2° Básico',
+    '3° Básico',
+    '4° Básico',
+    '5° Básico',
+    '6° Básico',
+    '7° Básico',
+    '8° Básico'
+];
+
+// ============================================
+// SUBJECTS (School Subjects)
+// ============================================
+export const SUBJECTS_LIST = [
+    'Lenguaje',
+    'Matemática',
+    'Historia',
+    'Ciencias',
+    'Inglés',
+    'Artes',
+    'Música',
+    'Ed. Física',
+    'Tecnología',
+    'Orientación',
+    'Religión',
+    'Jefatura'
+];
+
+// ============================================
+// SCHEDULE PROVIDER
+// ============================================
+export const ScheduleProvider = ({ children }) => {
+    const [schedules, setSchedules] = useState({});
+
+    // Load schedules from localStorage on mount
+    useEffect(() => {
+        const storedSchedules = localStorage.getItem('school_schedules');
+        if (storedSchedules) {
+            try {
+                setSchedules(JSON.parse(storedSchedules));
+            } catch (error) {
+                console.error('Error loading schedules:', error);
+                setSchedules({});
+            }
+        }
+    }, []);
+
+    // Save schedules to localStorage whenever they change
+    useEffect(() => {
+        if (Object.keys(schedules).length > 0) {
+            localStorage.setItem('school_schedules', JSON.stringify(schedules));
+        }
+    }, [schedules]);
+
+    /**
+     * Get schedule for a specific user
+     * @param {string} userId - User ID
+     * @returns {Array} - User's schedule blocks or empty array
+     */
+    const getSchedule = React.useCallback((userId) => {
+        return schedules[userId] || [];
+    }, [schedules]);
+
+    /**
+     * Update schedule for a specific user
+     * @param {string} userId - User ID
+     * @param {Array} scheduleData - Array of schedule blocks
+     * @param {string} userName - User name for notification
+     */
+    const updateSchedule = React.useCallback((userId, scheduleData, userName = 'el docente') => {
+        setSchedules(prev => ({
+            ...prev,
+            [userId]: scheduleData
+        }));
+
+        toast.success(`Horario guardado exitosamente`, {
+            description: `Se actualizó el horario de ${userName}`
+        });
+    }, []);
+
+    /**
+     * Copy schedule from one user to another
+     * @param {string} fromUserId - Source user ID
+     * @param {string} toUserId - Destination user ID
+     * @param {string} toUserName - Destination user name
+     */
+    const copySchedule = React.useCallback((fromUserId, toUserId, toUserName = 'el docente') => {
+        const sourceSchedule = schedules[fromUserId];
+
+        if (!sourceSchedule || sourceSchedule.length === 0) {
+            toast.error('No se puede copiar', {
+                description: 'El docente seleccionado no tiene horario asignado'
+            });
+            return null;
+        }
+
+        // Deep copy to avoid reference issues
+        const copiedSchedule = JSON.parse(JSON.stringify(sourceSchedule));
+
+        setSchedules(prev => ({
+            ...prev,
+            [toUserId]: copiedSchedule
+        }));
+
+        toast.success('Horario copiado exitosamente', {
+            description: `Se copió el horario a ${toUserName}`
+        });
+
+        return copiedSchedule;
+    }, [schedules]);
+
+    /**
+     * Get all schedules (for admin overview)
+     * @returns {Object} - All schedules
+     */
+    const getAllSchedules = React.useCallback(() => {
+        return schedules;
+    }, [schedules]);
+
+    /**
+     * Delete schedule for a specific user
+     * @param {string} userId - User ID
+     * @param {string} userName - User name
+     */
+    const deleteSchedule = React.useCallback((userId, userName = 'el docente') => {
+        setSchedules(prev => {
+            const newSchedules = { ...prev };
+            delete newSchedules[userId];
+            return newSchedules;
+        });
+
+        toast.info('Horario eliminado', {
+            description: `Se eliminó el horario de ${userName}`
+        });
+    }, []);
+
+    const value = React.useMemo(() => ({
+        schedules,
+        getSchedule,
+        updateSchedule,
+        copySchedule,
+        getAllSchedules,
+        deleteSchedule
+    }), [schedules]);
+
+    return (
+        <ScheduleContext.Provider value={value}>
+            {children}
+        </ScheduleContext.Provider>
+    );
+};
+
+export const useSchedule = () => useContext(ScheduleContext);
