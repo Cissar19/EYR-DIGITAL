@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search } from 'lucide-react';
+import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext';
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
@@ -121,6 +121,32 @@ export default function ScheduleAdminView() {
         return scheduleData[key] || null;
     };
 
+    // Calcular horas en aula y horas libres
+    const calcularHoras = () => {
+        const bloquesClase = SCHEDULE_BLOCKS.filter(b => b.type === 'class');
+        const totalBloques = bloquesClase.length * DAYS.length; // 8 × 5 = 40
+        const minutosPorBloque = 45;
+
+        let bloquesOcupados = 0;
+        for (const block of bloquesClase) {
+            for (const day of DAYS) {
+                const key = `${day}-${block.start}`;
+                if (scheduleData[key]?.course) {
+                    bloquesOcupados++;
+                }
+            }
+        }
+
+        const bloquesLibres = totalBloques - bloquesOcupados;
+        const horasAula = (bloquesOcupados * minutosPorBloque) / 60;
+        const horasLibres = (bloquesLibres * minutosPorBloque) / 60;
+        const porcentajeOcupacion = totalBloques > 0 ? Math.round((bloquesOcupados / totalBloques) * 100) : 0;
+
+        return { totalBloques, bloquesOcupados, bloquesLibres, horasAula, horasLibres, porcentajeOcupacion };
+    };
+
+    const horasInfo = canShowSchedule ? calcularHoras() : null;
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8">
             <div className="max-w-7xl mx-auto">
@@ -199,199 +225,281 @@ export default function ScheduleAdminView() {
 
                 {/* Weekly Grid */}
                 {canShowSchedule ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        {/* Grid Header */}
-                        <div className="mb-6 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-semibold text-slate-900 mb-1">
-                                    Horario Semanal
-                                </h2>
-                                <p className="text-sm text-slate-500">
-                                    {selectedTeacher?.name}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                {isEditMode && (
-                                    <>
-                                        <button
-                                            onClick={() => setShowFullTime(v => !v)}
-                                            className={cn(
-                                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all shadow-md border",
-                                                showFullTime
-                                                    ? "bg-teal-500 text-white border-teal-500"
-                                                    : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"
-                                            )}
-                                        >
-                                            <ClipboardList className="w-3.5 h-3.5" />
-                                            Tiempo Completo
-                                        </button>
-                                        <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
-                                            <Edit3 className="w-3.5 h-3.5" />
-                                            Modo Edición Activo
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Full-time assignment panel */}
-                        {isEditMode && showFullTime && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="mb-6 bg-teal-50 border-2 border-teal-200 rounded-2xl p-5"
-                            >
-                                <p className="text-sm font-semibold text-teal-800 mb-3">
-                                    Asignar tiempo completo — llena todos los bloques de clase con un solo curso
-                                </p>
-                                <div className="flex flex-wrap items-end gap-4">
-                                    <div className="flex-1 min-w-[180px]">
-                                        <label className="text-xs font-medium text-teal-700 mb-1 block">Curso</label>
-                                        <div className="relative">
-                                            <select
-                                                value={ftCourse}
-                                                onChange={(e) => setFtCourse(e.target.value)}
-                                                className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
-                                            >
-                                                <option value="">Seleccionar curso...</option>
-                                                {COURSES_LIST.map(c => (
-                                                    <option key={c} value={c}>{c}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-[180px]">
-                                        <label className="text-xs font-medium text-teal-700 mb-1 block">Asignatura (opcional)</label>
-                                        <div className="relative">
-                                            <select
-                                                value={ftSubject}
-                                                onChange={(e) => setFtSubject(e.target.value)}
-                                                className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
-                                            >
-                                                <option value="">Sin asignatura fija</option>
-                                                {SUBJECTS_LIST.map(s => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={fillFullTime}
-                                            disabled={!ftCourse}
-                                            className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
-                                        >
-                                            Aplicar
-                                        </button>
-                                        <button
-                                            onClick={() => { setShowFullTime(false); setFtCourse(''); setFtSubject(''); }}
-                                            className="px-4 py-2 rounded-xl text-sm font-medium text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 transition-all"
-                                        >
-                                            Cancelar
-                                        </button>
-                                    </div>
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            {/* Grid Header */}
+                            <div className="mb-6 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-semibold text-slate-900 mb-1">
+                                        Horario Semanal
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {selectedTeacher?.name}
+                                    </p>
                                 </div>
-                                <p className="text-[11px] text-teal-600 mt-3">
-                                    Esto reemplazará todos los bloques existentes. La Jefatura se mantiene automáticamente. Luego puedes ajustar celdas individuales.
-                                </p>
-                            </motion.div>
-                        )}
+                                <div className="flex items-center gap-3">
+                                    {isEditMode && (
+                                        <>
+                                            <button
+                                                onClick={() => setShowFullTime(v => !v)}
+                                                className={cn(
+                                                    "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all shadow-md border",
+                                                    showFullTime
+                                                        ? "bg-teal-500 text-white border-teal-500"
+                                                        : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"
+                                                )}
+                                            >
+                                                <ClipboardList className="w-3.5 h-3.5" />
+                                                Tiempo Completo
+                                            </button>
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                                Modo Edición Activo
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
 
-                        {/* Schedule Table */}
-                        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider border-b-2 border-slate-200 min-w-[120px]">
-                                                Bloque
-                                            </th>
-                                            {DAYS.map(day => (
-                                                <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[160px]">
-                                                    {day}
+                            {/* Full-time assignment panel */}
+                            {isEditMode && showFullTime && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="mb-6 bg-teal-50 border-2 border-teal-200 rounded-2xl p-5"
+                                >
+                                    <p className="text-sm font-semibold text-teal-800 mb-3">
+                                        Asignar tiempo completo — llena todos los bloques de clase con un solo curso
+                                    </p>
+                                    <div className="flex flex-wrap items-end gap-4">
+                                        <div className="flex-1 min-w-[180px]">
+                                            <label className="text-xs font-medium text-teal-700 mb-1 block">Curso</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={ftCourse}
+                                                    onChange={(e) => setFtCourse(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
+                                                >
+                                                    <option value="">Seleccionar curso...</option>
+                                                    {COURSES_LIST.map(c => (
+                                                        <option key={c} value={c}>{c}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-[180px]">
+                                            <label className="text-xs font-medium text-teal-700 mb-1 block">Asignatura (opcional)</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={ftSubject}
+                                                    onChange={(e) => setFtSubject(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
+                                                >
+                                                    <option value="">Sin asignatura fija</option>
+                                                    {SUBJECTS_LIST.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={fillFullTime}
+                                                disabled={!ftCourse}
+                                                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
+                                            >
+                                                Aplicar
+                                            </button>
+                                            <button
+                                                onClick={() => { setShowFullTime(false); setFtCourse(''); setFtSubject(''); }}
+                                                className="px-4 py-2 rounded-xl text-sm font-medium text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 transition-all"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-teal-600 mt-3">
+                                        Esto reemplazará todos los bloques existentes. La Jefatura se mantiene automáticamente. Luego puedes ajustar celdas individuales.
+                                    </p>
+                                </motion.div>
+                            )}
+
+                            {/* Schedule Table */}
+                            <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider border-b-2 border-slate-200 min-w-[120px]">
+                                                    Bloque
                                                 </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {SCHEDULE_BLOCKS.map((block) => {
-                                            const isBreak = block.type === 'break';
-                                            const isSpecial = block.type === 'special';
+                                                {DAYS.map(day => (
+                                                    <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[160px]">
+                                                        {day}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {SCHEDULE_BLOCKS.map((block) => {
+                                                const isBreak = block.type === 'break';
+                                                const isSpecial = block.type === 'special';
 
-                                            // Break / lunch rows — merged, non-editable
-                                            if (isBreak) {
+                                                // Break / lunch rows — merged, non-editable
+                                                if (isBreak) {
+                                                    return (
+                                                        <tr key={block.id}>
+                                                            <td className="sticky left-0 z-10 bg-amber-50 px-4 py-2 border-b border-amber-100">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                                                                    <span className="text-xs font-semibold text-amber-700">{block.label}</span>
+                                                                </div>
+                                                                <div className="text-[10px] text-amber-500 tabular-nums">{block.start} - {block.end}</div>
+                                                            </td>
+                                                            <td colSpan={5} className="bg-amber-50/50 px-4 py-2 border-b border-amber-100 text-center">
+                                                                <span className="text-xs text-amber-500 italic">{block.label === 'Almuerzo' ? 'Almuerzo' : 'Recreo'}</span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
                                                 return (
                                                     <tr key={block.id}>
-                                                        <td className="sticky left-0 z-10 bg-amber-50 px-4 py-2 border-b border-amber-100">
-                                                            <div className="flex items-center gap-2">
-                                                                <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                                                                <span className="text-xs font-semibold text-amber-700">{block.label}</span>
+                                                        {/* Block label column */}
+                                                        <td className={cn(
+                                                            "sticky left-0 z-10 px-4 py-2 border-b border-slate-100",
+                                                            isSpecial ? "bg-orange-50" : "bg-white"
+                                                        )}>
+                                                            <div className={cn(
+                                                                "text-xs font-semibold",
+                                                                isSpecial ? "text-orange-600" : "text-slate-700"
+                                                            )}>
+                                                                {block.label}
                                                             </div>
-                                                            <div className="text-[10px] text-amber-500 tabular-nums">{block.start} - {block.end}</div>
+                                                            <div className="text-[10px] text-slate-400 tabular-nums">{block.start} - {block.end}</div>
                                                         </td>
-                                                        <td colSpan={5} className="bg-amber-50/50 px-4 py-2 border-b border-amber-100 text-center">
-                                                            <span className="text-xs text-amber-500 italic">{block.label === 'Almuerzo' ? 'Almuerzo' : 'Recreo'}</span>
-                                                        </td>
+
+                                                        {/* Day cells */}
+                                                        {DAYS.map(day => {
+                                                            const cellData = getCellData(day, block.start);
+                                                            const hasData = cellData && cellData.course;
+
+                                                            return (
+                                                                <td key={day} className="px-1.5 py-1.5 border-b border-slate-100 border-l border-slate-50">
+                                                                    {isEditMode ? (
+                                                                        <EditCell
+                                                                            cellData={cellData}
+                                                                            day={day}
+                                                                            startTime={block.start}
+                                                                            isSpecial={isSpecial}
+                                                                            updateCell={updateCell}
+                                                                            clearCell={clearCell}
+                                                                        />
+                                                                    ) : (
+                                                                        <ViewCell
+                                                                            cellData={cellData}
+                                                                            isSpecial={isSpecial}
+                                                                            hasData={hasData}
+                                                                        />
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
                                                     </tr>
                                                 );
-                                            }
-
-                                            return (
-                                                <tr key={block.id}>
-                                                    {/* Block label column */}
-                                                    <td className={cn(
-                                                        "sticky left-0 z-10 px-4 py-2 border-b border-slate-100",
-                                                        isSpecial ? "bg-orange-50" : "bg-white"
-                                                    )}>
-                                                        <div className={cn(
-                                                            "text-xs font-semibold",
-                                                            isSpecial ? "text-orange-600" : "text-slate-700"
-                                                        )}>
-                                                            {block.label}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-400 tabular-nums">{block.start} - {block.end}</div>
-                                                    </td>
-
-                                                    {/* Day cells */}
-                                                    {DAYS.map(day => {
-                                                        const cellData = getCellData(day, block.start);
-                                                        const hasData = cellData && cellData.course;
-
-                                                        return (
-                                                            <td key={day} className="px-1.5 py-1.5 border-b border-slate-100 border-l border-slate-50">
-                                                                {isEditMode ? (
-                                                                    <EditCell
-                                                                        cellData={cellData}
-                                                                        day={day}
-                                                                        startTime={block.start}
-                                                                        isSpecial={isSpecial}
-                                                                        updateCell={updateCell}
-                                                                        clearCell={clearCell}
-                                                                    />
-                                                                ) : (
-                                                                    <ViewCell
-                                                                        cellData={cellData}
-                                                                        isSpecial={isSpecial}
-                                                                        hasData={hasData}
-                                                                    />
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+
+                        {/* Panel de resumen de horas */}
+                        {horasInfo && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.25 }}
+                                className="mt-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6"
+                            >
+                                <div className="flex items-center gap-2 mb-5">
+                                    <BarChart2 className="w-5 h-5 text-blue-500" />
+                                    <h3 className="text-base font-semibold text-slate-800">Resumen de Carga Horaria Semanal</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                                    {/* Horas en aula */}
+                                    <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                            <BookOpen className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Horas en Aula</p>
+                                            <p className="text-2xl font-bold text-blue-800">
+                                                {Number.isInteger(horasInfo.horasAula) ? horasInfo.horasAula : horasInfo.horasAula.toFixed(1)}
+                                                <span className="text-sm font-normal text-blue-500 ml-1">hrs</span>
+                                            </p>
+                                            <p className="text-[11px] text-blue-400">{horasInfo.bloquesOcupados} bloques ocupados</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Horas libres */}
+                                    <div className="flex items-center gap-4 bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                            <Clock className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Horas Libres</p>
+                                            <p className="text-2xl font-bold text-emerald-800">
+                                                {Number.isInteger(horasInfo.horasLibres) ? horasInfo.horasLibres : horasInfo.horasLibres.toFixed(1)}
+                                                <span className="text-sm font-normal text-emerald-500 ml-1">hrs</span>
+                                            </p>
+                                            <p className="text-[11px] text-emerald-400">{horasInfo.bloquesLibres} bloques disponibles</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Ocupación */}
+                                    <div className="flex items-center gap-4 bg-purple-50 border border-purple-100 rounded-2xl px-5 py-4">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                            <CalendarClock className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-medium text-purple-500 uppercase tracking-wide">Ocupación</p>
+                                            <p className="text-2xl font-bold text-purple-800">
+                                                {horasInfo.porcentajeOcupacion}
+                                                <span className="text-sm font-normal text-purple-500 ml-0.5">%</span>
+                                            </p>
+                                            <p className="text-[11px] text-purple-400">{horasInfo.bloquesOcupados} / {horasInfo.totalBloques} bloques</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Barra de progreso */}
+                                <div>
+                                    <div className="flex justify-between text-[11px] text-slate-500 mb-1.5">
+                                        <span>Bloques ocupados</span>
+                                        <span>{horasInfo.bloquesOcupados} / {horasInfo.totalBloques}</span>
+                                    </div>
+                                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
+                                            style={{ width: `${horasInfo.porcentajeOcupacion}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between text-[11px] mt-1.5">
+                                        <span className="text-blue-500 font-medium">En aula: {Number.isInteger(horasInfo.horasAula) ? horasInfo.horasAula : horasInfo.horasAula.toFixed(1)} hrs</span>
+                                        <span className="text-emerald-500 font-medium">Libres: {Number.isInteger(horasInfo.horasLibres) ? horasInfo.horasLibres : horasInfo.horasLibres.toFixed(1)} hrs</span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </>
                 ) : (
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -409,62 +517,63 @@ export default function ScheduleAdminView() {
                         </p>
                     </motion.div>
                 )}
-
                 {/* Action Buttons */}
-                {canShowSchedule && isEditMode && userCanEdit && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="flex justify-between items-center gap-6 mt-12"
-                    >
-                        <button
-                            onClick={handleDelete}
-                            className="px-6 py-3.5 rounded-2xl font-semibold text-sm text-red-600 bg-white hover:bg-red-50 border-2 border-red-200 hover:border-red-300 transition-all shadow-lg shadow-red-100 hover:shadow-xl"
+                {
+                    canShowSchedule && isEditMode && userCanEdit && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="flex justify-between items-center gap-6 mt-12"
                         >
-                            <Trash2 className="w-4 h-4 inline mr-2" />
-                            Eliminar Horario
-                        </button>
+                            <button
+                                onClick={handleDelete}
+                                className="px-6 py-3.5 rounded-2xl font-semibold text-sm text-red-600 bg-white hover:bg-red-50 border-2 border-red-200 hover:border-red-300 transition-all shadow-lg shadow-red-100 hover:shadow-xl"
+                            >
+                                <Trash2 className="w-4 h-4 inline mr-2" />
+                                Eliminar Horario
+                            </button>
 
-                        <button
-                            onClick={handleSave}
-                            className="px-8 py-4 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 shadow-2xl shadow-purple-300 hover:shadow-purple-400 transition-all hover:scale-105"
-                        >
-                            <Save className="w-4 h-4 inline mr-2" />
-                            Guardar Cambios
-                        </button>
-                    </motion.div>
-                )}
-            </div>
-        </div>
+                            <button
+                                onClick={handleSave}
+                                className="px-8 py-4 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 shadow-2xl shadow-purple-300 hover:shadow-purple-400 transition-all hover:scale-105"
+                            >
+                                <Save className="w-4 h-4 inline mr-2" />
+                                Guardar Cambios
+                            </button>
+                        </motion.div>
+                    )
+                }
+            </div >
+        </div >
     );
 }
 
 // ─── Subject color palette ─────────────────────────────────
 const SUBJECT_COLORS = {
-    'Lenguaje':     { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
-    'Leng. y Lit.': { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
-    'Taller Len':   { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
-    'T. Lenguaje':  { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
-    'Matemática':   { bg: 'bg-indigo-50',  border: 'border-indigo-200',  title: 'text-indigo-800',  sub: 'text-indigo-500' },
-    'T. Matemática':{ bg: 'bg-indigo-50',  border: 'border-indigo-200',  title: 'text-indigo-800',  sub: 'text-indigo-500' },
-    'Historia':     { bg: 'bg-amber-50',   border: 'border-amber-200',   title: 'text-amber-800',   sub: 'text-amber-500' },
-    'H. G. y Cs. S.': { bg: 'bg-amber-50', border: 'border-amber-200',  title: 'text-amber-800',   sub: 'text-amber-500' },
-    'For. Ciud.':   { bg: 'bg-yellow-50',  border: 'border-yellow-200',  title: 'text-yellow-800',  sub: 'text-yellow-500' },
-    'Ciencias':     { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
-    'C. Nat':       { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
-    'T. Ciencias':  { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
-    'Inglés':       { bg: 'bg-red-50',     border: 'border-red-200',     title: 'text-red-800',     sub: 'text-red-500' },
-    'Artes':        { bg: 'bg-pink-50',    border: 'border-pink-200',    title: 'text-pink-800',    sub: 'text-pink-500' },
-    'Música':       { bg: 'bg-violet-50',  border: 'border-violet-200',  title: 'text-violet-800',  sub: 'text-violet-500' },
-    'Música/Arte':  { bg: 'bg-violet-50',  border: 'border-violet-200',  title: 'text-violet-800',  sub: 'text-violet-500' },
-    'Ed. Física':   { bg: 'bg-cyan-50',    border: 'border-cyan-200',    title: 'text-cyan-800',    sub: 'text-cyan-500' },
-    'Tecnología':   { bg: 'bg-slate-100',  border: 'border-slate-300',   title: 'text-slate-800',   sub: 'text-slate-500' },
-    'Orientación':  { bg: 'bg-teal-50',    border: 'border-teal-200',    title: 'text-teal-800',    sub: 'text-teal-500' },
-    'Religión':     { bg: 'bg-purple-50',  border: 'border-purple-200',  title: 'text-purple-800',  sub: 'text-purple-500' },
-    'Religión / FC':{ bg: 'bg-purple-50',  border: 'border-purple-200',  title: 'text-purple-800',  sub: 'text-purple-500' },
-    'PAE':          { bg: 'bg-lime-50',    border: 'border-lime-200',    title: 'text-lime-800',    sub: 'text-lime-500' },
-    'Jefatura':     { bg: 'bg-orange-50',  border: 'border-orange-200',  title: 'text-orange-700',  sub: 'text-orange-500' },
+    'Lenguaje': { bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-800', sub: 'text-blue-500' },
+    'Leng. y Lit.': { bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-800', sub: 'text-blue-500' },
+    'Taller Len': { bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-800', sub: 'text-blue-500' },
+    'T. Lenguaje': { bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-800', sub: 'text-blue-500' },
+    'Matemática': { bg: 'bg-indigo-50', border: 'border-indigo-200', title: 'text-indigo-800', sub: 'text-indigo-500' },
+    'T. Matemática': { bg: 'bg-indigo-50', border: 'border-indigo-200', title: 'text-indigo-800', sub: 'text-indigo-500' },
+    'Historia': { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-800', sub: 'text-amber-500' },
+    'H. G. y Cs. S.': { bg: 'bg-amber-50', border: 'border-amber-200', title: 'text-amber-800', sub: 'text-amber-500' },
+    'For. Ciud.': { bg: 'bg-yellow-50', border: 'border-yellow-200', title: 'text-yellow-800', sub: 'text-yellow-500' },
+    'Ciencias': { bg: 'bg-green-50', border: 'border-green-200', title: 'text-green-800', sub: 'text-green-500' },
+    'C. Nat': { bg: 'bg-green-50', border: 'border-green-200', title: 'text-green-800', sub: 'text-green-500' },
+    'T. Ciencias': { bg: 'bg-green-50', border: 'border-green-200', title: 'text-green-800', sub: 'text-green-500' },
+    'Inglés': { bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-800', sub: 'text-red-500' },
+    'Artes': { bg: 'bg-pink-50', border: 'border-pink-200', title: 'text-pink-800', sub: 'text-pink-500' },
+    'Música': { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-800', sub: 'text-violet-500' },
+    'Música/Arte': { bg: 'bg-violet-50', border: 'border-violet-200', title: 'text-violet-800', sub: 'text-violet-500' },
+    'Ed. Física': { bg: 'bg-cyan-50', border: 'border-cyan-200', title: 'text-cyan-800', sub: 'text-cyan-500' },
+    'Tecnología': { bg: 'bg-slate-100', border: 'border-slate-300', title: 'text-slate-800', sub: 'text-slate-500' },
+    'Orientación': { bg: 'bg-teal-50', border: 'border-teal-200', title: 'text-teal-800', sub: 'text-teal-500' },
+    'Religión': { bg: 'bg-purple-50', border: 'border-purple-200', title: 'text-purple-800', sub: 'text-purple-500' },
+    'Religión / FC': { bg: 'bg-purple-50', border: 'border-purple-200', title: 'text-purple-800', sub: 'text-purple-500' },
+    'PAE': { bg: 'bg-lime-50', border: 'border-lime-200', title: 'text-lime-800', sub: 'text-lime-500' },
+    'Jefatura': { bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', sub: 'text-orange-500' },
 };
 
 const DEFAULT_COLOR = { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-800', sub: 'text-emerald-500' };
