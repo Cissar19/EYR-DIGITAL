@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { subscribeToCollection, createDocument, removeDocument, fetchCollection } from '../lib/firestoreService';
 
 const LabContext = createContext();
 
@@ -23,54 +24,18 @@ export const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
 export function LabProvider({ children }) {
     const { user } = useAuth();
+    const [reservations, setReservations] = useState([]);
 
-    // 1. Carga Inicial
-    const [reservations, setReservations] = useState(() => {
-        try {
-            const saved = localStorage.getItem('lab_reservations');
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) {
-            console.error("Error reading lab_reservations:", error);
-            return [];
-        }
-    });
-
-    // 2. Sincronización Automática (El Truco)
+    // 1. Sincronización en tiempo real desde Firestore
     useEffect(() => {
-        const handleStorageChange = (event) => {
-            // Si el evento es específicamente sobre nuestra key, o si es null (clear)
-            if (event.key === 'lab_reservations' || event.key === null) {
-                const freshData = JSON.parse(localStorage.getItem('lab_reservations')) || [];
-                setReservations(freshData);
-            }
-        };
-
-        const handleFocus = () => {
-            // Refresco proactivo al volver a la pestaña
-            const freshData = JSON.parse(localStorage.getItem('lab_reservations')) || [];
-            // Solo actualizamos si hay cambios reales para evitar re-renders innecesarios (opcional, pero buena práctica)
-            // Aquí lo haremos directo para asegurar consistencia
-            setReservations(freshData);
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('focus', handleFocus);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('focus', handleFocus);
-        };
+        const unsubscribe = subscribeToCollection('lab_reservations', (docs) => {
+            setReservations(docs);
+        });
+        return () => unsubscribe();
     }, []);
 
-    // Persistir cambios locales (Redundante con addReservation pero útil para otros cambios de estado si los hubiera)
-    useEffect(() => {
-        // Nota: El storage event no se dispara en la misma ventana que hace el cambio, solo en otras.
-        // Por eso necesitamos actulizar el estado React localmente tambien.
-    }, [reservations]);
-
-
-    // 3. Función addReservation con Validación de Seguridad
-    const addReservation = (blockId, date, subject, userNameOverride = null) => {
+    // 2. Función addReservation con Validación de Seguridad
+    const addReservation = async (blockId, date, subject, userNameOverride = null) => {
         if (!user) {
             toast.error("Debes iniciar sesión para reservar.");
             return false;
@@ -79,51 +44,27 @@ export function LabProvider({ children }) {
         const userName = userNameOverride || user.name;
 
         try {
-            // A. Leer la versión más reciente LITERALLY RIGHT NOW
-            const currentData = JSON.parse(localStorage.getItem('lab_reservations')) || [];
-
-            // B. Verificar si está ocupado (Race condition check)
-            // Asumimos que 'blockId' es único por bloque y día combinados como en el ejemplo del usuario: "Lunes-Bloque1"?
-            // O si vienen separados. El usuario dijo: `blockId: "Lunes-Bloque1"`.
-            // Si el input 'date' es la fecha (ej: 2026-02-09), entonces la unicidad es date + blockId.
-            // Voy a asumir que 'blockId' es el ID del bloque (ej: 'b1') y 'date' es la fecha específica o día de la semana.
-            // El prompt dice: "date: '2026-02-09' // Semana o fecha especifica".
-            // Y el objeto ejemplo tiene: "blockId": "Lunes-Bloque1".
-            // Voy a construir el identificador único para chequear colisiones.
-
-            // Si el usuario pasa 'blockId' como "Lunes-Bloque1" directo, perfecto.
-            // Si pasa 'b1' y la fecha, habría que ver como lo maneja la UI.
-            // Basado en el ejemplo JSON:
-            // { ... blockId: "Lunes-Bloque1", date: "2026-02-09" ... }
-            // La colisión real es: mismo `date` y mismo `blockId`.
+            // A. Leer la versión más reciente LITERALLY RIGHT NOW para evitar race conditions
+            const currentData = await fetchCollection('lab_reservations');
 
             const isOccupied = currentData.some(r => r.date === date && r.blockId === blockId);
 
             if (isOccupied) {
-                // Alguien ganó el click por milisegundos
-                setReservations(currentData); // Actualizamos nuestra vista de paso
                 toast.error("¡Bloque ya reservado por otro usuario!");
                 return false;
             }
 
             // C. Si está libre, agregamos
             const newReservation = {
-                id: Date.now(),
-                blockId, // Ej: "Lunes-Bloque1"
+                blockId,
                 teacher: userName,
                 subject,
-                date, // Ej: "2026-02-09"
+                date,
                 timestamp: Date.now(),
-                userId: user.id // Guardamos userId para permisos de borrado
+                userId: user.id
             };
 
-            const updatedData = [...currentData, newReservation];
-
-            // D. Guardar en localStorage INMEDIATAMENTE
-            localStorage.setItem('lab_reservations', JSON.stringify(updatedData));
-
-            // E. Actualizar estado local
-            setReservations(updatedData);
+            await createDocument('lab_reservations', newReservation);
             toast.success("Reserva confirmada.");
             return true;
 
@@ -134,38 +75,33 @@ export function LabProvider({ children }) {
         }
     };
 
-    // 4. Función removeReservation con Permisos
-    const removeReservation = (reservationId) => {
+    // 3. Función removeReservation con Permisos
+    const removeReservation = async (reservationId) => {
         if (!user) return;
 
         try {
-            const currentData = JSON.parse(localStorage.getItem('lab_reservations')) || [];
-            const reservation = currentData.find(r => r.id === reservationId);
+            const reservation = reservations.find(r => r.id === reservationId);
 
             if (!reservation) {
                 toast.error("La reserva no existe.");
-                // Sincronizar por si acaso
-                setReservations(currentData);
                 return;
             }
 
             // Validar permisos
             const isOwner = reservation.userId === user.id;
-            const isAdmin = user.role === 'director' || user.role === 'admin';
+            const isAdmin = user.role === 'director' || user.role === 'admin' || user.role === 'super_admin';
 
             if (!isOwner && !isAdmin) {
                 toast.error("Solo el dueño o un admin pueden borrar esta reserva.");
                 return;
             }
 
-            // Borrar
-            const updatedData = currentData.filter(r => r.id !== reservationId);
-            localStorage.setItem('lab_reservations', JSON.stringify(updatedData));
-            setReservations(updatedData);
+            await removeDocument('lab_reservations', reservationId);
             toast.success("Reserva eliminada.");
 
         } catch (error) {
             console.error("Error removing reservation:", error);
+            toast.error("Error al eliminar la reserva.");
         }
     };
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
 
 const InventoryContext = createContext();
 
@@ -12,111 +13,144 @@ const initialItems = [
     { id: '5', name: "Llave Laboratorio Ciencias", category: "Llaves", status: "available", borrowedBy: null, borrowedByName: null },
 ];
 
+const INITIAL_CATEGORIES = ['Tecnología', 'Audio', 'Computación', 'Electricidad', 'Llaves', 'Otros'];
+
 export const InventoryProvider = ({ children }) => {
-    // Initial Categories
-    const [categories, setCategories] = useState(() => {
-        try {
-            const saved = localStorage.getItem('inventory_categories');
-            return saved ? JSON.parse(saved) : ['Tecnología', 'Audio', 'Computación', 'Electricidad', 'Llaves', 'Otros'];
-        } catch (error) {
-            console.error("Error loading categories", error);
-            return ['Tecnología', 'Audio', 'Computación', 'Electricidad', 'Llaves', 'Otros'];
-        }
-    });
+    const [categories, setCategories] = useState([]);
+    const [items, setItems] = useState([]);
 
-    const [items, setItems] = useState(() => {
-        try {
-            const saved = localStorage.getItem('inventory');
-            return saved ? JSON.parse(saved) : initialItems;
-        } catch (error) {
-            console.error("Error loading inventory", error);
-            return initialItems;
-        }
-    });
-
-    // Persistence
+    // Persistence with Firestore
     useEffect(() => {
-        localStorage.setItem('inventory', JSON.stringify(items));
-    }, [items]);
+        let unsubscribeCategories;
+        let unsubscribeItems;
 
-    useEffect(() => {
-        localStorage.setItem('inventory_categories', JSON.stringify(categories));
-    }, [categories]);
+        const initData = async () => {
+            // Subscribe to Categories
+            unsubscribeCategories = subscribeToCollection('inventory_categories', (docs) => {
+                if (docs.length === 0) {
+                    setCategories(INITIAL_CATEGORIES);
+                    INITIAL_CATEGORIES.forEach(c => {
+                        createDocument('inventory_categories', { name: c }, c);
+                    });
+                } else {
+                    setCategories(docs.map(doc => doc.name));
+                }
+            });
+
+            // Subscribe to Inventory
+            unsubscribeItems = subscribeToCollection('inventory', (docs) => {
+                if (docs.length === 0) {
+                    setItems(initialItems);
+                    initialItems.forEach(item => {
+                        // eslint-disable-next-line no-unused-vars
+                        const { id, ...itemData } = item;
+                        createDocument('inventory', itemData, String(item.id));
+                    });
+                } else {
+                    // Sort descending by createdAt as fallback
+                    setItems(docs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+                }
+            });
+        };
+
+        initData();
+
+        return () => {
+            if (unsubscribeCategories) unsubscribeCategories();
+            if (unsubscribeItems) unsubscribeItems();
+        };
+    }, []);
 
     // --- ITEM ACTIONS ---
 
-    const addItem = (newItem) => {
+    const addItem = async (newItem) => {
         const item = {
             ...newItem,
-            id: crypto.randomUUID(), // Robust ID generation
             status: newItem.status || 'available',
             borrowedBy: null,
             borrowedByName: null,
             createdAt: new Date().toISOString()
         };
-        // Add to beginning of array (LIFO for UI)
-        setItems(prev => [item, ...prev]);
+        try {
+            await createDocument('inventory', item);
+        } catch (error) {
+            console.error("Error al agregar ítem:", error);
+        }
     };
 
-    const updateItem = (id, validUpdates) => {
-        setItems(prev => prev.map(item =>
-            item.id === id ? { ...item, ...validUpdates } : item
-        ));
+    const updateItem = async (id, validUpdates) => {
+        try {
+            await updateDocument('inventory', String(id), validUpdates);
+        } catch (error) {
+            console.error("Error al actualizar ítem:", error);
+        }
     };
 
-    const deleteItem = (id) => {
-        setItems(prev => prev.filter(item => item.id !== id));
+    const deleteItem = async (id) => {
+        try {
+            await removeDocument('inventory', String(id));
+        } catch (error) {
+            console.error("Error al eliminar ítem:", error);
+        }
     };
 
     // Borrowing Logic (Special Update Case)
-    const borrowItem = (itemId, userId, userName) => {
-        setItems(prev => prev.map(item => {
-            if (item.id === itemId && item.status === 'available') {
-                return {
-                    ...item,
+    const borrowItem = async (itemId, userId, userName) => {
+        const item = items.find(i => i.id === itemId);
+        if (item && item.status === 'available') {
+            try {
+                await updateDocument('inventory', String(itemId), {
                     status: 'borrowed',
                     borrowedBy: userId,
                     borrowedByName: userName,
                     borrowedAt: new Date().toISOString()
-                };
+                });
+            } catch (error) {
+                console.error("Error al pedir prestado:", error);
             }
-            return item;
-        }));
+        }
     };
 
-    const returnItem = (itemId) => {
-        setItems(prev => prev.map(item => {
-            if (item.id === itemId) {
-                return {
-                    ...item,
+    const returnItem = async (itemId) => {
+        const item = items.find(i => i.id === itemId);
+        if (item) {
+            try {
+                await updateDocument('inventory', String(itemId), {
                     status: 'available',
                     borrowedBy: null,
                     borrowedByName: null,
                     borrowedAt: null
-                };
+                });
+            } catch (error) {
+                console.error("Error al devolver:", error);
             }
-            return item;
-        }));
+        }
     };
 
     // --- CATEGORY ACTIONS ---
 
-    const addCategory = (name) => {
+    const addCategory = async (name) => {
         if (!categories.includes(name)) {
-            setCategories(prev => [...prev, name]);
+            try {
+                await createDocument('inventory_categories', { name }, name);
+            } catch (error) {
+                console.error("Error al agregar categoría:", error);
+            }
         }
     };
 
-    const deleteCategory = (name) => {
-        // Validation handled in UI key logic usually, but here as failsafe
+    const deleteCategory = async (name) => {
         const hasItems = items.some(i => i.category === name);
         if (hasItems) {
-            // We return false to indicate failure if needed, or handle via throw
-            // For now, we just don't delete. UI should check before calling.
             return false;
         }
-        setCategories(prev => prev.filter(c => c !== name));
-        return true;
+        try {
+            await removeDocument('inventory_categories', name);
+            return true;
+        } catch (error) {
+            console.error("Error al eliminar categoría:", error);
+            return false;
+        }
     };
 
     const value = React.useMemo(() => ({

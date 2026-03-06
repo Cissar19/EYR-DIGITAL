@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Projector, Laptop, Volume2, Plug, Cable, Monitor, Keyboard, Mouse, Headphones, Webcam, Package, Store } from 'lucide-react';
+import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
 
 const EquipmentContext = createContext();
 
@@ -129,119 +130,81 @@ export const EquipmentProvider = ({ children }) => {
     const [requests, setRequests] = useState([]);
     const [equipmentList, setEquipmentList] = useState([]);
     const [folders, setFolders] = useState([]);
+    const [isInitialized, setIsInitialized] = useState(false);
 
-    // Load folders from localStorage on mount
+    // Initial fetch and subscription
     useEffect(() => {
-        const storedFolders = localStorage.getItem('school_inventory_folders');
-        if (storedFolders) {
-            try {
-                setFolders(JSON.parse(storedFolders));
-            } catch (error) {
-                console.error('Error loading folders:', error);
-                setFolders(DEFAULT_FOLDERS);
-            }
-        } else {
-            // First time - seed with default folders
-            setFolders(DEFAULT_FOLDERS);
-        }
-    }, []);
+        let unsubscribeFolders;
+        let unsubscribeEquipment;
+        let unsubscribeRequests;
 
-    // Save folders to localStorage whenever they change
-    useEffect(() => {
-        if (folders.length > 0) {
-            localStorage.setItem('school_inventory_folders', JSON.stringify(folders));
-        }
-    }, [folders]);
-
-    // Load equipment from localStorage on mount
-    useEffect(() => {
-        const storedInventory = localStorage.getItem('school_inventory');
-        if (storedInventory) {
-            try {
-                const parsedInventory = JSON.parse(storedInventory);
-
-                // DATA CLEANUP: Remove orphan items (items without folderId)
-                // This fixes the "Ghost Data" issue where items exist but don't show in folders
-                const validInventory = parsedInventory.filter(item => item.folderId);
-
-                if (validInventory.length !== parsedInventory.length) {
-                    console.log(`Cleaned up ${parsedInventory.length - validInventory.length} orphan items`);
+        const initData = async () => {
+            // Subscribe to Folders
+            unsubscribeFolders = subscribeToCollection('equipment_folders', (docs) => {
+                // If collection is empty, seed defaults (only locally until someone adds a folder to avoid spam writes, or just show them)
+                // For simplicity, we just use DEFAULT_FOLDERS if docs is empty.
+                if (docs.length === 0) {
+                    setFolders(DEFAULT_FOLDERS);
+                    DEFAULT_FOLDERS.forEach(f => createDocument('equipment_folders', f, f.id));
+                } else {
+                    setFolders(docs);
                 }
+            });
 
-                setEquipmentList(validInventory);
-            } catch (error) {
-                console.error('Error loading inventory:', error);
-                setEquipmentList(INITIAL_EQUIPMENT);
-            }
-        } else {
-            // First time - seed with initial data
-            setEquipmentList(INITIAL_EQUIPMENT);
-        }
+            // Subscribe to Equipment
+            unsubscribeEquipment = subscribeToCollection('equipment', (docs) => {
+                if (docs.length === 0) {
+                    setEquipmentList(INITIAL_EQUIPMENT);
+                    INITIAL_EQUIPMENT.forEach(e => createDocument('equipment', { ...e, id: undefined }, String(e.id)));
+                } else {
+                    // DATA CLEANUP: Remove orphan items (items without folderId)
+                    const validInventory = docs.filter(item => item.folderId);
+                    setEquipmentList(validInventory);
+                }
+            });
+
+            // Subscribe to Requests
+            unsubscribeRequests = subscribeToCollection('equipment_requests', (docs) => {
+                // Sort by creation date descending
+                setRequests(docs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+            });
+
+            setIsInitialized(true);
+        };
+
+        initData();
+
+        return () => {
+            if (unsubscribeFolders) unsubscribeFolders();
+            if (unsubscribeEquipment) unsubscribeEquipment();
+            if (unsubscribeRequests) unsubscribeRequests();
+        };
     }, []);
-
-    // Save equipment to localStorage whenever it changes
-    useEffect(() => {
-        if (equipmentList.length > 0) {
-            localStorage.setItem('school_inventory', JSON.stringify(equipmentList));
-        }
-    }, [equipmentList]);
-
-    // Load requests from localStorage on mount
-    useEffect(() => {
-        const storedRequests = localStorage.getItem('equipment_requests');
-        if (storedRequests) {
-            try {
-                setRequests(JSON.parse(storedRequests));
-            } catch (error) {
-                console.error('Error loading equipment requests:', error);
-                setRequests([]);
-            }
-        }
-    }, []);
-
-    // Save requests to localStorage whenever they change
-    useEffect(() => {
-        if (requests.length > 0) {
-            localStorage.setItem('equipment_requests', JSON.stringify(requests));
-        }
-    }, [requests]);
-
-    // ============================================
-    // INVENTORY CRUD OPERATIONS
-    // ============================================
 
     // ============================================
     // FOLDER CRUD OPERATIONS
     // ============================================
 
-    /**
-     * Add a new folder
-     * @param {Object} folder - { name, icon, color }
-     * @returns {Object} - Created folder
-     */
-    const addFolder = React.useCallback((folderData) => {
+    const addFolder = React.useCallback(async (folderData) => {
         const newFolder = {
-            id: `folder-${Date.now()}`,
             name: folderData.name,
             icon: folderData.icon || 'Package',
             color: folderData.color || 'blue',
             createdAt: new Date().toISOString()
         };
 
-        setFolders(prev => [...prev, newFolder]);
-
-        toast.success('Carpeta creada', {
-            description: `${newFolder.name} agregada al inventario`
-        });
-
-        return newFolder;
+        try {
+            await createDocument('equipment_folders', newFolder);
+            toast.success('Carpeta creada', { description: `${newFolder.name} agregada al inventario` });
+            return newFolder;
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al crear carpeta');
+            return null;
+        }
     }, []);
 
-    /**
-     * Delete a folder (and optionally handle orphan items)
-     * @param {string} folderId - Folder ID
-     */
-    const deleteFolder = React.useCallback((folderId) => {
+    const deleteFolder = React.useCallback(async (folderId) => {
         const folder = folders.find(f => f.id === folderId);
         const itemsInFolder = equipmentList.filter(item => item.folderId === folderId);
 
@@ -250,45 +213,35 @@ export const EquipmentProvider = ({ children }) => {
                 `La carpeta "${folder?.name}" contiene ${itemsInFolder.length} artículos. ¿Deseas eliminarla de todos modos? Los artículos serán eliminados también.`
             );
 
-            if (!confirmDelete) {
-                return false;
-            }
+            if (!confirmDelete) return false;
 
             // Delete items in folder
-            setEquipmentList(prev => prev.filter(item => item.folderId !== folderId));
+            for (const item of itemsInFolder) {
+                await removeDocument('equipment', String(item.id));
+            }
         }
 
-        setFolders(prev => prev.filter(f => f.id !== folderId));
-
-        toast.success('Carpeta eliminada', {
-            description: `${folder?.name || 'Carpeta'} ha sido eliminada`
-        });
-
-        return true;
+        try {
+            await removeDocument('equipment_folders', folderId);
+            toast.success('Carpeta eliminada', { description: `${folder?.name || 'Carpeta'} ha sido eliminada` });
+            return true;
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar carpeta');
+            return false;
+        }
     }, [folders, equipmentList]);
 
-    /**
-     * Update folder properties (name, icon, color)
-     * @param {string} folderId - Folder ID
-     * @param {Object} updates - { name, icon, color }
-     */
-    const updateFolder = React.useCallback((folderId, updates) => {
-        setFolders(prev => prev.map(f =>
-            f.id === folderId
-                ? { ...f, ...updates, updatedAt: new Date().toISOString() }
-                : f
-        ));
-
-        toast.success('Carpeta actualizada', {
-            description: `${updates.name || 'Carpeta'} actualizada correctamente`
-        });
+    const updateFolder = React.useCallback(async (folderId, updates) => {
+        try {
+            await updateDocument('equipment_folders', folderId, { ...updates, updatedAt: new Date().toISOString() });
+            toast.success('Carpeta actualizada', { description: `${updates.name || 'Carpeta'} actualizada correctamente` });
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar carpeta');
+        }
     }, []);
 
-    /**
-     * Get items in a specific folder
-     * @param {string} folderId - Folder ID
-     * @returns {Array} - Items in folder
-     */
     const getItemsByFolder = React.useCallback((folderId) => {
         return equipmentList.filter(item => item.folderId === folderId);
     }, [equipmentList]);
@@ -297,14 +250,8 @@ export const EquipmentProvider = ({ children }) => {
     // INVENTORY CRUD OPERATIONS
     // ============================================
 
-    /**
-     * Add a new equipment item to inventory
-     * @param {Object} item - { name, icon, category, stock, description, folderId }
-     * @returns {Object} - Created item
-     */
-    const addItem = React.useCallback((item) => {
+    const addItem = React.useCallback(async (item) => {
         const newItem = {
-            id: Date.now(),
             name: item.name,
             icon: item.icon || 'Plug',
             category: item.category || 'General',
@@ -315,80 +262,58 @@ export const EquipmentProvider = ({ children }) => {
             createdAt: new Date().toISOString()
         };
 
-        setEquipmentList(prev => [...prev, newItem]);
-
-        toast.success('Equipo agregado', {
-            description: `${newItem.name} añadido al inventario`
-        });
-
-        return newItem;
+        try {
+            await createDocument('equipment', newItem);
+            toast.success('Equipo agregado', { description: `${newItem.name} añadido al inventario` });
+            return newItem;
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al agregar equipo');
+            return null;
+        }
     }, []);
 
-    /**
-     * Update an existing equipment item
-     * @param {number} id - Equipment ID
-     * @param {Object} updatedFields - Fields to update
-     */
-    const updateItem = React.useCallback((id, updatedFields) => {
-        setEquipmentList(prev => prev.map(item =>
-            item.id === id
-                ? { ...item, ...updatedFields, updatedAt: new Date().toISOString() }
-                : item
-        ));
-
-        toast.success('Equipo actualizado', {
-            description: 'Los cambios se han guardado correctamente'
-        });
+    const updateItem = React.useCallback(async (id, updatedFields) => {
+        try {
+            await updateDocument('equipment', String(id), { ...updatedFields, updatedAt: new Date().toISOString() });
+            toast.success('Equipo actualizado', { description: 'Los cambios se han guardado correctamente' });
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar equipo');
+        }
     }, []);
 
-    /**
-     * Delete an equipment item
-     * @param {number} id - Equipment ID
-     */
-    const deleteItem = React.useCallback((id) => {
+    const deleteItem = React.useCallback(async (id) => {
         const item = equipmentList.find(eq => eq.id === id);
-
-        setEquipmentList(prev => prev.filter(item => item.id !== id));
-
-        toast.success('Equipo eliminado', {
-            description: `${item?.name || 'Equipo'} ha sido eliminado del inventario`
-        });
+        try {
+            await removeDocument('equipment', String(id));
+            toast.success('Equipo eliminado', { description: `${item?.name || 'Equipo'} ha sido eliminado del inventario` });
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al eliminar equipo');
+        }
     }, [equipmentList]);
 
-    /**
-     * Toggle equipment status (active/maintenance)
-     * @param {number} id - Equipment ID
-     */
-    const toggleStatus = React.useCallback((id) => {
-        setEquipmentList(prev => prev.map(item => {
-            if (item.id === id) {
-                const newStatus = item.status === 'active' ? 'maintenance' : 'active';
-
-                toast.info(
-                    newStatus === 'maintenance'
-                        ? 'Equipo en mantención'
-                        : 'Equipo disponible',
-                    { description: item.name }
-                );
-
-                return { ...item, status: newStatus, updatedAt: new Date().toISOString() };
+    const toggleStatus = React.useCallback(async (id) => {
+        const item = equipmentList.find(eq => eq.id === id);
+        if (item) {
+            const newStatus = item.status === 'active' ? 'maintenance' : 'active';
+            try {
+                await updateDocument('equipment', String(id), { status: newStatus, updatedAt: new Date().toISOString() });
+                toast.info(newStatus === 'maintenance' ? 'Equipo en mantención' : 'Equipo disponible', { description: item.name });
+            } catch (error) {
+                console.error(error);
+                toast.error('Error al cambiar de estado');
             }
-            return item;
-        }));
-    }, []);
+        }
+    }, [equipmentList]);
 
     // ============================================
     // REQUEST OPERATIONS
     // ============================================
 
-    /**
-     * Add a new equipment request
-     * @param {Object} requestData - { items, date, block, userId, userName }
-     * @returns {Object} - Created request
-     */
-    const addRequest = React.useCallback((requestData) => {
+    const addRequest = React.useCallback(async (requestData) => {
         const newRequest = {
-            id: `request-${Date.now()}`,
             userId: requestData.userId,
             userName: requestData.userName,
             items: requestData.items, // Array of equipment IDs
@@ -399,74 +324,49 @@ export const EquipmentProvider = ({ children }) => {
             updatedAt: new Date().toISOString()
         };
 
-        setRequests(prev => [newRequest, ...prev]);
+        try {
+            const docRef = await createDocument('equipment_requests', newRequest);
+            const itemNames = requestData.items
+                .map(itemId => equipmentList.find(eq => eq.id === itemId)?.name)
+                .filter(Boolean)
+                .join(', ');
 
-        const itemNames = requestData.items
-            .map(itemId => equipmentList.find(eq => eq.id === itemId)?.name)
-            .filter(Boolean)
-            .join(', ');
-
-        toast.success('Solicitud enviada exitosamente', {
-            description: `Equipos: ${itemNames}`
-        });
-
-        return newRequest;
+            toast.success('Solicitud enviada exitosamente', { description: `Equipos: ${itemNames}` });
+            return { id: docRef.id, ...newRequest };
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al enviar solicitud');
+            return null;
+        }
     }, [equipmentList]);
 
-    /**
-     * Get requests for a specific user
-     * @param {string} userId - User ID
-     * @returns {Array} - User's requests
-     */
     const getUserRequests = React.useCallback((userId) => {
         return requests.filter(request => request.userId === userId);
     }, [requests]);
 
-    /**
-     * Get all requests (for admin)
-     * @returns {Array} - All requests
-     */
     const getAllRequests = React.useCallback(() => {
         return requests;
     }, [requests]);
 
-    /**
-     * Update request status
-     * @param {string} requestId - Request ID
-     * @param {string} newStatus - New status
-     */
-    const updateRequestStatus = React.useCallback((requestId, newStatus) => {
-        setRequests(prev => prev.map(request =>
-            request.id === requestId
-                ? { ...request, status: newStatus, updatedAt: new Date().toISOString() }
-                : request
-        ));
-
-        const statusInfo = Object.values(REQUEST_STATUS).find(s => s.id === newStatus);
-        toast.info(`Solicitud actualizada: ${statusInfo?.label}`);
+    const updateRequestStatus = React.useCallback(async (requestId, newStatus) => {
+        try {
+            await updateDocument('equipment_requests', String(requestId), { status: newStatus, updatedAt: new Date().toISOString() });
+            const statusInfo = Object.values(REQUEST_STATUS).find(s => s.id === newStatus);
+            toast.info(`Solicitud actualizada: ${statusInfo?.label}`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al actualizar solicitud');
+        }
     }, []);
 
-    /**
-     * Get equipment by ID
-     * @param {number} equipmentId - Equipment ID
-     * @returns {Object|null} - Equipment or null
-     */
     const getEquipmentById = React.useCallback((equipmentId) => {
         return equipmentList.find(eq => eq.id === equipmentId) || null;
     }, [equipmentList]);
 
-    /**
-     * Get available stock for equipment on a specific date/block
-     * @param {number} equipmentId - Equipment ID
-     * @param {string} date - Date string
-     * @param {number} block - Block number
-     * @returns {number} - Available stock
-     */
     const getAvailableStock = React.useCallback((equipmentId, date, block) => {
         const equipment = getEquipmentById(equipmentId);
         if (!equipment) return 0;
 
-        // Count how many times this equipment is requested for the same date/block
         const reserved = requests.filter(req =>
             req.date === date &&
             req.block === block &&
@@ -477,21 +377,12 @@ export const EquipmentProvider = ({ children }) => {
         return Math.max(0, equipment.stock - reserved);
     }, [requests, getEquipmentById]);
 
-    /**
-     * Get total items on loan (requests that are approved but not returned)
-     * @returns {number} - Count of loaned items
-     */
     const getTotalLoaned = React.useCallback(() => {
         return requests.filter(req =>
             req.status === REQUEST_STATUS.APPROVED.id
         ).reduce((total, req) => total + req.items.length, 0);
     }, [requests]);
 
-    /**
-     * Get items with low stock (< threshold)
-     * @param {number} threshold - Stock threshold (default: 2)
-     * @returns {Array} - Low stock items
-     */
     const getLowStockItems = React.useCallback((threshold = 2) => {
         return equipmentList.filter(item =>
             item.stock < threshold && item.status === 'active'
