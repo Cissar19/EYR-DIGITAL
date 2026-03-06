@@ -53,7 +53,7 @@ export const ROLES = {
  */
 export const ROLE_LABELS = {
     [ROLES.SUPER_ADMIN]: 'Admin Plataforma',
-    [ROLES.ADMIN]: 'Administradora',
+    [ROLES.ADMIN]: 'Administradora EYR Huechuraba',
     [ROLES.DIRECTOR]: 'Director',
     [ROLES.UTP_HEAD]: 'Jefa UTP',
     [ROLES.INSPECTOR]: 'Inspectoria',
@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }) => {
             return { id: uid, ...userDoc };
         } catch (error) {
             // Clean up secondary app
-            try { await signOut(secondaryAuth); } catch (_) {}
+            try { await signOut(secondaryAuth); } catch (_) { }
             throw error;
         }
     }, [fetchUsers]);

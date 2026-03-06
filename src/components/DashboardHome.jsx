@@ -38,7 +38,7 @@ const getRoleLabel = (role) => {
     switch (role) {
         case 'admin':
         case 'super_admin':
-            return 'Administradora General'; // User requested "Administradora General" in Dashboard
+            return 'Administradora EYR Huechuraba';
         case 'director':
             return 'Directora';
         case 'utp_head':
