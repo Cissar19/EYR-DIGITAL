@@ -455,6 +455,9 @@ const AdminDashboardView = () => {
                             <h1 className="text-2xl md:text-5xl font-extrabold tracking-tight mb-1">
                                 Hola, {user.name}
                             </h1>
+                            <p className="text-slate-400 text-lg font-medium flex items-center gap-2">
+                                {getRoleLabel(user.role)}
+                            </p>
                         </div>
 
                         <div className="mt-6 md:mt-0">
