@@ -37,17 +37,6 @@ export default function Login() {
         }
     };
 
-    const handleDevFill = (role) => {
-        const devCredentials = {
-            admin: 'ccontrerasr@eduhuechuraba.cl',
-            teacher: 'dalvaradov@eduhuechuraba.cl',
-            director: 'director@escuela.cl',
-            utp: 'utp@escuela.cl',
-            inspector: 'inspectoria@escuela.cl',
-        };
-        setEmail(devCredentials[role] || devCredentials.teacher);
-        setPassword('123456');
-    };
 
     return (
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-900">
@@ -134,28 +123,6 @@ export default function Login() {
                         </button>
                     </form>
 
-                    {/* Dev Helpers */}
-                    <div className="mt-8 pt-6 border-t border-white/10">
-                        <p className="text-center text-xs text-indigo-300/60 mb-3 uppercase tracking-wider font-semibold">Modo Desarrollo</p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                            {[
-                                { key: 'admin', label: 'Admin' },
-                                { key: 'director', label: 'Director' },
-                                { key: 'utp', label: 'Jefa UTP' },
-                                { key: 'inspector', label: 'Inspectoria' },
-                                { key: 'teacher', label: 'Docente' },
-                            ].map((item) => (
-                                <button
-                                    key={item.key}
-                                    onClick={() => handleDevFill(item.key)}
-                                    disabled={isLoading}
-                                    className="text-[11px] text-indigo-200/70 hover:text-white px-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all disabled:opacity-50"
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
                 </div>
             </motion.div>
