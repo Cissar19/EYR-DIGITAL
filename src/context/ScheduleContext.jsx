@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { DEFAULT_SCHEDULES } from '../data/defaultSchedules';
+import { subscribeToCollection, setDocument, removeDocument } from '../lib/firestoreService';
 
 const ScheduleContext = createContext();
 
@@ -79,25 +80,19 @@ export const SUBJECTS_LIST = [
 export const ScheduleProvider = ({ children }) => {
     const [schedules, setSchedules] = useState({});
 
-    // Load schedules from localStorage on mount
+    // Load schedules from Firestore on mount
     useEffect(() => {
-        const storedSchedules = localStorage.getItem('school_schedules');
-        if (storedSchedules) {
-            try {
-                setSchedules(JSON.parse(storedSchedules));
-            } catch (error) {
-                console.error('Error loading schedules:', error);
-                setSchedules({});
-            }
-        }
-    }, []);
+        const unsubscribe = subscribeToCollection('schedules', (docs) => {
+            const newSchedules = {};
+            docs.forEach(doc => {
+                const uid = doc.userId || doc.id;
+                newSchedules[uid] = doc.blocks || [];
+            });
+            setSchedules(newSchedules);
+        });
 
-    // Save schedules to localStorage whenever they change
-    useEffect(() => {
-        if (Object.keys(schedules).length > 0) {
-            localStorage.setItem('school_schedules', JSON.stringify(schedules));
-        }
-    }, [schedules]);
+        return () => unsubscribe();
+    }, []);
 
     /**
      * Get schedule for a specific user
@@ -114,15 +109,25 @@ export const ScheduleProvider = ({ children }) => {
      * @param {Array} scheduleData - Array of schedule blocks
      * @param {string} userName - User name for notification
      */
-    const updateSchedule = React.useCallback((userId, scheduleData, userName = 'el docente') => {
+    const updateSchedule = React.useCallback(async (userId, scheduleData, userName = 'el docente') => {
+        // Optimistic UI update
         setSchedules(prev => ({
             ...prev,
             [userId]: scheduleData
         }));
 
-        toast.success(`Horario guardado exitosamente`, {
-            description: `Se actualizó el horario de ${userName}`
-        });
+        try {
+            await setDocument('schedules', userId, {
+                userId: userId,
+                blocks: scheduleData
+            });
+            toast.success(`Horario guardado exitosamente`, {
+                description: `Se actualizó el horario de ${userName}`
+            });
+        } catch (error) {
+            console.error('Error saving schedule:', error);
+            toast.error('Error al guardar horario');
+        }
     }, []);
 
     /**
@@ -131,7 +136,7 @@ export const ScheduleProvider = ({ children }) => {
      * @param {string} toUserId - Destination user ID
      * @param {string} toUserName - Destination user name
      */
-    const copySchedule = React.useCallback((fromUserId, toUserId, toUserName = 'el docente') => {
+    const copySchedule = React.useCallback(async (fromUserId, toUserId, toUserName = 'el docente') => {
         const sourceSchedule = schedules[fromUserId];
 
         if (!sourceSchedule || sourceSchedule.length === 0) {
@@ -144,16 +149,26 @@ export const ScheduleProvider = ({ children }) => {
         // Deep copy to avoid reference issues
         const copiedSchedule = JSON.parse(JSON.stringify(sourceSchedule));
 
+        // Optimistic UI
         setSchedules(prev => ({
             ...prev,
             [toUserId]: copiedSchedule
         }));
 
-        toast.success('Horario copiado exitosamente', {
-            description: `Se copió el horario a ${toUserName}`
-        });
-
-        return copiedSchedule;
+        try {
+            await setDocument('schedules', toUserId, {
+                userId: toUserId,
+                blocks: copiedSchedule
+            });
+            toast.success('Horario copiado exitosamente', {
+                description: `Se copió el horario a ${toUserName}`
+            });
+            return copiedSchedule;
+        } catch (error) {
+            console.error('Error copying schedule:', error);
+            toast.error('Error al copiar horario');
+            return null;
+        }
     }, [schedules]);
 
     /**
@@ -170,16 +185,27 @@ export const ScheduleProvider = ({ children }) => {
      * @param {string} email - User email to match against defaults
      * @returns {boolean} - Whether a default was loaded
      */
-    const loadDefaultIfNeeded = React.useCallback((userId, email) => {
+    const loadDefaultIfNeeded = React.useCallback(async (userId, email) => {
         if (!userId || !email) return false;
         if (schedules[userId] && schedules[userId].length > 0) return false;
 
         const defaultSchedule = DEFAULT_SCHEDULES[email];
         if (defaultSchedule) {
+            // Optimistic
             setSchedules(prev => ({
                 ...prev,
                 [userId]: [...defaultSchedule]
             }));
+
+            // Sync to Firestore
+            try {
+                await setDocument('schedules', userId, {
+                    userId: userId,
+                    blocks: [...defaultSchedule]
+                });
+            } catch (err) {
+                console.error("Error saving default schedule to Firestore", err);
+            }
             return true;
         }
         return false;
@@ -190,16 +216,23 @@ export const ScheduleProvider = ({ children }) => {
      * @param {string} userId - User ID
      * @param {string} userName - User name
      */
-    const deleteSchedule = React.useCallback((userId, userName = 'el docente') => {
+    const deleteSchedule = React.useCallback(async (userId, userName = 'el docente') => {
+        // Optimistic
         setSchedules(prev => {
             const newSchedules = { ...prev };
             delete newSchedules[userId];
             return newSchedules;
         });
 
-        toast.info('Horario eliminado', {
-            description: `Se eliminó el horario de ${userName}`
-        });
+        try {
+            await removeDocument('schedules', userId);
+            toast.info('Horario eliminado', {
+                description: `Se eliminó el horario de ${userName}`
+            });
+        } catch (error) {
+            console.error('Error deleting schedule:', error);
+            toast.error('Error al eliminar horario');
+        }
     }, []);
 
     const value = React.useMemo(() => ({
