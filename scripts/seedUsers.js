@@ -37,7 +37,7 @@ const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
 const USERS = [
     // --- Roles administrativos ---
     { name: "Soporte Plataforma", email: "dev@plataforma.cl", role: "super_admin" },
-    { name: "Damaris Contreras", email: "ccontrerasr@eduhuechuraba.cl", role: "admin" },
+    { name: "Damaris Contreras", email: "adm.ernestoyanez@eduhuechuraba.cl", role: "admin" },
     { name: "Director General", email: "director@escuela.cl", role: "director" },
     { name: "Jefa UTP", email: "utp@escuela.cl", role: "utp_head" },
     { name: "Inspector General", email: "inspectoria@escuela.cl", role: "inspector" },
