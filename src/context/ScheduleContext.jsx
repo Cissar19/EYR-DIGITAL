@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { DEFAULT_SCHEDULES } from '../data/defaultSchedules';
 
 const ScheduleContext = createContext();
 
@@ -28,7 +29,11 @@ export const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 // ============================================
 export const COURSES_LIST = [
     'Pre-Kinder',
+    'Pre-Kinder A',
+    'Pre-Kinder B',
     'Kinder',
+    'Kinder A',
+    'Kinder B',
     '1° Básico',
     '2° Básico',
     '3° Básico',
@@ -44,17 +49,28 @@ export const COURSES_LIST = [
 // ============================================
 export const SUBJECTS_LIST = [
     'Lenguaje',
+    'Leng. y Lit.',
     'Matemática',
+    'T. Matemática',
     'Historia',
+    'H. G. y Cs. S.',
+    'For. Ciud.',
     'Ciencias',
+    'C. Nat',
     'Inglés',
     'Artes',
     'Música',
+    'Música/Arte',
     'Ed. Física',
     'Tecnología',
     'Orientación',
     'Religión',
-    'Jefatura'
+    'Religión / FC',
+    'Jefatura',
+    'T. Ciencias',
+    'T. Lenguaje',
+    'Taller Len',
+    'PAE'
 ];
 
 // ============================================
@@ -149,6 +165,27 @@ export const ScheduleProvider = ({ children }) => {
     }, [schedules]);
 
     /**
+     * Load default schedule for a user if none exists (matches by email)
+     * @param {string} userId - User ID
+     * @param {string} email - User email to match against defaults
+     * @returns {boolean} - Whether a default was loaded
+     */
+    const loadDefaultIfNeeded = React.useCallback((userId, email) => {
+        if (!userId || !email) return false;
+        if (schedules[userId] && schedules[userId].length > 0) return false;
+
+        const defaultSchedule = DEFAULT_SCHEDULES[email];
+        if (defaultSchedule) {
+            setSchedules(prev => ({
+                ...prev,
+                [userId]: [...defaultSchedule]
+            }));
+            return true;
+        }
+        return false;
+    }, [schedules]);
+
+    /**
      * Delete schedule for a specific user
      * @param {string} userId - User ID
      * @param {string} userName - User name
@@ -171,7 +208,8 @@ export const ScheduleProvider = ({ children }) => {
         updateSchedule,
         copySchedule,
         getAllSchedules,
-        deleteSchedule
+        deleteSchedule,
+        loadDefaultIfNeeded
     }), [schedules]);
 
     return (

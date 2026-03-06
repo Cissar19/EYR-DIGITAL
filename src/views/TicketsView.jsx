@@ -92,7 +92,8 @@ export default function TicketsView() {
 
     // Format date
     const formatDate = (dateString) => {
-        const date = new Date(dateString);
+        // Append T12:00:00 to date-only strings to prevent UTC timezone shift
+        const date = new Date(dateString.length === 10 ? dateString + 'T12:00:00' : dateString);
         return date.toLocaleDateString('es-CL', {
             day: 'numeric',
             month: 'short',

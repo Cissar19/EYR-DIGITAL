@@ -294,6 +294,38 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, [requests, hoursUsedState]);
 
     /**
+     * Return hours (subtract from accumulated hours)
+     * Creates a record with type: 'hour_return' and subtracts from hoursUsedState
+     */
+    const returnHoursManual = React.useCallback((userId, userName, date, startTime, endTime, minutesReturned, reason) => {
+        const newRequest = {
+            id: Date.now(),
+            userId,
+            userName,
+            date,
+            reason: `[Devolución] ${startTime} - ${endTime} (${minutesReturned} min): ${reason}`,
+            status: 'approved',
+            createdAt: new Date().toISOString(),
+            type: 'hour_return'
+        };
+
+        const updatedRequests = [newRequest, ...requests];
+        setRequests(updatedRequests);
+        localStorage.setItem('admin_requests', JSON.stringify(updatedRequests));
+
+        // Subtract hours (allows going below 0 = credit)
+        const hoursToSubtract = minutesReturned / 60;
+        const currentUsage = hoursUsedState[userId] !== undefined ? hoursUsedState[userId] : 0;
+        const newUsage = currentUsage - hoursToSubtract;
+
+        const newHoursUsedState = { ...hoursUsedState, [userId]: newUsage };
+        setHoursUsedState(newHoursUsedState);
+        localStorage.setItem('admin_hours_used', JSON.stringify(newHoursUsedState));
+
+        return true;
+    }, [requests, hoursUsedState]);
+
+    /**
      * Assign a Discount Day (does NOT affect admin balance)
      */
     const assignDiscountDay = React.useCallback((userId, userName, date, reason, observation) => {
@@ -346,12 +378,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         assignDayManual,
         assignSpecialPermission,
         assignHoursManual,
+        returnHoursManual,
         assignDiscountDay,
         getPendingRequests,
         getUserRequests,
         getHoursUsed,
         getDiscountDays
-    }), [requests, balances, hoursUsedState, discountDaysState, getBalance, getHoursUsed, getDiscountDays, adjustBalance, addRequest, approveRequestStable, rejectRequestStable, assignDayManual, assignSpecialPermission, assignHoursManual, assignDiscountDay, getPendingRequests, getUserRequests]);
+    }), [requests, balances, hoursUsedState, discountDaysState, getBalance, getHoursUsed, getDiscountDays, adjustBalance, addRequest, approveRequestStable, rejectRequestStable, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay, getPendingRequests, getUserRequests]);
 
     return (
         <AdministrativeDaysContext.Provider value={value}>

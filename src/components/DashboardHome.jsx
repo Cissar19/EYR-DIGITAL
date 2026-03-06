@@ -7,6 +7,7 @@ import {
     Calendar,
     Bell,
     ChevronRight,
+    ChevronLeft,
     Sun,
     ArrowUpRight,
     Users,
@@ -20,12 +21,17 @@ import {
     CheckCircle,
     Printer,
     Box,
-    CalendarClock
+    CalendarClock,
+    UserX,
+    HeartPulse,
+    BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import NextClassWidget from './NextClassWidget';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
+import { useMedicalLeaves } from '../context/MedicalLeavesContext';
+import UserDetailPanel from './UserDetailPanel';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -35,6 +41,10 @@ const getRoleLabel = (role) => {
             return 'Administradora General'; // User requested "Administradora General" in Dashboard
         case 'director':
             return 'Directora';
+        case 'utp_head':
+            return 'Jefa UTP';
+        case 'inspector':
+            return 'Inspectoría';
         case 'teacher':
             return 'Docente';
         case 'staff':
@@ -176,16 +186,240 @@ const TeacherView = ({ user, notifications }) => {
     );
 };
 
+// Weekly Absences Widget
+const WeeklyAbsencesWidget = ({ onSelectUser }) => {
+    const { requests } = useAdministrativeDays();
+    const { users } = useAuth();
+    const [weekOffset, setWeekOffset] = useState(0);
+    const [selectedDay, setSelectedDay] = useState(null);
+
+    const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'];
+    const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    const getWeekDays = (offset) => {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + diffToMonday + offset * 7);
+
+        return Array.from({ length: 5 }, (_, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return { dateStr: `${yyyy}-${mm}-${dd}`, date: d, dayNum: d.getDate(), dayName: DAY_NAMES[i] };
+        });
+    };
+
+    const weekDays = getWeekDays(weekOffset);
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const getAbsencesForDate = (dateStr) => {
+        return requests
+            .filter(r => r.status === 'approved' && r.date === dateStr)
+            .map(r => {
+                const userRecord = users.find(u => u.id === r.userId);
+                const role = userRecord?.role;
+                let roleLabel = 'Docente';
+                if (role === 'staff') roleLabel = 'Funcionario';
+                else if (role === 'admin' || role === 'super_admin') roleLabel = 'Administradora';
+                else if (role === 'director') roleLabel = 'Directora';
+                else if (role === 'utp_head') roleLabel = 'Jefa UTP';
+                else if (role === 'inspector') roleLabel = 'Inspectoría';
+
+                let typeLabel = 'Día Administrativo';
+                if (r.type === 'hour_permission') typeLabel = 'Permiso de Horas';
+                else if (r.type === 'discount') typeLabel = 'Descuento';
+
+                return { ...r, roleLabel, typeLabel };
+            });
+    };
+
+    // Week label: "Semana del 2 al 6 de Marzo"
+    const firstDay = weekDays[0];
+    const lastDay = weekDays[4];
+    const sameMonth = firstDay.date.getMonth() === lastDay.date.getMonth();
+    const weekLabel = sameMonth
+        ? `Semana del ${firstDay.dayNum} al ${lastDay.dayNum} de ${MONTH_NAMES[lastDay.date.getMonth()]}`
+        : `Semana del ${firstDay.dayNum} de ${MONTH_NAMES[firstDay.date.getMonth()]} al ${lastDay.dayNum} de ${MONTH_NAMES[lastDay.date.getMonth()]}`;
+
+    const selectedAbsences = selectedDay ? getAbsencesForDate(selectedDay) : [];
+
+    // Group by type
+    const grouped = {};
+    selectedAbsences.forEach(a => {
+        if (!grouped[a.typeLabel]) grouped[a.typeLabel] = [];
+        grouped[a.typeLabel].push(a);
+    });
+
+    return (
+        <BentoCard delay={0.05} className="md:col-span-2 lg:col-span-3">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-red-50 rounded-xl text-red-500">
+                        <UserX className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-bold text-slate-700">Ausencias de la Semana</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); }}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-sm font-semibold text-slate-600 min-w-[240px] text-center">{weekLabel}</span>
+                    <button
+                        onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); }}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+                    {weekOffset !== 0 && (
+                        <button
+                            onClick={() => { setWeekOffset(0); setSelectedDay(null); }}
+                            className="ml-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded-md hover:bg-indigo-50 transition-colors"
+                        >
+                            Hoy
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Days Row */}
+            <div className="grid grid-cols-5 gap-2 md:gap-3">
+                {weekDays.map(day => {
+                    const absences = getAbsencesForDate(day.dateStr);
+                    const count = absences.length;
+                    const isToday = day.dateStr === todayStr;
+                    const isSelected = selectedDay === day.dateStr;
+
+                    return (
+                        <button
+                            key={day.dateStr}
+                            onClick={() => setSelectedDay(isSelected ? null : day.dateStr)}
+                            className={cn(
+                                "flex flex-col items-center py-3 px-2 rounded-xl border-2 transition-all duration-200",
+                                isSelected
+                                    ? "border-indigo-500 bg-indigo-50 shadow-sm"
+                                    : isToday
+                                        ? "border-indigo-200 bg-indigo-50/50 hover:border-indigo-300"
+                                        : "border-transparent bg-slate-50 hover:bg-slate-100 hover:border-slate-200"
+                            )}
+                        >
+                            <span className={cn(
+                                "text-xs font-bold uppercase tracking-wider",
+                                isToday ? "text-indigo-600" : "text-slate-400"
+                            )}>
+                                {day.dayName}
+                            </span>
+                            <span className={cn(
+                                "text-2xl font-black mt-0.5",
+                                isToday ? "text-indigo-700" : "text-slate-700"
+                            )}>
+                                {day.dayNum}
+                            </span>
+                            {count > 0 ? (
+                                <span className={cn(
+                                    "mt-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full",
+                                    count >= 3
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-amber-100 text-amber-700"
+                                )}>
+                                    {count} {count === 1 ? 'ausencia' : 'ausencias'}
+                                </span>
+                            ) : (
+                                <span className="mt-1.5 text-xs font-medium text-slate-300 px-2.5 py-0.5">
+                                    Sin ausencias
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Detail Panel */}
+            {selectedDay && (
+                <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 pt-4 border-t border-slate-100"
+                >
+                    {selectedAbsences.length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center py-4">No hay ausencias registradas para este día.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {Object.entries(grouped).map(([type, items]) => (
+                                <div key={type}>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{type}</h4>
+                                    <div className="space-y-1.5">
+                                        {items.map(item => {
+                                            const userRecord = users.find(u => u.id === item.userId);
+                                            const initials = item.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+                                            return (
+                                                <div key={item.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-slate-50/80 border border-slate-100 hover:bg-slate-100/80 transition-all">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                                                            {initials}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-semibold text-slate-700 truncate">{item.userName}</span>
+                                                                <span className={cn(
+                                                                    "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0",
+                                                                    item.roleLabel === 'Funcionario'
+                                                                        ? "bg-blue-100 text-blue-700"
+                                                                        : "bg-purple-100 text-purple-700"
+                                                                )}>
+                                                                    {item.roleLabel}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-xs text-slate-400 truncate block">{item.reason}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => userRecord && onSelectUser(userRecord)}
+                                                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all shrink-0 ml-3 hover:scale-105 active:scale-95"
+                                                    >
+                                                        Ver Detalle
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </motion.div>
+            )}
+
+        </BentoCard>
+    );
+};
+
 // New Admin Command Center (Refined per User Request)
 const AdminDashboardView = () => {
     const { user, users } = useAuth();
     const { getLowStockItems } = useEquipment();
+    const { getAllLeaves } = useMedicalLeaves();
     const navigate = useNavigate();
+    const [selectedUser, setSelectedUser] = useState(null);
 
     // Data Integration
     const pendingTickets = 3; // Mocked as requested
     const staffCount = users.length;
     const lowStockCount = getLowStockItems(3).length;
+
+    // Medical Leaves - active leaves (endDate >= today)
+    const allLeaves = getAllLeaves();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeLeaves = allLeaves.filter(l => l.endDate >= todayStr);
+    const activeLeavesCount = activeLeaves.length;
 
     // Date Format
     const today = new Date().toLocaleDateString('es-CL', {
@@ -237,6 +471,9 @@ const AdminDashboardView = () => {
                     </div>
                 </div>
             </motion.div>
+
+            {/* Weekly Absences Widget (Full Width) */}
+            <WeeklyAbsencesWidget onSelectUser={setSelectedUser} />
 
             {/* 2. Solicitudes y Tickets (Urgent Action - Pixel Perfect) */}
             <BentoCard
@@ -360,6 +597,68 @@ const AdminDashboardView = () => {
                 </div>
             </BentoCard>
 
+            {/* 6. Licencias Médicas */}
+            <BentoCard
+                delay={0.5}
+                onClick={() => navigate('/medical-leaves')}
+                className="bg-white group"
+            >
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="p-3 bg-rose-50 rounded-2xl text-rose-500 w-fit mb-4">
+                            <HeartPulse className="w-8 h-8" />
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black text-slate-800 tracking-tighter">
+                                {activeLeavesCount}
+                            </span>
+                            <span className="text-xl text-slate-400 font-medium">{activeLeavesCount === 1 ? 'Activa' : 'Activas'}</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4">
+                        <h3 className="font-bold text-slate-700 text-lg">Licencias Médicas</h3>
+                        <p className="text-slate-500 text-sm mb-4">
+                            Registro y seguimiento de licencias del personal.
+                        </p>
+                        <div className="flex items-center text-rose-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Ver Licencias <ChevronRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                </div>
+            </BentoCard>
+
+            {/* 7. Estadísticas */}
+            <BentoCard
+                delay={0.6}
+                onClick={() => navigate('/admin/stats')}
+                className="bg-white group"
+            >
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 w-fit mb-4">
+                            <BarChart3 className="w-8 h-8" />
+                        </div>
+
+                        <h3 className="font-bold text-slate-700 text-xl mb-1">Estadísticas</h3>
+                    </div>
+
+                    <div className="mt-2">
+                        <p className="text-slate-500 text-sm mb-4">
+                            Panel de análisis integral: rendimiento, asistencia y eficiencia.
+                        </p>
+                        <div className="flex items-center text-indigo-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Ver Análisis <ChevronRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                </div>
+            </BentoCard>
+
+            {/* User Detail Panel (rendered outside grid to avoid overflow clipping) */}
+            {selectedUser && (
+                <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} />
+            )}
         </div>
     );
 };
@@ -369,7 +668,7 @@ export default function DashboardHome() {
     const notifications = [
         { id: 1, text: "Sistema actualizado a modo cloud.", read: false },
     ];
-    const isAdmin = user?.role === 'director' || user?.role === 'admin' || user?.role === 'super_admin';
+    const isAdmin = user?.role === 'director' || user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'utp_head' || user?.role === 'inspector';
 
     // Printer Role View
     if (user?.role === 'printer') {

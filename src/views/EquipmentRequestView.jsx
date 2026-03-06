@@ -43,9 +43,16 @@ export default function EquipmentRequestView() {
             return;
         }
 
+        const getLocalDate = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const now = new Date();
         const requestDate = selectedDate === 'today'
-            ? new Date().toISOString().split('T')[0]
-            : new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            ? getLocalDate(now)
+            : getLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
 
         addRequest({
             userId: user?.id,
@@ -62,7 +69,8 @@ export default function EquipmentRequestView() {
 
     // Format date
     const formatDate = (dateString) => {
-        const date = new Date(dateString);
+        // Append T12:00:00 to date-only strings to prevent UTC timezone shift
+        const date = new Date(dateString.length === 10 ? dateString + 'T12:00:00' : dateString);
         return date.toLocaleDateString('es-CL', {
             day: 'numeric',
             month: 'short',

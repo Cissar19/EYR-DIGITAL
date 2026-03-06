@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { Menu, Loader2 } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { cn } from './lib/utils';
+import logoEyr from './assets/logo_eyr.png';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -19,6 +21,11 @@ import EquipmentRequestView from './views/EquipmentRequestView';
 import ScheduleAdminView from './views/ScheduleAdminView';
 import InventoryView from './views/InventoryView';
 import AdminDaysTrackingView from './views/AdminDaysTrackingView';
+import StatsView from './views/StatsView';
+import MedicalLeavesView from './views/MedicalLeavesView';
+import SimceDataView from './views/SimceDataView';
+import AttendanceDataView from './views/AttendanceDataView';
+import CurriculumDataView from './views/CurriculumDataView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -39,14 +46,62 @@ const PlaceholderView = ({ title }) => (
 const ProtectedLayout = () => {
   const { user, loading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-slate-500 font-medium">Cargando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/40 to-blue-50/30 relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '3s' }} />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s', animationDelay: '0.5s' }} />
         </div>
+
+        <div className="relative flex flex-col items-center gap-8">
+          {/* Logo with glow effect */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-indigo-400/20 rounded-3xl blur-2xl scale-150 animate-pulse" style={{ animationDuration: '2s' }} />
+            <div className="relative bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-xl shadow-indigo-200/50 border border-white/60">
+              <img
+                src={logoEyr}
+                alt="Centro Educacional Ernesto Yañez Rivera"
+                className="h-20 w-auto object-contain"
+                style={{ animation: 'fadeInScale 0.8s ease-out both' }}
+              />
+            </div>
+          </div>
+
+          {/* Text */}
+          <div className="text-center space-y-2" style={{ animation: 'fadeInUp 0.8s ease-out 0.3s both' }}>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">EYR Digital</h1>
+            <p className="text-sm text-slate-400 font-medium">Preparando tu espacio de trabajo...</p>
+          </div>
+
+          {/* Animated loading bar */}
+          <div className="w-48 h-1.5 bg-slate-200/80 rounded-full overflow-hidden" style={{ animation: 'fadeInUp 0.8s ease-out 0.5s both' }}>
+            <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full" style={{
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.5s ease-in-out infinite',
+              width: '100%'
+            }} />
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -58,6 +113,8 @@ const ProtectedLayout = () => {
       <Sidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
       {/* Mobile Header */}
@@ -86,7 +143,20 @@ const ProtectedLayout = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:ml-72 transition-all duration-300 relative">
+      {/* Desktop toggle button when sidebar is collapsed */}
+      {isSidebarCollapsed && (
+        <button
+          onClick={() => setIsSidebarCollapsed(false)}
+          className="hidden md:flex fixed top-1/2 -translate-y-1/2 left-0 z-[60] p-2 py-4 bg-white border border-l-0 border-slate-200 rounded-r-xl shadow-md hover:shadow-lg hover:bg-slate-50 text-slate-500 hover:text-indigo-600 transition-all"
+        >
+          <PanelLeftOpen className="w-5 h-5" />
+        </button>
+      )}
+
+      <div className={cn(
+        "flex-1 flex flex-col transition-all duration-300 relative",
+        isSidebarCollapsed ? "md:ml-0" : "md:ml-72"
+      )}>
         <div className="hidden md:block">
           <Topbar />
         </div>
@@ -132,6 +202,11 @@ export default function App() {
           <Route path="/equipment" element={<EquipmentRequestView />} />
           <Route path="/admin/schedules" element={<ScheduleAdminView />} />
           <Route path="/admin/days-tracking" element={<AdminDaysTrackingView />} />
+          <Route path="/medical-leaves" element={<MedicalLeavesView />} />
+          <Route path="/admin/stats" element={<StatsView />} />
+          <Route path="/admin/simce" element={<SimceDataView />} />
+          <Route path="/admin/attendance" element={<AttendanceDataView />} />
+          <Route path="/admin/curriculum" element={<CurriculumDataView />} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

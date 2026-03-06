@@ -12,6 +12,10 @@ import { PrintProvider } from './context/PrintContext.jsx'
 import { TicketProvider } from './context/TicketContext.jsx'
 import { EquipmentProvider } from './context/EquipmentContext.jsx'
 import { ScheduleProvider } from './context/ScheduleContext.jsx'
+import { MedicalLeavesProvider } from './context/MedicalLeavesContext.jsx'
+import { SimceProvider } from './context/SimceContext.jsx'
+import { AttendanceProvider } from './context/AttendanceContext.jsx'
+import { CurriculumProvider } from './context/CurriculumContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -23,7 +27,15 @@ createRoot(document.getElementById('root')).render(
               <TicketProvider>
                 <EquipmentProvider>
                   <ScheduleProvider>
-                    <App />
+                    <MedicalLeavesProvider>
+                      <SimceProvider>
+                        <AttendanceProvider>
+                          <CurriculumProvider>
+                            <App />
+                          </CurriculumProvider>
+                        </AttendanceProvider>
+                      </SimceProvider>
+                    </MedicalLeavesProvider>
                   </ScheduleProvider>
                 </EquipmentProvider>
               </TicketProvider>

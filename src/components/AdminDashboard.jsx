@@ -1,26 +1,39 @@
 import React from 'react';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 import { Check, X, Bell, User, Calendar } from 'lucide-react';
+import { sendAssignmentEmail } from '../lib/emailService';
 
 export default function AdminDashboard() {
-    const { logout, users } = useAuth();
+    const { logout, users, user } = useAuth();
     const { getPendingRequests, approveRequest, rejectRequest } = useAdministrativeDays();
+    const userCanEdit = canEditHelper(user);
 
     const pendingRequests = getPendingRequests();
     const pendingCount = pendingRequests.length;
 
     const handleApprove = (id) => {
         if (confirm("¿Estás seguro de aprobar esta solicitud? Se descontará 1 día.")) {
+            const req = pendingRequests.find(r => r.id === id);
             approveRequest(id);
-            // Visual toast simulated with alert for now, or could use a toast lib if installed.
-            // User asked for "visual notification (toast or alert)" -> alert is simplest compliant way.
+            if (req) {
+                const reqUser = users.find(u => u.id === req.userId);
+                if (reqUser) {
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason });
+                }
+            }
         }
     };
 
     const handleReject = (id) => {
-        // Reason for rejection could be asked here
+        const req = pendingRequests.find(r => r.id === id);
         rejectRequest(id);
+        if (req) {
+            const reqUser = users.find(u => u.id === req.userId);
+            if (reqUser) {
+                sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason });
+            }
+        }
     };
 
     return (
@@ -91,20 +104,22 @@ export default function AdminDashboard() {
                                         </p>
                                     </div>
 
-                                    <div className="flex gap-3 mt-auto">
-                                        <button
-                                            onClick={() => handleApprove(req.id)}
-                                            className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg font-semibold hover:bg-green-100 border border-green-200 flex items-center justify-center gap-2 transition-colors"
-                                        >
-                                            <Check className="w-4 h-4" /> Aprobar
-                                        </button>
-                                        <button
-                                            onClick={() => handleReject(req.id)}
-                                            className="flex-1 bg-red-50 text-red-700 py-2 rounded-lg font-semibold hover:bg-red-100 border border-red-200 flex items-center justify-center gap-2 transition-colors"
-                                        >
-                                            <X className="w-4 h-4" /> Rechazar
-                                        </button>
-                                    </div>
+                                    {userCanEdit && (
+                                        <div className="flex gap-3 mt-auto">
+                                            <button
+                                                onClick={() => handleApprove(req.id)}
+                                                className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg font-semibold hover:bg-green-100 border border-green-200 flex items-center justify-center gap-2 transition-colors"
+                                            >
+                                                <Check className="w-4 h-4" /> Aprobar
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(req.id)}
+                                                className="flex-1 bg-red-50 text-red-700 py-2 rounded-lg font-semibold hover:bg-red-100 border border-red-200 flex items-center justify-center gap-2 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" /> Rechazar
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

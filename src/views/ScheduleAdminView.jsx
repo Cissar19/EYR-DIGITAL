@@ -1,23 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarClock, Save, Trash2, ChevronDown, Lock, AlertCircle, Eye, Edit3, User, GraduationCap, Calendar, Coffee } from 'lucide-react';
+import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext';
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
 
 export default function ScheduleAdminView() {
     const { user, getAllUsers } = useAuth();
-    const { getSchedule, updateSchedule, deleteSchedule } = useSchedule();
+    const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded } = useSchedule();
+    const userCanEdit = canEditHelper(user);
 
-    // State
+    // State — only teacher selector needed now
     const [selectedTeacherId, setSelectedTeacherId] = useState('');
-    const [selectedCourse, setSelectedCourse] = useState('');
-    const [selectedDay, setSelectedDay] = useState('Lunes');
     const [selectedTeacher, setSelectedTeacher] = useState(null);
     const [scheduleData, setScheduleData] = useState({});
     const [isEditMode, setIsEditMode] = useState(false);
+    const [showFullTime, setShowFullTime] = useState(false);
+    const [ftCourse, setFtCourse] = useState('');
+    const [ftSubject, setFtSubject] = useState('');
 
-    // Memoize teachers to prevent unnecessary re-renders
     const teachers = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.TEACHER);
     }, [getAllUsers]);
@@ -28,47 +29,27 @@ export default function ScheduleAdminView() {
             const teacher = teachers.find(t => t.id === selectedTeacherId);
             setSelectedTeacher(teacher);
 
-            const schedule = getSchedule(selectedTeacherId);
+            loadDefaultIfNeeded(selectedTeacherId, teacher?.email);
 
-            // Convert array to object format for easier editing
+            const schedule = getSchedule(selectedTeacherId);
             const scheduleObj = {};
             schedule.forEach(block => {
                 const key = `${block.day}-${block.startTime}`;
                 scheduleObj[key] = block;
             });
-
             setScheduleData(scheduleObj);
         } else {
             setSelectedTeacher(null);
             setScheduleData({});
-            setSelectedCourse('');
         }
-    }, [selectedTeacherId, getSchedule, teachers]);
+    }, [selectedTeacherId, getSchedule, teachers, loadDefaultIfNeeded]);
 
-    // Get cell status for collision detection
-    const getCellStatus = (day, startTime) => {
-        const key = `${day}-${startTime}`;
-        const cellData = scheduleData[key];
-
-        if (!cellData || !cellData.subject) {
-            return { status: 'available' };
-        }
-
-        // If cell has data, check if it matches selected course
-        if (cellData.course === selectedCourse) {
-            return { status: 'assigned', subject: cellData.subject };
-        }
-
-        // Cell is occupied by another course
-        return { status: 'occupied', course: cellData.course };
-    };
-
-    // Handle subject change in cell
-    const updateCellSubject = (day, startTime, subject) => {
+    // Update a cell with course + subject
+    const updateCell = (day, startTime, course, subject) => {
         const key = `${day}-${startTime}`;
 
-        if (!subject) {
-            // Remove the assignment if subject is cleared
+        if (!course) {
+            // Clear entire cell if course is removed
             setScheduleData(prev => {
                 const updated = { ...prev };
                 delete updated[key];
@@ -77,25 +58,49 @@ export default function ScheduleAdminView() {
         } else {
             setScheduleData(prev => ({
                 ...prev,
-                [key]: {
-                    day,
-                    startTime,
-                    subject,
-                    course: selectedCourse
-                }
+                [key]: { day, startTime, subject: subject || '', course }
             }));
         }
+    };
+
+    // Clear a cell completely
+    const clearCell = (day, startTime) => {
+        const key = `${day}-${startTime}`;
+        setScheduleData(prev => {
+            const updated = { ...prev };
+            delete updated[key];
+            return updated;
+        });
+    };
+
+    // Fill all class blocks with a single course + subject
+    const fillFullTime = () => {
+        if (!ftCourse) return;
+        const newData = { ...scheduleData };
+        for (const block of SCHEDULE_BLOCKS) {
+            if (block.type === 'break') continue;
+            for (const day of DAYS) {
+                const key = `${day}-${block.start}`;
+                newData[key] = {
+                    day,
+                    startTime: block.start,
+                    course: ftCourse,
+                    subject: block.type === 'special' ? 'Jefatura' : (ftSubject || ''),
+                };
+            }
+        }
+        setScheduleData(newData);
+        setShowFullTime(false);
+        setFtCourse('');
+        setFtSubject('');
     };
 
     // Handle save
     const handleSave = () => {
         if (!selectedTeacherId) return;
-
-        // Convert object back to array, filtering out empty blocks
         const scheduleArray = Object.values(scheduleData).filter(block =>
-            block.subject && block.subject.trim() !== ''
+            block.course && block.course.trim() !== ''
         );
-
         updateSchedule(selectedTeacherId, scheduleArray, selectedTeacher?.name);
     };
 
@@ -104,24 +109,22 @@ export default function ScheduleAdminView() {
         if (!selectedTeacherId || !window.confirm(`¿Estás seguro de eliminar el horario de ${selectedTeacher?.name}?`)) {
             return;
         }
-
         deleteSchedule(selectedTeacherId, selectedTeacher?.name);
         setScheduleData({});
     };
 
-    // Check if teacher has any classes for selected course
-    const hasClassesInCourse = () => {
-        return Object.values(scheduleData).some(block =>
-            block.course === selectedCourse && block.subject
-        );
-    };
+    const canShowSchedule = !!selectedTeacherId;
 
-    const canShowSchedule = selectedTeacherId && selectedCourse;
+    // Get cell data helper
+    const getCellData = (day, startTime) => {
+        const key = `${day}-${startTime}`;
+        return scheduleData[key] || null;
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8">
-            <div className="max-w-5xl mx-auto">
-                {/* Glassmorphism Header */}
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -137,13 +140,13 @@ export default function ScheduleAdminView() {
                                     Gestión de Horarios
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    Timeline diario • Asignación inteligente
+                                    Vista semanal • Curso + Asignatura por bloque
                                 </p>
                             </div>
                         </div>
 
-                        {/* Segmented Control - Mode Toggle */}
-                        {canShowSchedule && (
+                        {/* Mode Toggle */}
+                        {canShowSchedule && userCanEdit && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -178,264 +181,214 @@ export default function ScheduleAdminView() {
                     </div>
                 </motion.div>
 
-                {/* Glassmorphism Selector Bar */}
+                {/* Teacher Selector */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                     className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
                 >
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Teacher Selector */}
-                        <div className="group">
-                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                                <User className="w-4 h-4 text-blue-500" />
-                                Docente
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedTeacherId}
-                                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all appearance-none bg-white text-sm font-medium text-slate-900 shadow-sm hover:border-slate-300"
-                                >
-                                    <option value="">Seleccionar docente...</option>
-                                    {teachers.map(teacher => (
-                                        <option key={teacher.id} value={teacher.id}>
-                                            {teacher.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none group-hover:text-slate-600 transition-colors" />
-                            </div>
-                        </div>
-
-                        {/* Course Selector */}
-                        <div className="group">
-                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                                <GraduationCap className="w-4 h-4 text-purple-500" />
-                                Curso
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedCourse}
-                                    onChange={(e) => setSelectedCourse(e.target.value)}
-                                    disabled={!selectedTeacherId}
-                                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 focus:outline-none transition-all appearance-none bg-white text-sm font-medium text-slate-900 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed hover:border-slate-300"
-                                >
-                                    <option value="">Seleccionar curso...</option>
-                                    {COURSES_LIST.map(course => (
-                                        <option key={course} value={course}>
-                                            {course}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none group-hover:text-slate-600 transition-colors" />
-                            </div>
-                        </div>
-
-                        {/* Day Selector */}
-                        <div className="group">
-                            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                                <Calendar className="w-4 h-4 text-indigo-500" />
-                                Día
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedDay}
-                                    onChange={(e) => setSelectedDay(e.target.value)}
-                                    disabled={!canShowSchedule}
-                                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none bg-white text-sm font-medium text-slate-900 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed hover:border-slate-300"
-                                >
-                                    {DAYS.map(day => (
-                                        <option key={day} value={day}>
-                                            {day}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none group-hover:text-slate-600 transition-colors" />
-                            </div>
-                        </div>
+                    <div className="max-w-md">
+                        <TeacherCombobox
+                            teachers={teachers}
+                            selectedTeacherId={selectedTeacherId}
+                            onSelect={setSelectedTeacherId}
+                        />
                     </div>
                 </motion.div>
 
-                {/* Empty State Message */}
-                {canShowSchedule && !hasClassesInCourse() && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-100 rounded-3xl p-6 mb-8 flex items-start gap-4"
-                    >
-                        <AlertCircle className="w-6 h-6 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-blue-900 leading-relaxed">
-                            <strong className="font-semibold">{selectedTeacher?.name}</strong> no tiene carga académica en <strong className="font-semibold">{selectedCourse}</strong>.
-                        </p>
-                    </motion.div>
-                )}
-
-                {/* Timeline View */}
+                {/* Weekly Grid */}
                 {canShowSchedule ? (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="relative"
                     >
-                        {/* Timeline Header */}
-                        <div className="mb-8 flex items-center justify-between">
+                        {/* Grid Header */}
+                        <div className="mb-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-semibold text-slate-900 mb-1">
-                                    {selectedDay}
+                                    Horario Semanal
                                 </h2>
                                 <p className="text-sm text-slate-500">
-                                    {selectedTeacher?.name} • {selectedCourse}
+                                    {selectedTeacher?.name}
                                 </p>
                             </div>
-                            {isEditMode && (
-                                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    Modo Edición Activo
-                                </div>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {isEditMode && (
+                                    <>
+                                        <button
+                                            onClick={() => setShowFullTime(v => !v)}
+                                            className={cn(
+                                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all shadow-md border",
+                                                showFullTime
+                                                    ? "bg-teal-500 text-white border-teal-500"
+                                                    : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"
+                                            )}
+                                        >
+                                            <ClipboardList className="w-3.5 h-3.5" />
+                                            Tiempo Completo
+                                        </button>
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
+                                            <Edit3 className="w-3.5 h-3.5" />
+                                            Modo Edición Activo
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Timeline Container */}
-                        <div className="relative pl-20">
-                            {/* Vertical Timeline Spine */}
-                            <div className="absolute left-10 top-0 bottom-0 w-0.5 border-l-2 border-dashed border-slate-300" />
-
-                            {/* Timeline Blocks */}
-                            <div className="space-y-6">
-                                <AnimatePresence mode="wait">
-                                    {SCHEDULE_BLOCKS.map((block, index) => {
-                                        const isBreak = block.type === 'break';
-                                        const isSpecial = block.type === 'special';
-                                        const cellStatus = getCellStatus(selectedDay, block.start);
-                                        const isOccupied = cellStatus.status === 'occupied';
-                                        const isAssigned = cellStatus.status === 'assigned';
-                                        const isEmpty = cellStatus.status === 'available';
-
-                                        return (
-                                            <motion.div
-                                                key={block.id}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: index * 0.03 }}
-                                                className="relative"
+                        {/* Full-time assignment panel */}
+                        {isEditMode && showFullTime && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="mb-6 bg-teal-50 border-2 border-teal-200 rounded-2xl p-5"
+                            >
+                                <p className="text-sm font-semibold text-teal-800 mb-3">
+                                    Asignar tiempo completo — llena todos los bloques de clase con un solo curso
+                                </p>
+                                <div className="flex flex-wrap items-end gap-4">
+                                    <div className="flex-1 min-w-[180px]">
+                                        <label className="text-xs font-medium text-teal-700 mb-1 block">Curso</label>
+                                        <div className="relative">
+                                            <select
+                                                value={ftCourse}
+                                                onChange={(e) => setFtCourse(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
                                             >
-                                                {/* Timeline Anchor Point */}
-                                                <div className={cn(
-                                                    "absolute -left-[43px] top-6 w-4 h-4 rounded-full border-4 border-white shadow-md z-10",
-                                                    isBreak && "bg-amber-400",
-                                                    isSpecial && "bg-orange-400",
-                                                    isOccupied && "bg-red-400",
-                                                    isAssigned && "bg-green-400",
-                                                    isEmpty && "bg-slate-300"
-                                                )} />
+                                                <option value="">Seleccionar curso...</option>
+                                                {COURSES_LIST.map(c => (
+                                                    <option key={c} value={c}>{c}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-[180px]">
+                                        <label className="text-xs font-medium text-teal-700 mb-1 block">Asignatura (opcional)</label>
+                                        <div className="relative">
+                                            <select
+                                                value={ftSubject}
+                                                onChange={(e) => setFtSubject(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border-2 border-teal-200 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none text-sm appearance-none bg-white"
+                                            >
+                                                <option value="">Sin asignatura fija</option>
+                                                {SUBJECTS_LIST.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={fillFullTime}
+                                            disabled={!ftCourse}
+                                            className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-teal-500 hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
+                                        >
+                                            Aplicar
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowFullTime(false); setFtCourse(''); setFtSubject(''); }}
+                                            className="px-4 py-2 rounded-xl text-sm font-medium text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 transition-all"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-teal-600 mt-3">
+                                    Esto reemplazará todos los bloques existentes. La Jefatura se mantiene automáticamente. Luego puedes ajustar celdas individuales.
+                                </p>
+                            </motion.div>
+                        )}
 
-                                                {/* Time Display (Outside Card) */}
-                                                <div className="absolute -left-10 top-4 -translate-x-full pr-8 text-right">
-                                                    <div className="text-2xl font-light text-slate-400 tabular-nums leading-none">
-                                                        {block.start}
-                                                    </div>
-                                                    <div className="text-xs text-slate-400 tabular-nums mt-1">
-                                                        {block.end}
-                                                    </div>
-                                                </div>
+                        {/* Schedule Table */}
+                        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider border-b-2 border-slate-200 min-w-[120px]">
+                                                Bloque
+                                            </th>
+                                            {DAYS.map(day => (
+                                                <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[160px]">
+                                                    {day}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {SCHEDULE_BLOCKS.map((block) => {
+                                            const isBreak = block.type === 'break';
+                                            const isSpecial = block.type === 'special';
 
-                                                {/* Block Card */}
-                                                <motion.div
-                                                    whileHover={{ scale: isBreak ? 1 : 1.01, y: -2 }}
-                                                    transition={{ duration: 0.2 }}
-                                                    className={cn(
-                                                        "rounded-3xl p-6 transition-all duration-300 relative overflow-hidden",
-                                                        // Break styling
-                                                        isBreak && "bg-gradient-to-br from-amber-50 to-yellow-50/50 border-2 border-amber-100 shadow-sm",
-                                                        // Special (Jefatura) styling
-                                                        isSpecial && !isBreak && "bg-gradient-to-br from-orange-50 to-red-50/30 border-2 border-orange-100",
-                                                        // Occupied styling - striped pattern
-                                                        !isBreak && isOccupied && "bg-stripe-pattern bg-white border-2 border-slate-200 border-l-4 border-l-red-400",
-                                                        // Assigned styling
-                                                        !isBreak && !isOccupied && isAssigned && "bg-white border-2 border-green-200 shadow-md hover:shadow-lg",
-                                                        // Empty styling
-                                                        !isBreak && !isOccupied && !isAssigned && isEditMode && "bg-white border-2 border-dashed border-slate-300 hover:border-blue-400 hover:border-solid shadow-sm hover:shadow-md",
-                                                        !isBreak && !isOccupied && !isAssigned && !isEditMode && "bg-white border-2 border-slate-200 shadow-sm"
-                                                    )}
-                                                >
-                                                    {/* Card Content */}
-                                                    <div className="flex items-center gap-4">
-                                                        {/* Block Label */}
-                                                        <div className="min-w-[100px]">
-                                                            <span className={cn(
-                                                                "inline-flex items-center gap-2 text-sm font-semibold",
-                                                                isBreak && "text-amber-700",
-                                                                isSpecial && !isBreak && "text-orange-600",
-                                                                !isBreak && !isSpecial && "text-slate-700"
-                                                            )}>
-                                                                {isBreak && <Coffee className="w-4 h-4" />}
-                                                                {block.label}
-                                                            </span>
+                                            // Break / lunch rows — merged, non-editable
+                                            if (isBreak) {
+                                                return (
+                                                    <tr key={block.id}>
+                                                        <td className="sticky left-0 z-10 bg-amber-50 px-4 py-2 border-b border-amber-100">
+                                                            <div className="flex items-center gap-2">
+                                                                <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                                                                <span className="text-xs font-semibold text-amber-700">{block.label}</span>
+                                                            </div>
+                                                            <div className="text-[10px] text-amber-500 tabular-nums">{block.start} - {block.end}</div>
+                                                        </td>
+                                                        <td colSpan={5} className="bg-amber-50/50 px-4 py-2 border-b border-amber-100 text-center">
+                                                            <span className="text-xs text-amber-500 italic">{block.label === 'Almuerzo' ? 'Almuerzo' : 'Recreo'}</span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return (
+                                                <tr key={block.id}>
+                                                    {/* Block label column */}
+                                                    <td className={cn(
+                                                        "sticky left-0 z-10 px-4 py-2 border-b border-slate-100",
+                                                        isSpecial ? "bg-orange-50" : "bg-white"
+                                                    )}>
+                                                        <div className={cn(
+                                                            "text-xs font-semibold",
+                                                            isSpecial ? "text-orange-600" : "text-slate-700"
+                                                        )}>
+                                                            {block.label}
                                                         </div>
+                                                        <div className="text-[10px] text-slate-400 tabular-nums">{block.start} - {block.end}</div>
+                                                    </td>
 
-                                                        {/* Subject Assignment Area */}
-                                                        <div className="flex-1">
-                                                            {isBreak ? (
-                                                                <span className="text-sm text-amber-600/70 italic font-light">
-                                                                    Tiempo libre
-                                                                </span>
-                                                            ) : isOccupied ? (
-                                                                <div className="inline-flex items-center gap-3 px-4 py-2.5 bg-white rounded-2xl border-2 border-red-100 shadow-sm">
-                                                                    <Lock className="w-4 h-4 text-red-500" />
-                                                                    <div>
-                                                                        <div className="text-xs text-red-600 font-medium">No disponible</div>
-                                                                        <div className="text-sm text-slate-700 font-semibold">
-                                                                            Asignado a {cellStatus.course}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            ) : isEditMode ? (
-                                                                // EDIT MODE: Show Dropdown
-                                                                <div className="relative">
-                                                                    <select
-                                                                        value={cellStatus.subject || ''}
-                                                                        onChange={(e) => updateCellSubject(selectedDay, block.start, e.target.value)}
-                                                                        className={cn(
-                                                                            "w-full px-4 py-3 rounded-2xl border-2 focus:outline-none focus:ring-4 transition-all appearance-none bg-white text-sm font-medium shadow-sm",
-                                                                            cellStatus.subject
-                                                                                ? "border-green-200 text-slate-900 focus:border-green-400 focus:ring-green-100"
-                                                                                : "border-slate-200 text-slate-400 focus:border-blue-400 focus:ring-blue-100",
-                                                                            isSpecial && "border-orange-200 focus:border-orange-400 focus:ring-orange-100"
-                                                                        )}
-                                                                    >
-                                                                        <option value="">Seleccionar asignatura...</option>
-                                                                        {SUBJECTS_LIST.map(subject => (
-                                                                            <option key={subject} value={subject}>
-                                                                                {subject}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                                                </div>
-                                                            ) : (
-                                                                // PREVIEW MODE: Show Plain Text
-                                                                <div className="px-4 py-3">
-                                                                    {cellStatus.subject ? (
-                                                                        <span className="text-base font-semibold text-slate-900">
-                                                                            {cellStatus.subject}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="text-sm text-slate-400 italic font-light">
-                                                                            Libre
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            </motion.div>
-                                        );
-                                    })}
-                                </AnimatePresence>
+                                                    {/* Day cells */}
+                                                    {DAYS.map(day => {
+                                                        const cellData = getCellData(day, block.start);
+                                                        const hasData = cellData && cellData.course;
+
+                                                        return (
+                                                            <td key={day} className="px-1.5 py-1.5 border-b border-slate-100 border-l border-slate-50">
+                                                                {isEditMode ? (
+                                                                    <EditCell
+                                                                        cellData={cellData}
+                                                                        day={day}
+                                                                        startTime={block.start}
+                                                                        isSpecial={isSpecial}
+                                                                        updateCell={updateCell}
+                                                                        clearCell={clearCell}
+                                                                    />
+                                                                ) : (
+                                                                    <ViewCell
+                                                                        cellData={cellData}
+                                                                        isSpecial={isSpecial}
+                                                                        hasData={hasData}
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </motion.div>
@@ -449,16 +402,16 @@ export default function ScheduleAdminView() {
                             <CalendarClock className="w-12 h-12 text-slate-400" />
                         </div>
                         <p className="text-slate-600 font-medium text-lg">
-                            Selecciona un docente y curso para comenzar
+                            Selecciona un docente para ver su horario semanal
                         </p>
                         <p className="text-slate-400 text-sm mt-2">
-                            La línea de tiempo aparecerá aquí
+                            La grilla semanal aparecerá aquí
                         </p>
                     </motion.div>
                 )}
 
-                {/* Action Buttons - Floating */}
-                {canShowSchedule && isEditMode && (
+                {/* Action Buttons */}
+                {canShowSchedule && isEditMode && userCanEdit && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -483,19 +436,272 @@ export default function ScheduleAdminView() {
                     </motion.div>
                 )}
             </div>
+        </div>
+    );
+}
 
-            {/* Custom CSS for striped pattern */}
-            <style jsx>{`
-                .bg-stripe-pattern {
-                    background-image: repeating-linear-gradient(
-                        45deg,
-                        transparent,
-                        transparent 10px,
-                        rgba(148, 163, 184, 0.03) 10px,
-                        rgba(148, 163, 184, 0.03) 20px
-                    );
-                }
-            `}</style>
+// ─── Subject color palette ─────────────────────────────────
+const SUBJECT_COLORS = {
+    'Lenguaje':     { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
+    'Leng. y Lit.': { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
+    'Taller Len':   { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
+    'T. Lenguaje':  { bg: 'bg-blue-50',    border: 'border-blue-200',    title: 'text-blue-800',    sub: 'text-blue-500' },
+    'Matemática':   { bg: 'bg-indigo-50',  border: 'border-indigo-200',  title: 'text-indigo-800',  sub: 'text-indigo-500' },
+    'T. Matemática':{ bg: 'bg-indigo-50',  border: 'border-indigo-200',  title: 'text-indigo-800',  sub: 'text-indigo-500' },
+    'Historia':     { bg: 'bg-amber-50',   border: 'border-amber-200',   title: 'text-amber-800',   sub: 'text-amber-500' },
+    'H. G. y Cs. S.': { bg: 'bg-amber-50', border: 'border-amber-200',  title: 'text-amber-800',   sub: 'text-amber-500' },
+    'For. Ciud.':   { bg: 'bg-yellow-50',  border: 'border-yellow-200',  title: 'text-yellow-800',  sub: 'text-yellow-500' },
+    'Ciencias':     { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
+    'C. Nat':       { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
+    'T. Ciencias':  { bg: 'bg-green-50',   border: 'border-green-200',   title: 'text-green-800',   sub: 'text-green-500' },
+    'Inglés':       { bg: 'bg-red-50',     border: 'border-red-200',     title: 'text-red-800',     sub: 'text-red-500' },
+    'Artes':        { bg: 'bg-pink-50',    border: 'border-pink-200',    title: 'text-pink-800',    sub: 'text-pink-500' },
+    'Música':       { bg: 'bg-violet-50',  border: 'border-violet-200',  title: 'text-violet-800',  sub: 'text-violet-500' },
+    'Música/Arte':  { bg: 'bg-violet-50',  border: 'border-violet-200',  title: 'text-violet-800',  sub: 'text-violet-500' },
+    'Ed. Física':   { bg: 'bg-cyan-50',    border: 'border-cyan-200',    title: 'text-cyan-800',    sub: 'text-cyan-500' },
+    'Tecnología':   { bg: 'bg-slate-100',  border: 'border-slate-300',   title: 'text-slate-800',   sub: 'text-slate-500' },
+    'Orientación':  { bg: 'bg-teal-50',    border: 'border-teal-200',    title: 'text-teal-800',    sub: 'text-teal-500' },
+    'Religión':     { bg: 'bg-purple-50',  border: 'border-purple-200',  title: 'text-purple-800',  sub: 'text-purple-500' },
+    'Religión / FC':{ bg: 'bg-purple-50',  border: 'border-purple-200',  title: 'text-purple-800',  sub: 'text-purple-500' },
+    'PAE':          { bg: 'bg-lime-50',    border: 'border-lime-200',    title: 'text-lime-800',    sub: 'text-lime-500' },
+    'Jefatura':     { bg: 'bg-orange-50',  border: 'border-orange-200',  title: 'text-orange-700',  sub: 'text-orange-500' },
+};
+
+const DEFAULT_COLOR = { bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-800', sub: 'text-emerald-500' };
+
+function getSubjectColor(subject) {
+    return SUBJECT_COLORS[subject] || DEFAULT_COLOR;
+}
+
+// ─── View-mode cell ────────────────────────────────────────
+function ViewCell({ cellData, isSpecial, hasData }) {
+    if (!hasData) {
+        return (
+            <div className="rounded-xl px-2 py-2.5 bg-slate-50 text-center min-h-[44px] flex items-center justify-center">
+                <span className="text-[11px] text-slate-300 italic">Libre</span>
+            </div>
+        );
+    }
+
+    const color = getSubjectColor(cellData.subject);
+
+    return (
+        <div className={cn(
+            "rounded-xl px-2 py-2 min-h-[44px] flex flex-col items-center justify-center text-center border",
+            color.bg,
+            color.border
+        )}>
+            <span className={cn("text-[11px] font-bold leading-tight", color.title)}>
+                {cellData.course}
+            </span>
+            <span className={cn("text-[10px] leading-tight mt-0.5", color.sub)}>
+                {cellData.subject}
+            </span>
+        </div>
+    );
+}
+
+// ─── Edit-mode cell ────────────────────────────────────────
+function EditCell({ cellData, day, startTime, isSpecial, updateCell, clearCell }) {
+    const currentCourse = cellData?.course || '';
+    const currentSubject = cellData?.subject || '';
+
+    const editColor = currentSubject ? getSubjectColor(currentSubject) : null;
+
+    return (
+        <div className={cn(
+            "rounded-xl p-1.5 min-h-[44px] border",
+            currentCourse && editColor
+                ? cn(editColor.bg, editColor.border)
+                : currentCourse
+                    ? "bg-slate-50 border-slate-200"
+                    : "bg-white border-dashed border-slate-200"
+        )}>
+            {/* Course dropdown */}
+            <div className="relative">
+                <select
+                    value={currentCourse}
+                    onChange={(e) => updateCell(day, startTime, e.target.value, e.target.value ? currentSubject : '')}
+                    className="w-full px-2 py-1 rounded-lg border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none text-[11px] font-semibold appearance-none bg-white text-slate-800 truncate"
+                >
+                    <option value="">Curso...</option>
+                    {COURSES_LIST.map(course => (
+                        <option key={course} value={course}>{course}</option>
+                    ))}
+                </select>
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Subject dropdown — only visible when course selected */}
+            {currentCourse && (
+                <div className="relative mt-1">
+                    <select
+                        value={currentSubject}
+                        onChange={(e) => updateCell(day, startTime, currentCourse, e.target.value)}
+                        className="w-full px-2 py-1 rounded-lg border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 focus:outline-none text-[11px] appearance-none bg-white text-slate-700 truncate"
+                    >
+                        <option value="">Asignatura...</option>
+                        {SUBJECTS_LIST.map(subject => (
+                            <option key={subject} value={subject}>{subject}</option>
+                        ))}
+                    </select>
+                    <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                </div>
+            )}
+
+            {/* Clear button */}
+            {currentCourse && (
+                <button
+                    onClick={() => clearCell(day, startTime)}
+                    className="mt-1 w-full flex items-center justify-center gap-1 text-[10px] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg py-0.5 transition-colors"
+                >
+                    <X className="w-3 h-3" />
+                    Limpiar
+                </button>
+            )}
+        </div>
+    );
+}
+
+// ─── Teacher combobox with search ──────────────────────────
+function normalizeStr(s) {
+    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function TeacherCombobox({ teachers, selectedTeacherId, onSelect }) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const containerRef = useRef(null);
+    const inputRef = useRef(null);
+
+    const selected = teachers.find(t => t.id === selectedTeacherId);
+
+    const filtered = query
+        ? teachers.filter(t => normalizeStr(t.name).includes(normalizeStr(query)))
+        : teachers;
+
+    // Close on outside click
+    useEffect(() => {
+        function handleClick(e) {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    const handleSelect = (teacher) => {
+        onSelect(teacher.id);
+        setQuery('');
+        setOpen(false);
+    };
+
+    const handleClear = (e) => {
+        e.stopPropagation();
+        onSelect('');
+        setQuery('');
+        setOpen(false);
+    };
+
+    return (
+        <div ref={containerRef} className="relative">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+                <User className="w-4 h-4 text-blue-500" />
+                Docente
+            </label>
+
+            {/* Trigger / display */}
+            <button
+                type="button"
+                onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50); }}
+                className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left bg-white shadow-sm",
+                    open
+                        ? "border-blue-400 ring-4 ring-blue-100"
+                        : "border-slate-200 hover:border-slate-300"
+                )}
+            >
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className={cn("flex-1 text-sm truncate", selected ? "font-medium text-slate-900" : "text-slate-400")}>
+                    {selected ? selected.name : 'Seleccionar docente...'}
+                </span>
+                {selected ? (
+                    <X onClick={handleClear} className="w-4 h-4 text-slate-400 hover:text-red-500 flex-shrink-0 cursor-pointer" />
+                ) : (
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 flex-shrink-0 transition-transform", open && "rotate-180")} />
+                )}
+            </button>
+
+            {/* Dropdown */}
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
+                    >
+                        {/* Search input */}
+                        <div className="p-2 border-b border-slate-100">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Buscar docente..."
+                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border-none focus:outline-none focus:bg-slate-100 text-sm text-slate-900 placeholder:text-slate-400 transition-colors"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Escape') setOpen(false);
+                                        if (e.key === 'Enter' && filtered.length === 1) handleSelect(filtered[0]);
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="max-h-64 overflow-y-auto py-1">
+                            {filtered.length === 0 ? (
+                                <div className="px-4 py-6 text-center text-sm text-slate-400">
+                                    Sin resultados
+                                </div>
+                            ) : (
+                                filtered.map(teacher => {
+                                    const isActive = teacher.id === selectedTeacherId;
+                                    return (
+                                        <button
+                                            key={teacher.id}
+                                            type="button"
+                                            onClick={() => handleSelect(teacher)}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                                                isActive
+                                                    ? "bg-blue-50 text-blue-700"
+                                                    : "hover:bg-slate-50 text-slate-700"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0",
+                                                isActive
+                                                    ? "bg-blue-500 text-white"
+                                                    : "bg-slate-100 text-slate-500"
+                                            )}>
+                                                {teacher.name.charAt(0)}
+                                            </div>
+                                            <span className="text-sm truncate">{teacher.name}</span>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

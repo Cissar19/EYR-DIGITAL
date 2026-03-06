@@ -6,16 +6,33 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
+const requiredEnvVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_STORAGE_BUCKET',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID',
+    'SEED_DEFAULT_PASSWORD',
+];
+
+const missing = requiredEnvVars.filter(v => !process.env[v]);
+if (missing.length > 0) {
+    console.error(`❌ Faltan variables de entorno: ${missing.join(', ')}`);
+    console.error('   Ejecuta con: node --env-file=.env scripts/seedUsers.js');
+    process.exit(1);
+}
+
 const firebaseConfig = {
-    apiKey: "AIzaSyD9jMKGMctPNo2LYpQ9BS1W-MRMi8wTxYs",
-    authDomain: "eyr-digital.firebaseapp.com",
-    projectId: "eyr-digital",
-    storageBucket: "eyr-digital.firebasestorage.app",
-    messagingSenderId: "1079430330317",
-    appId: "1:1079430330317:web:fc9c06702f8badd6de7684"
+    apiKey: process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
-const DEFAULT_PASSWORD = '123456';
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
 
 const USERS = [
     // --- Roles administrativos ---
@@ -98,6 +115,8 @@ const USERS = [
     { name: "Carla Francisca Torres Gumera", email: "ctorresg@eduhuechuraba.cl", role: "teacher" },
     { name: "Leslye Nathaly Valencia Ramos", email: "lvalenciar@eduhuechuraba.cl", role: "teacher" },
     { name: "Eva Constanza Vargas Retamal", email: "evargasr@eduhuechuraba.cl", role: "teacher" },
+    { name: "Maximiliano Bahamondes", email: "mbahamondes@eduhuechuraba.cl", role: "teacher" },
+    { name: "Filippa Leporati", email: "fleporati@eduhuechuraba.cl", role: "teacher" },
 ];
 
 const app = initializeApp(firebaseConfig);

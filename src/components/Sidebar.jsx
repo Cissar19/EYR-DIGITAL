@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, BarChart3, HeartPulse, PanelLeftClose, Award, UserCheck, BookOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import logoEyr from '../assets/logo_eyr.png';
@@ -57,6 +57,36 @@ const ROLE_SPECIFIC_ITEMS = [
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR]
     },
     {
+        name: 'Licencias Médicas',
+        icon: HeartPulse,
+        path: '/medical-leaves',
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.DIRECTOR]
+    },
+    {
+        name: 'Estadísticas',
+        icon: BarChart3,
+        path: '/admin/stats',
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR]
+    },
+    {
+        name: 'SIMCE',
+        icon: Award,
+        path: '/admin/simce',
+        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
+    },
+    {
+        name: 'Asistencia',
+        icon: UserCheck,
+        path: '/admin/attendance',
+        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
+    },
+    {
+        name: 'Cobertura Curricular',
+        icon: BookOpen,
+        path: '/admin/curriculum',
+        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
+    },
+    {
         name: 'Mi Horario',
         icon: CalendarDays,
         path: '/schedule',
@@ -84,7 +114,7 @@ const ROLE_SPECIFIC_ITEMS = [
     */
 ];
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
     const { user, logout } = useAuth();
     const location = useLocation();
 
@@ -144,9 +174,9 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className={cn(
                 "h-screen w-72 bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 z-50 overflow-y-auto transition-transform duration-300",
                 // Mobile: Translate based on isOpen
-                !isOpen && "-translate-x-full md:translate-x-0",
-                // Desktop: Always visible (handled by md:translate-x-0 above, but let's be explicit if needed)
-                "md:translate-x-0"
+                !isOpen && "-translate-x-full",
+                // Desktop: visible unless collapsed
+                isCollapsed ? "md:-translate-x-full" : "md:translate-x-0"
             )}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-8">
@@ -160,6 +190,10 @@ export default function Sidebar({ isOpen, onClose }) {
                         {/* Close button for mobile */}
                         <button onClick={onClose} className="md:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                             <X className="w-5 h-5" />
+                        </button>
+                        {/* Collapse button for desktop */}
+                        <button onClick={onToggleCollapse} className="hidden md:flex p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
+                            <PanelLeftClose className="w-5 h-5" />
                         </button>
                     </div>
 

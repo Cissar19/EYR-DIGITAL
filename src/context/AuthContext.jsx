@@ -82,6 +82,7 @@ export const isTeacher = (user) => hasRole(user, ROLES.TEACHER);
 export const isStaff = (user) => hasRole(user, ROLES.STAFF);
 export const isPrinter = (user) => hasRole(user, ROLES.PRINTER);
 export const isSuperAdmin = (user) => hasRole(user, ROLES.SUPER_ADMIN);
+export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN]);
 
 // ============================================
 // AUTH PROVIDER
@@ -286,7 +287,8 @@ export const AuthProvider = ({ children }) => {
         isSuperAdmin: () => isSuperAdmin(user),
         isUtpHead: () => isUtpHead(user),
         isInspector: () => isInspector(user),
-        isManagement: () => isManagement(user)
+        isManagement: () => isManagement(user),
+        canEdit: () => canEdit(user)
     }), [user, loading, users, addUser, updateUser, deleteUser, getAllUsers, getUsersByRole, getUserRoleLabel, fetchUsers, login, logout]);
 
     return (

@@ -358,23 +358,28 @@ function AdminAccountingTable({ users, requests }) {
 
 function AdminRequestManager({ requests, updateStatus, deleteReq }) {
     // State: Current Date (Default: Today)
-    const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [currentDate, setCurrentDate] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    });
     // State: Pagination (Page 1)
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
     // Date Navigation
+    const toLocalDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     const handlePrevDay = () => {
-        const date = new Date(currentDate);
+        const date = new Date(currentDate + 'T12:00:00');
         date.setDate(date.getDate() - 1);
-        setCurrentDate(date.toISOString().split('T')[0]);
+        setCurrentDate(toLocalDateStr(date));
         setCurrentPage(1);
     };
 
     const handleNextDay = () => {
-        const date = new Date(currentDate);
+        const date = new Date(currentDate + 'T12:00:00');
         date.setDate(date.getDate() + 1);
-        setCurrentDate(date.toISOString().split('T')[0]);
+        setCurrentDate(toLocalDateStr(date));
         setCurrentPage(1);
     };
 
