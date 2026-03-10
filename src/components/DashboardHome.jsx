@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEquipment } from '../context/EquipmentContext';
 import { useTickets } from '../context/TicketContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Calendar,
     Bell,
     ChevronRight,
     ChevronLeft,
+    ChevronDown,
     Sun,
     ArrowUpRight,
     Users,
@@ -25,11 +26,14 @@ import {
     CalendarClock,
     UserX,
     BarChart3,
+    Shuffle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import NextClassWidget from './NextClassWidget';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
+import { useMedicalLeaves } from '../context/MedicalLeavesContext';
+import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 import UserDetailPanel from './UserDetailPanel';
 
 // Helper for Role Labels (Critical Requirement)
@@ -188,6 +192,7 @@ const TeacherView = ({ user, notifications }) => {
 // Weekly Absences Widget
 const WeeklyAbsencesWidget = ({ onSelectUser }) => {
     const { requests } = useAdministrativeDays();
+    const { leaves } = useMedicalLeaves();
     const { users } = useAuth();
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDay, setSelectedDay] = useState(null);
@@ -215,25 +220,45 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
     const weekDays = getWeekDays(weekOffset);
     const todayStr = new Date().toISOString().split('T')[0];
 
+    const getRoleLabelForUser = (role) => {
+        if (role === 'staff') return 'Funcionario';
+        if (role === 'admin' || role === 'super_admin') return 'Administradora';
+        if (role === 'director') return 'Directora';
+        if (role === 'utp_head') return 'Jefa UTP';
+        if (role === 'inspector') return 'Inspectoría';
+        return 'Docente';
+    };
+
     const getAbsencesForDate = (dateStr) => {
-        return requests
+        // Admin day absences
+        const adminAbsences = requests
             .filter(r => r.status === 'approved' && r.date === dateStr)
             .map(r => {
                 const userRecord = users.find(u => u.id === r.userId);
-                const role = userRecord?.role;
-                let roleLabel = 'Docente';
-                if (role === 'staff') roleLabel = 'Funcionario';
-                else if (role === 'admin' || role === 'super_admin') roleLabel = 'Administradora';
-                else if (role === 'director') roleLabel = 'Directora';
-                else if (role === 'utp_head') roleLabel = 'Jefa UTP';
-                else if (role === 'inspector') roleLabel = 'Inspectoría';
+                const roleLabel = getRoleLabelForUser(userRecord?.role);
 
-                let typeLabel = 'Día Administrativo';
+                let typeLabel = r.isHalfDay ? '½ Día Administrativo' : 'Día Administrativo';
                 if (r.type === 'hour_permission') typeLabel = 'Permiso de Horas';
                 else if (r.type === 'discount') typeLabel = 'Descuento';
 
                 return { ...r, roleLabel, typeLabel };
             });
+
+        // Medical leave absences (dateStr falls within startDate..endDate)
+        const medicalAbsences = leaves
+            .filter(l => l.startDate && l.endDate && dateStr >= l.startDate && dateStr <= l.endDate)
+            .map(l => {
+                const userRecord = users.find(u => u.id === l.userId);
+                const roleLabel = getRoleLabelForUser(userRecord?.role);
+                return {
+                    ...l,
+                    roleLabel,
+                    typeLabel: 'Licencia Médica',
+                    reason: l.diagnosis || 'Licencia médica',
+                };
+            });
+
+        return [...adminAbsences, ...medicalAbsences];
     };
 
     // Week label: "Semana del 2 al 6 de Marzo"
@@ -359,10 +384,11 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
                                         {items.map(item => {
                                             const userRecord = users.find(u => u.id === item.userId);
                                             const initials = item.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+                                            const isMedical = item.typeLabel === 'Licencia Médica';
                                             return (
-                                                <div key={item.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-slate-50/80 border border-slate-100 hover:bg-slate-100/80 transition-all">
+                                                <div key={item.id} className={cn("flex items-center justify-between py-2.5 px-3 rounded-xl border hover:opacity-90 transition-all", isMedical ? "bg-rose-50/80 border-rose-100" : "bg-slate-50/80 border-slate-100 hover:bg-slate-100/80")}>
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                                                        <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0", isMedical ? "from-rose-500 to-red-600" : "from-blue-500 to-indigo-600")}>
                                                             {initials}
                                                         </div>
                                                         <div className="min-w-0">
@@ -397,6 +423,320 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
                 </motion.div>
             )}
 
+        </BentoCard>
+    );
+};
+
+// ============================================
+// REPLACEMENT SUGGESTIONS
+// ============================================
+
+const RELATED_SUBJECTS = {
+    'Matemática': ['T. Matemática'],
+    'T. Matemática': ['Matemática'],
+    'Lenguaje': ['T. Lenguaje', 'Leng. y Lit.', 'Taller Len'],
+    'Leng. y Lit.': ['Lenguaje', 'T. Lenguaje', 'Taller Len'],
+    'T. Lenguaje': ['Lenguaje', 'Leng. y Lit.', 'Taller Len'],
+    'Taller Len': ['Lenguaje', 'T. Lenguaje', 'Leng. y Lit.'],
+    'C. Nat': ['T. Ciencias', 'Ciencias'],
+    'Ciencias': ['C. Nat', 'T. Ciencias'],
+    'T. Ciencias': ['C. Nat', 'Ciencias'],
+    'Historia': ['H. G. y Cs. S.', 'For. Ciud.'],
+    'H. G. y Cs. S.': ['Historia', 'For. Ciud.'],
+    'For. Ciud.': ['Historia', 'H. G. y Cs. S.'],
+    'Religión': ['Religión / FC'],
+    'Religión / FC': ['Religión'],
+    'Música': ['Música/Arte'],
+    'Música/Arte': ['Música'],
+};
+
+const DAY_NAMES_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+const ReplacementsCard = () => {
+    const { requests } = useAdministrativeDays();
+    const { leaves } = useMedicalLeaves();
+    const { schedules } = useSchedule();
+    const { users } = useAuth();
+    const [expandedTeacher, setExpandedTeacher] = useState(null);
+    const [expandedBlocks, setExpandedBlocks] = useState(new Set());
+
+    const toggleBlockExpand = (key) => {
+        setExpandedBlocks(prev => {
+            const next = new Set(prev);
+            next.has(key) ? next.delete(key) : next.add(key);
+            return next;
+        });
+    };
+
+    const replacementData = useMemo(() => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+        const dayName = DAY_NAMES_FULL[today.getDay()];
+
+        // Weekend — no classes
+        if (today.getDay() === 0 || today.getDay() === 6) return null;
+
+        // Collect absent user IDs with absence type
+        const absentMap = new Map();
+
+        requests
+            .filter(r => r.status === 'approved' && r.date === todayStr && r.type !== 'discount' && r.type !== 'hour_return')
+            .forEach(r => {
+                let typeLabel = r.isHalfDay ? '½ Día Admin.' : 'Día Admin.';
+                if (r.type === 'hour_permission') typeLabel = 'Permiso Horas';
+                if (!absentMap.has(r.userId)) {
+                    absentMap.set(r.userId, { userId: r.userId, userName: r.userName, typeLabel });
+                }
+            });
+
+        leaves
+            .filter(l => l.startDate && l.endDate && todayStr >= l.startDate && todayStr <= l.endDate)
+            .forEach(l => {
+                if (!absentMap.has(l.userId)) {
+                    absentMap.set(l.userId, { userId: l.userId, userName: l.userName, typeLabel: 'Licencia Médica' });
+                }
+            });
+
+        if (absentMap.size === 0) return null;
+
+        const absentIds = new Set(absentMap.keys());
+
+        // Build lookup: which startTimes each user is busy on this day
+        const busyByUser = {};
+        for (const [uid, blocks] of Object.entries(schedules)) {
+            if (!blocks) continue;
+            busyByUser[uid] = new Set(
+                blocks.filter(b => b.day === dayName).map(b => b.startTime)
+            );
+        }
+
+        // For each absent teacher, find their blocks and candidates
+        let totalUncovered = 0;
+        const teacherSections = [];
+
+        for (const absent of absentMap.values()) {
+            const userBlocks = (schedules[absent.userId] || [])
+                .filter(b => b.day === dayName && b.startTime !== '08:00');
+
+            if (userBlocks.length === 0) continue;
+
+            const blockDetails = [];
+            for (const block of userBlocks) {
+                totalUncovered++;
+
+                // Find the block label from SCHEDULE_BLOCKS
+                const schedBlock = SCHEDULE_BLOCKS.find(sb => sb.start === block.startTime);
+                const timeLabel = schedBlock ? schedBlock.start : block.startTime;
+
+                // Find candidates: users who are NOT busy at this time and NOT absent
+                // Eligibility: teachers by default, others only if canReplace === true
+                const candidates = [];
+                for (const u of users) {
+                    if (absentIds.has(u.id)) continue;
+                    if (u.id === absent.userId) continue;
+                    const eligible = u.canReplace !== undefined ? u.canReplace : u.role === 'teacher';
+                    if (!eligible) continue;
+
+                    const userBusy = busyByUser[u.id];
+                    if (userBusy && userBusy.has(block.startTime)) continue;
+
+                    // Determine match level
+                    const userSubjects = new Set(
+                        (schedules[u.id] || []).map(b => b.subject).filter(Boolean)
+                    );
+
+                    let matchLevel = 'available'; // grey
+                    let matchSubject = null;
+
+                    if (block.subject && userSubjects.has(block.subject)) {
+                        matchLevel = 'exact';
+                        matchSubject = block.subject;
+                    } else if (block.subject && RELATED_SUBJECTS[block.subject]) {
+                        const related = RELATED_SUBJECTS[block.subject];
+                        for (const rel of related) {
+                            if (userSubjects.has(rel)) {
+                                matchLevel = 'related';
+                                matchSubject = rel;
+                                break;
+                            }
+                        }
+                    }
+
+                    candidates.push({
+                        userId: u.id,
+                        name: u.name,
+                        firstName: u.name.split(' ')[0],
+                        matchLevel,
+                        matchSubject,
+                    });
+                }
+
+                // Sort: exact > related > available
+                const order = { exact: 0, related: 1, available: 2 };
+                candidates.sort((a, b) => order[a.matchLevel] - order[b.matchLevel]);
+
+                blockDetails.push({
+                    startTime: timeLabel,
+                    subject: block.subject,
+                    course: block.course,
+                    candidates,
+                });
+            }
+
+            if (blockDetails.length > 0) {
+                teacherSections.push({
+                    ...absent,
+                    blocks: blockDetails,
+                });
+            }
+        }
+
+        if (teacherSections.length === 0) return null;
+
+        return { teacherSections, totalUncovered };
+    }, [requests, leaves, schedules, users]);
+
+    if (!replacementData) return null;
+
+    const { teacherSections, totalUncovered } = replacementData;
+
+    const VISIBLE_COUNT = 3;
+
+    const matchColors = {
+        exact: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Ideal' },
+        related: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Afín' },
+        available: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-500', dot: 'bg-slate-300', label: 'Disponible' },
+    };
+
+    const totalAbsent = teacherSections.length;
+
+    return (
+        <BentoCard delay={0.08} className="md:col-span-2 lg:col-span-3 border-teal-100/50 bg-gradient-to-br from-white to-teal-50/20">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-teal-50 rounded-xl text-teal-600">
+                        <Shuffle className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-bold text-slate-700">Posibles Reemplazos Hoy</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100">
+                        {totalAbsent} {totalAbsent === 1 ? 'ausente' : 'ausentes'}
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                        {totalUncovered} {totalUncovered === 1 ? 'bloque' : 'bloques'}
+                    </span>
+                </div>
+            </div>
+
+            {/* Teacher sections */}
+            <div className="space-y-2">
+                {teacherSections.map(teacher => {
+                    const isExpanded = expandedTeacher === teacher.userId;
+                    const initials = teacher.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+                    const totalCandidates = teacher.blocks.reduce((sum, b) => sum + b.candidates.length, 0);
+
+                    return (
+                        <div key={teacher.userId} className="border border-slate-200/80 rounded-xl overflow-hidden">
+                            {/* Teacher header */}
+                            <button
+                                onClick={() => setExpandedTeacher(isExpanded ? null : teacher.userId)}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50/80 hover:bg-slate-100/80 transition-colors"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                                        {initials}
+                                    </div>
+                                    <div className="text-left min-w-0">
+                                        <span className="text-sm font-semibold text-slate-700 truncate block">{teacher.userName}</span>
+                                        <span className="text-[11px] text-slate-400">{teacher.typeLabel} · {teacher.blocks.length} {teacher.blocks.length === 1 ? 'bloque' : 'bloques'} · {totalCandidates} {totalCandidates === 1 ? 'candidato' : 'candidatos'}</span>
+                                    </div>
+                                </div>
+                                <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform shrink-0 ml-2", isExpanded && "rotate-180")} />
+                            </button>
+
+                            {/* Expanded blocks */}
+                            <AnimatePresence>
+                                {isExpanded && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="px-4 py-3 space-y-3 border-t border-slate-100">
+                                            {teacher.blocks.map((block, idx) => {
+                                                const blockKey = `${teacher.userId}-${idx}`;
+                                                const isBlockExpanded = expandedBlocks.has(blockKey);
+                                                const visibleCandidates = isBlockExpanded ? block.candidates : block.candidates.slice(0, VISIBLE_COUNT);
+                                                const hiddenCount = block.candidates.length - VISIBLE_COUNT;
+
+                                                return (
+                                                    <div key={idx}>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                                {block.startTime}
+                                                            </span>
+                                                            <span className="text-sm font-medium text-slate-700">
+                                                                {block.subject}
+                                                            </span>
+                                                            {block.course && (
+                                                                <span className="text-xs text-slate-400">· {block.course}</span>
+                                                            )}
+                                                            {block.candidates.length > 0 && (
+                                                                <span className="text-[10px] text-slate-400 ml-auto">{block.candidates.length} disponibles</span>
+                                                            )}
+                                                        </div>
+
+                                                        {block.candidates.length > 0 ? (
+                                                            <div className="ml-1">
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {visibleCandidates.map(c => {
+                                                                        const style = matchColors[c.matchLevel];
+                                                                        return (
+                                                                            <div
+                                                                                key={c.userId}
+                                                                                title={`${c.name}${c.matchSubject ? ` — enseña ${c.matchSubject}` : ''}`}
+                                                                                className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold", style.bg, style.border, style.text)}
+                                                                            >
+                                                                                <span className={cn("w-2 h-2 rounded-full shrink-0", style.dot)} />
+                                                                                <span>{c.firstName}</span>
+                                                                                {c.matchSubject && (
+                                                                                    <span className="opacity-70">({c.matchSubject})</span>
+                                                                                )}
+                                                                                <span className="opacity-50 hidden sm:inline">· {style.label}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    {hiddenCount > 0 && (
+                                                                        <button
+                                                                            onClick={() => toggleBlockExpand(blockKey)}
+                                                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                                                                        >
+                                                                            {isBlockExpanded ? 'ver menos' : `+${hiddenCount} más`}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-xs text-slate-400 italic ml-1">Sin sugerencias disponibles</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    );
+                })}
+            </div>
         </BentoCard>
     );
 };
@@ -467,6 +807,9 @@ const AdminDashboardView = () => {
 
             {/* Weekly Absences Widget (Full Width) */}
             <WeeklyAbsencesWidget onSelectUser={setSelectedUser} />
+
+            {/* Replacement Suggestions (only when absences today) */}
+            <ReplacementsCard />
 
             {/* 2. Solicitudes y Tickets (Urgent Action - Pixel Perfect) */}
             <BentoCard

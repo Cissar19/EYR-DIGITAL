@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminUsers() {
@@ -338,6 +338,38 @@ export default function AdminUsers() {
                                     <Mail className="w-4 h-4 text-slate-400" />
                                     <span className="truncate">{u.email}</span>
                                 </div>
+
+                                {/* Replacement Eligibility Toggle */}
+                                {canManageUsers && (
+                                    <button
+                                        onClick={() => {
+                                            const current = u.canReplace !== undefined ? u.canReplace : u.role === 'teacher';
+                                            updateUser(u.id, { canReplace: !current });
+                                        }}
+                                        className={`flex items-center justify-between w-full p-3 rounded-xl border transition-all ${
+                                            (u.canReplace !== undefined ? u.canReplace : u.role === 'teacher')
+                                                ? 'bg-teal-50/50 border-teal-100 hover:bg-teal-50'
+                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Shuffle className={`w-3.5 h-3.5 ${
+                                                (u.canReplace !== undefined ? u.canReplace : u.role === 'teacher')
+                                                    ? 'text-teal-600' : 'text-slate-400'
+                                            }`} />
+                                            <span className="text-xs font-semibold text-slate-600">Puede reemplazar</span>
+                                        </div>
+                                        <div className={`w-9 h-5 rounded-full transition-colors relative ${
+                                            (u.canReplace !== undefined ? u.canReplace : u.role === 'teacher')
+                                                ? 'bg-teal-500' : 'bg-slate-300'
+                                        }`}>
+                                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                                                (u.canReplace !== undefined ? u.canReplace : u.role === 'teacher')
+                                                    ? 'translate-x-4' : 'translate-x-0.5'
+                                            }`} />
+                                        </div>
+                                    </button>
+                                )}
 
                                 {/* Academic Attributes Preview */}
                                 {(u.headTeacherOf || u.subjects) ? (
