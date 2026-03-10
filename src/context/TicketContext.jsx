@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { createDocument, updateDocument } from '../lib/firestoreService';
+import { useAuth } from './AuthContext';
+import { validateRequiredString, validateUserId, validateEnum, sanitizeText } from '../lib/validation';
 
 const TicketContext = createContext();
 
@@ -38,7 +40,13 @@ export const TICKET_STATUS = {
 // ============================================
 // TICKET PROVIDER
 // ============================================
+const VALID_CATEGORIES = ['hardware', 'software', 'internet', 'infrastructure', 'other'];
+const VALID_PRIORITIES = ['low', 'medium', 'high'];
+const VALID_STATUSES = ['open', 'in_progress', 'closed'];
+const MANAGEMENT_ROLES = ['admin', 'super_admin', 'director', 'utp_head', 'inspector'];
+
 export const TicketProvider = ({ children }) => {
+    const { user } = useAuth();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -58,14 +66,22 @@ export const TicketProvider = ({ children }) => {
     }, []);
 
     const addTicket = React.useCallback(async (ticketData) => {
+        if (!user) throw new Error('No autenticado');
+
+        validateUserId(ticketData.userId);
+        validateRequiredString(ticketData.userName, 'nombre', 100);
+        validateEnum(ticketData.category, VALID_CATEGORIES, 'categoria');
+        validateEnum(ticketData.priority, VALID_PRIORITIES, 'prioridad');
+        validateRequiredString(ticketData.description, 'descripcion');
+
         try {
             const newTicket = await createDocument('tickets', {
                 userId: ticketData.userId,
-                userName: ticketData.userName,
+                userName: sanitizeText(ticketData.userName),
                 category: ticketData.category,
                 priority: ticketData.priority,
-                location: ticketData.location,
-                description: ticketData.description,
+                location: sanitizeText(ticketData.location || ''),
+                description: sanitizeText(ticketData.description),
                 status: TICKET_STATUS.OPEN.id,
                 updatedAt: new Date().toISOString()
             });
@@ -80,7 +96,7 @@ export const TicketProvider = ({ children }) => {
             toast.error('Error al crear el ticket');
             throw error;
         }
-    }, []);
+    }, [user]);
 
     const getUserTickets = React.useCallback((userId) => {
         return tickets.filter(ticket => ticket.userId === userId);
@@ -91,6 +107,14 @@ export const TicketProvider = ({ children }) => {
     }, [tickets]);
 
     const updateTicketStatus = React.useCallback(async (ticketId, newStatus) => {
+        // Only management roles can update ticket status
+        if (!user || !MANAGEMENT_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para actualizar tickets');
+            return;
+        }
+
+        validateEnum(newStatus, VALID_STATUSES, 'estado');
+
         try {
             await updateDocument('tickets', ticketId, {
                 status: newStatus
@@ -103,7 +127,7 @@ export const TicketProvider = ({ children }) => {
             toast.error('Error al actualizar el ticket');
             throw error;
         }
-    }, []);
+    }, [user]);
 
     const getTicketById = React.useCallback((ticketId) => {
         return tickets.find(ticket => ticket.id === ticketId) || null;

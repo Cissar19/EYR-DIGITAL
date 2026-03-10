@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { SCHEDULES } from '../data/mockSchedule';
+import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 import { useCurrentBlock } from '../hooks/useCurrentBlock';
 import { Clock, BookOpen, Coffee, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// Build a lookup: startTime -> endTime from SCHEDULE_BLOCKS
+const END_TIME_MAP = {};
+SCHEDULE_BLOCKS.forEach(b => { END_TIME_MAP[b.start] = b.end; });
+
 export default function NextClassWidget() {
     const { user } = useAuth();
-    const schedule = SCHEDULES[user.id] || [];
+    const { getSchedule } = useSchedule();
+    const rawSchedule = getSchedule(user.id);
+
+    // Enrich blocks with endTime derived from SCHEDULE_BLOCKS
+    const schedule = useMemo(() =>
+        rawSchedule.map(block => ({
+            ...block,
+            endTime: block.endTime || END_TIME_MAP[block.startTime] || block.startTime,
+        })),
+        [rawSchedule]
+    );
+
     const { currentBlock, nextBlock, minutesLeft, minutesUntilNext, progress } = useCurrentBlock(schedule);
 
     if (!schedule.length) return null;
@@ -30,7 +45,7 @@ export default function NextClassWidget() {
                             </div>
                             <div>
                                 <h4 className="font-bold text-slate-900">{currentBlock.subject}</h4>
-                                <p className="text-xs text-slate-500">{currentBlock.room} • {currentBlock.grade}</p>
+                                <p className="text-xs text-slate-500">{currentBlock.course}</p>
                             </div>
                         </div>
 
@@ -52,7 +67,7 @@ export default function NextClassWidget() {
                             </div>
                             <div>
                                 <h4 className="font-bold text-slate-900">Próxima: {nextBlock.subject}</h4>
-                                <p className="text-xs text-slate-500">en {minutesUntilNext} min • {nextBlock.room}</p>
+                                <p className="text-xs text-slate-500">en {minutesUntilNext} min • {nextBlock.course}</p>
                             </div>
                         </div>
                     </div>

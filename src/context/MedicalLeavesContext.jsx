@@ -1,96 +1,116 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { db } from '../lib/firebase';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { createDocument, removeDocument } from '../lib/firestoreService';
+import { useAuth } from './AuthContext';
+import { validateDate, validateRequiredString, validateUserId, validatePositiveNumber, sanitizeText, sanitizeName } from '../lib/validation';
 
 const MedicalLeavesContext = createContext();
+
+const MANAGEMENT_ROLES = ['admin', 'super_admin', 'director', 'utp_head', 'inspector'];
 
 export const useMedicalLeaves = () => useContext(MedicalLeavesContext);
 
 export const MedicalLeavesProvider = ({ children }) => {
-    const [leaves, setLeaves] = useState(() => {
-        const saved = localStorage.getItem('medical_leaves');
-        if (saved) {
-            return JSON.parse(saved);
-        }
-        return [
-            {
-                id: 2001,
-                userId: 't-1',
-                userName: 'Álvaro Jara',
-                startDate: '2026-01-12',
-                endDate: '2026-01-16',
-                days: 5,
-                diagnosis: 'Licencia por cuadro gripal',
-                returnDate: '2026-01-19',
-                createdAt: '2026-01-11T09:00:00Z'
-            },
-            {
-                id: 2002,
-                userId: 't-2',
-                userName: 'Belen Leal',
-                startDate: '2026-02-03',
-                endDate: '2026-02-07',
-                days: 5,
-                diagnosis: 'Reposo por esguince tobillo derecho',
-                returnDate: '2026-02-09',
-                createdAt: '2026-02-02T14:30:00Z'
-            },
-            {
-                id: 2003,
-                userId: 't-3',
-                userName: 'Constanza Vargas',
-                startDate: '2026-02-20',
-                endDate: '2026-02-22',
-                days: 1,
-                diagnosis: 'Control postoperatorio',
-                returnDate: '2026-02-23',
-                createdAt: '2026-02-19T11:00:00Z'
-            }
-        ];
-    });
+    const { user } = useAuth();
+    const [leaves, setLeaves] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    // Real-time subscription to medical_leaves collection
     useEffect(() => {
-        localStorage.setItem('medical_leaves', JSON.stringify(leaves));
-    }, [leaves]);
+        const q = query(collection(db, 'medical_leaves'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setLeaves(docs);
+            setLoading(false);
+        }, (error) => {
+            console.error('Error subscribing to medical_leaves:', error);
+            setLoading(false);
+        });
 
-    const addLeave = React.useCallback((userId, userName, startDate, endDate, days, diagnosis, returnDate) => {
-        const newLeave = {
-            id: Date.now(),
-            userId,
-            userName,
-            startDate,
-            endDate,
-            days,
-            diagnosis,
-            returnDate,
-            createdAt: new Date().toISOString()
-        };
+        return () => unsubscribe();
+    }, []);
 
-        const updated = [newLeave, ...leaves];
-        setLeaves(updated);
-        localStorage.setItem('medical_leaves', JSON.stringify(updated));
-        return true;
-    }, [leaves]);
+    const addLeave = React.useCallback(async (userId, userName, startDate, endDate, days, diagnosis, returnDate) => {
+        if (!user || !MANAGEMENT_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para registrar licencias');
+            return false;
+        }
 
-    const deleteLeave = React.useCallback((id) => {
-        const updated = leaves.filter(l => l.id !== id);
-        setLeaves(updated);
-        localStorage.setItem('medical_leaves', JSON.stringify(updated));
-    }, [leaves]);
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(startDate, 'fecha inicio');
+        validateDate(endDate, 'fecha termino');
+        validateRequiredString(diagnosis, 'diagnostico');
+
+        if (endDate < startDate) {
+            throw new Error('Fecha termino debe ser igual o posterior a fecha inicio');
+        }
+
+        const validDays = validatePositiveNumber(days, 'dias');
+        if (validDays > 365) throw new Error('Dias no puede exceder 365');
+
+        validateDate(returnDate, 'fecha reintegro');
+
+        try {
+            await createDocument('medical_leaves', {
+                userId,
+                userName: sanitizeName(userName),
+                startDate,
+                endDate,
+                days: validDays,
+                diagnosis: sanitizeText(diagnosis),
+                returnDate
+            });
+            toast.success('Licencia registrada exitosamente');
+            return true;
+        } catch (error) {
+            console.error('Error creating medical leave:', error);
+            toast.error('Error al registrar la licencia');
+            return false;
+        }
+    }, [user]);
+
+    const deleteLeave = React.useCallback(async (id) => {
+        if (!user || !MANAGEMENT_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para eliminar licencias');
+            return;
+        }
+
+        if (!id || typeof id !== 'string') {
+            throw new Error('ID de licencia invalido');
+        }
+
+        try {
+            await removeDocument('medical_leaves', id);
+            toast.success('Licencia eliminada');
+        } catch (error) {
+            console.error('Error deleting medical leave:', error);
+            toast.error('Error al eliminar la licencia');
+        }
+    }, [user]);
 
     const getLeavesByUser = React.useCallback((userId) => {
-        return leaves.filter(l => l.userId === userId).sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+        return leaves.filter(l => l.userId === userId).sort((a, b) => {
+            const dateA = b.startDate || '';
+            const dateB = a.startDate || '';
+            return dateA.localeCompare(dateB);
+        });
     }, [leaves]);
 
     const getAllLeaves = React.useCallback(() => {
-        return [...leaves].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+        return [...leaves];
     }, [leaves]);
 
     const value = React.useMemo(() => ({
         leaves,
+        loading,
         addLeave,
         deleteLeave,
         getLeavesByUser,
         getAllLeaves
-    }), [leaves, addLeave, deleteLeave, getLeavesByUser, getAllLeaves]);
+    }), [leaves, loading, addLeave, deleteLeave, getLeavesByUser, getAllLeaves]);
 
     return (
         <MedicalLeavesContext.Provider value={value}>

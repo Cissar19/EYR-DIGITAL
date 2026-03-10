@@ -23,9 +23,6 @@ import InventoryView from './views/InventoryView';
 import AdminDaysTrackingView from './views/AdminDaysTrackingView';
 import StatsView from './views/StatsView';
 import MedicalLeavesView from './views/MedicalLeavesView';
-import SimceDataView from './views/SimceDataView';
-import AttendanceDataView from './views/AttendanceDataView';
-import CurriculumDataView from './views/CurriculumDataView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -202,11 +199,8 @@ export default function App() {
           <Route path="/equipment" element={<EquipmentRequestView />} />
           <Route path="/admin/schedules" element={<ScheduleAdminView />} />
           <Route path="/admin/days-tracking" element={<AdminDaysTrackingView />} />
-          <Route path="/medical-leaves" element={<MedicalLeavesView />} />
           <Route path="/admin/stats" element={<StatsView />} />
-          <Route path="/admin/simce" element={<SimceDataView />} />
-          <Route path="/admin/attendance" element={<AttendanceDataView />} />
-          <Route path="/admin/curriculum" element={<CurriculumDataView />} />
+          <Route path="/admin/medical-leaves" element={<MedicalLeavesView />} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

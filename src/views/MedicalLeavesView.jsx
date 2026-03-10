@@ -16,10 +16,11 @@ const MONTHS = [
 ];
 
 const getDaysInMonth = (monthIndex) => {
-    return new Date(2026, monthIndex + 1, 0).getDate();
+    const year = new Date().getFullYear();
+    return new Date(year, monthIndex + 1, 0).getDate();
 };
 
-const getToday2026 = () => {
+const getToday = () => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -34,7 +35,7 @@ const calcBusinessDays = (start, end) => {
     let count = 0;
     const current = new Date(s);
     while (current <= e) {
-        const day = current.getDay(); // 0=Sun, 6=Sat
+        const day = current.getDay();
         if (day !== 0 && day !== 6) count++;
         current.setDate(current.getDate() + 1);
     }
@@ -44,7 +45,6 @@ const calcBusinessDays = (start, end) => {
 const getReturnDate = (endDate) => {
     const d = new Date(endDate + 'T12:00:00');
     d.setDate(d.getDate() + 1);
-    // Avanzar hasta el próximo día hábil (lun-vie)
     while (d.getDay() === 0 || d.getDay() === 6) {
         d.setDate(d.getDate() + 1);
     }
@@ -55,18 +55,16 @@ const getReturnDate = (endDate) => {
 };
 
 export default function MedicalLeavesView() {
-    const { users: MOCK_USERS } = useAuth();
+    const { users: allUsers } = useAuth();
     const { getAllLeaves, addLeave, deleteLeave } = useMedicalLeaves();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [showSuccessToast, setShowSuccessToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
 
     // Form state
-    const today = getToday2026();
+    const today = getToday();
     const [formData, setFormData] = useState({
         userId: '',
         startDate: today,
@@ -87,7 +85,7 @@ export default function MedicalLeavesView() {
             .replace(/[\u0300-\u036f]/g, "") || "";
     };
 
-    const relevantUsers = MOCK_USERS.filter(user =>
+    const relevantUsers = allUsers.filter(user =>
         user.role === ROLES.TEACHER ||
         user.role === ROLES.ADMIN ||
         user.role === ROLES.STAFF ||
@@ -125,24 +123,21 @@ export default function MedicalLeavesView() {
     );
 
     const formatDate = (dateString) => {
-        const date = new Date(dateString.length === 10 ? dateString + 'T12:00:00' : dateString);
+        if (!dateString) return '';
+        const str = dateString.length === 10 ? dateString + 'T12:00:00' : dateString;
+        const date = new Date(str);
         return date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
     const formatDateFull = (dateString) => {
+        if (!dateString) return '';
         const date = new Date(dateString + 'T12:00:00');
         const str = date.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
         return str.charAt(0).toUpperCase() + str.slice(1);
     };
 
-    const showToast = (message) => {
-        setToastMessage(message);
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
-    };
-
     const handleOpenModal = () => {
-        const t = getToday2026();
+        const t = getToday();
         setFormData({ userId: '', startDate: t, endDate: t, diagnosis: '' });
         setTeacherSearch('');
         setShowTeacherDropdown(false);
@@ -171,23 +166,23 @@ export default function MedicalLeavesView() {
             return;
         }
         if (calculatedDays <= 0) {
-            alert('La fecha de término debe ser igual o posterior a la de inicio (y debe incluir al menos un día hábil)');
+            alert('La fecha de termino debe ser igual o posterior a la de inicio (y debe incluir al menos un dia habil)');
             return;
         }
 
-        const selectedUser = relevantUsers.find(u => u.id === formData.userId);
-        if (!selectedUser) return;
+        const selected = relevantUsers.find(u => u.id === formData.userId);
+        if (!selected) return;
 
-        addLeave(selectedUser.id, selectedUser.name, formData.startDate, formData.endDate, calculatedDays, formData.diagnosis, returnDate);
-        showToast(`Licencia médica registrada para ${selectedUser.name}`);
+        addLeave(selected.id, selected.name, formData.startDate, formData.endDate, calculatedDays, formData.diagnosis, returnDate);
         handleCloseModal();
     };
 
     const handleDelete = (id) => {
         deleteLeave(id);
         setDeleteConfirmId(null);
-        showToast('Licencia médica eliminada');
     };
+
+    const currentYear = new Date().getFullYear();
 
     // Date picker helper
     const renderDatePicker = (label, dateValue, onChange) => {
@@ -205,7 +200,7 @@ export default function MedicalLeavesView() {
                             const currentDay = parseInt(dateValue.split('-')[2]);
                             const daysInNewMonth = getDaysInMonth(newMonthIndex);
                             const newDay = Math.min(currentDay, daysInNewMonth);
-                            onChange(`2026-${String(newMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
+                            onChange(`${currentYear}-${String(newMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
                         }}
                         className="w-full px-3 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none text-sm"
                     >
@@ -217,7 +212,7 @@ export default function MedicalLeavesView() {
                         value={dayValue}
                         onChange={(e) => {
                             const newDay = parseInt(e.target.value);
-                            onChange(`2026-${String(monthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
+                            onChange(`${currentYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
                         }}
                         className="w-full px-3 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none text-sm"
                     >
@@ -241,7 +236,7 @@ export default function MedicalLeavesView() {
                         </div>
                         <div>
                             <h1 className="text-2xl md:text-4xl font-light text-slate-900 tracking-tight">
-                                Licencias Médicas
+                                Licencias Medicas
                             </h1>
                             <p className="text-slate-500 text-sm mt-1">
                                 Registro y consulta de licencias
@@ -288,8 +283,8 @@ export default function MedicalLeavesView() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.05 * index }}
                             onClick={() => {
-                                const user = MOCK_USERS.find(u => u.id === leave.userId)
-                                    || MOCK_USERS.find(u => u.name === leave.userName)
+                                const user = allUsers.find(u => u.id === leave.userId)
+                                    || allUsers.find(u => u.name === leave.userName)
                                     || { id: leave.userId, name: leave.userName, role: 'teacher' };
                                 setSelectedUser(user);
                             }}
@@ -298,7 +293,7 @@ export default function MedicalLeavesView() {
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm bg-gradient-to-br from-rose-400 to-pink-500 shrink-0">
-                                        {leave.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2)}
+                                        {leave.userName?.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2)}
                                     </div>
                                     <div className="min-w-0">
                                         <h3 className="text-sm font-semibold text-slate-900 truncate">
@@ -311,12 +306,11 @@ export default function MedicalLeavesView() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {/* Ver Detalle button */}
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            const user = MOCK_USERS.find(u => u.id === leave.userId)
-                                                || MOCK_USERS.find(u => u.name === leave.userName)
+                                            const user = allUsers.find(u => u.id === leave.userId)
+                                                || allUsers.find(u => u.name === leave.userName)
                                                 || { id: leave.userId, name: leave.userName, role: 'teacher' };
                                             setSelectedUser(user);
                                         }}
@@ -326,17 +320,16 @@ export default function MedicalLeavesView() {
                                         Ver Detalle
                                     </button>
 
-                                    {/* Delete button */}
                                     {deleteConfirmId === leave.id ? (
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => handleDelete(leave.id)}
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(leave.id); }}
                                                 className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
                                             >
                                                 Confirmar
                                             </button>
                                             <button
-                                                onClick={() => setDeleteConfirmId(null)}
+                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
                                                 className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
                                             >
                                                 Cancelar
@@ -344,7 +337,7 @@ export default function MedicalLeavesView() {
                                         </div>
                                     ) : (
                                         <button
-                                            onClick={() => setDeleteConfirmId(leave.id)}
+                                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(leave.id); }}
                                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -360,7 +353,7 @@ export default function MedicalLeavesView() {
                                     {formatDate(leave.startDate)} — {formatDate(leave.endDate)}
                                 </div>
                                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700">
-                                    {leave.days} {leave.days === 1 ? 'día hábil' : 'días hábiles'}
+                                    {leave.days} {leave.days === 1 ? 'dia habil' : 'dias habiles'}
                                 </div>
                                 {leave.returnDate && (
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700">
@@ -394,7 +387,7 @@ export default function MedicalLeavesView() {
                         </button>
 
                         <div className="flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-xl rounded-xl border-2 border-slate-200 shadow-sm">
-                            <span className="text-sm font-medium text-slate-600">Página</span>
+                            <span className="text-sm font-medium text-slate-600">Pagina</span>
                             <span className="text-lg font-bold text-rose-600">{currentPage}</span>
                             <span className="text-sm font-medium text-slate-400">de</span>
                             <span className="text-lg font-bold text-slate-700">{totalPages}</span>
@@ -426,7 +419,7 @@ export default function MedicalLeavesView() {
                             No se encontraron licencias
                         </p>
                         <p className="text-slate-400 text-sm">
-                            {searchQuery ? 'Intenta con otro término de búsqueda' : 'Registra la primera licencia médica'}
+                            {searchQuery ? 'Intenta con otro termino de busqueda' : 'Registra la primera licencia medica'}
                         </p>
                     </div>
                 )}
@@ -502,7 +495,7 @@ export default function MedicalLeavesView() {
                                                 ) : (
                                                     <div className="p-4 text-center text-slate-500">
                                                         <p className="text-sm font-medium">No se encontraron funcionarios</p>
-                                                        <p className="text-xs mt-1">Intenta con otro término de búsqueda</p>
+                                                        <p className="text-xs mt-1">Intenta con otro termino de busqueda</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -513,14 +506,14 @@ export default function MedicalLeavesView() {
                                     {renderDatePicker('Fecha Inicio', formData.startDate, (val) => setFormData({ ...formData, startDate: val }))}
 
                                     {/* End Date */}
-                                    {renderDatePicker('Fecha Término', formData.endDate, (val) => setFormData({ ...formData, endDate: val }))}
+                                    {renderDatePicker('Fecha Termino', formData.endDate, (val) => setFormData({ ...formData, endDate: val }))}
 
                                     {/* Calculated Business Days + Return Date */}
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
                                             <Calendar className="w-5 h-5 text-indigo-500" />
                                             <span className="text-sm font-semibold text-indigo-700">
-                                                Días hábiles: {calculatedDays}
+                                                Dias habiles: {calculatedDays}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
@@ -534,10 +527,10 @@ export default function MedicalLeavesView() {
                                     {/* Diagnosis */}
                                     <div>
                                         <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Diagnóstico / Motivo
+                                            Diagnostico / Motivo
                                         </label>
                                         <textarea
-                                            placeholder="Ej: Reposo médico por..."
+                                            placeholder="Ej: Reposo medico por..."
                                             value={formData.diagnosis}
                                             onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
                                             rows={3}
@@ -564,28 +557,6 @@ export default function MedicalLeavesView() {
                             </div>
                         </motion.div>
                     </>
-                )}
-            </AnimatePresence>
-
-            {/* Success Toast */}
-            <AnimatePresence>
-                {showSuccessToast && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 50 }}
-                        className="fixed bottom-8 right-8 z-50"
-                    >
-                        <div className="bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                                <Check className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="font-semibold">{toastMessage || '¡Operación exitosa!'}</p>
-                                <p className="text-sm opacity-90">El registro se ha actualizado</p>
-                            </div>
-                        </div>
-                    </motion.div>
                 )}
             </AnimatePresence>
 

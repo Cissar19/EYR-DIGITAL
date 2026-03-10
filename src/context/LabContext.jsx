@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth, ROLES } from './AuthContext';
 import { toast } from 'sonner';
 import { subscribeToCollection, createDocument, removeDocument, fetchCollection } from '../lib/firestoreService';
+import { validateDate, validateRequiredString, validateEnum, sanitizeText } from '../lib/validation';
 
 const LabContext = createContext();
+const ADMIN_ROLES = [ROLES.DIRECTOR, ROLES.ADMIN, ROLES.SUPER_ADMIN];
 
 export const TIME_BLOCKS = [
     { id: 'recepcion', start: '08:00', end: '08:10', type: 'class', label: 'Recepción' },
@@ -34,31 +36,37 @@ export function LabProvider({ children }) {
         return () => unsubscribe();
     }, []);
 
-    // 2. Función addReservation con Validación de Seguridad
+    // Valid block IDs from TIME_BLOCKS
+    const VALID_BLOCK_IDS = TIME_BLOCKS.map(b => b.id);
+
+    // 2. Funcion addReservation con Validacion de Seguridad
     const addReservation = async (blockId, date, subject, userNameOverride = null) => {
         if (!user) {
-            toast.error("Debes iniciar sesión para reservar.");
+            toast.error("Debes iniciar sesion para reservar.");
             return false;
         }
 
-        const userName = userNameOverride || user.name;
+        validateEnum(blockId, VALID_BLOCK_IDS, 'bloque');
+        validateDate(date, 'fecha');
+        validateRequiredString(subject, 'asignatura', 100);
+
+        const userName = sanitizeText(userNameOverride || user.name);
 
         try {
-            // A. Leer la versión más reciente LITERALLY RIGHT NOW para evitar race conditions
+            // A. Leer la version mas reciente para evitar race conditions
             const currentData = await fetchCollection('lab_reservations');
 
             const isOccupied = currentData.some(r => r.date === date && r.blockId === blockId);
 
             if (isOccupied) {
-                toast.error("¡Bloque ya reservado por otro usuario!");
+                toast.error("Bloque ya reservado por otro usuario!");
                 return false;
             }
 
-            // C. Si está libre, agregamos
             const newReservation = {
                 blockId,
                 teacher: userName,
-                subject,
+                subject: sanitizeText(subject),
                 date,
                 timestamp: Date.now(),
                 userId: user.id
@@ -89,7 +97,7 @@ export function LabProvider({ children }) {
 
             // Validar permisos
             const isOwner = reservation.userId === user.id;
-            const isAdmin = user.role === 'director' || user.role === 'admin' || user.role === 'super_admin';
+            const isAdmin = ADMIN_ROLES.includes(user.role);
 
             if (!isOwner && !isAdmin) {
                 toast.error("Solo el dueño o un admin pueden borrar esta reserva.");

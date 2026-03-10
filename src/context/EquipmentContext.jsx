@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Projector, Laptop, Volume2, Plug, Cable, Monitor, Keyboard, Mouse, Headphones, Webcam, Package, Store } from 'lucide-react';
 import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
+import { useAuth } from './AuthContext';
+import { validateRequiredString, validateUserId, validatePositiveNumber, validateEnum, sanitizeText } from '../lib/validation';
 
 const EquipmentContext = createContext();
 
@@ -126,7 +128,11 @@ export const TIME_BLOCKS = [
 // ============================================
 // EQUIPMENT PROVIDER
 // ============================================
+const ADMIN_ROLES = ['admin', 'super_admin', 'director'];
+const VALID_REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'returned'];
+
 export const EquipmentProvider = ({ children }) => {
+    const { user } = useAuth();
     const [requests, setRequests] = useState([]);
     const [equipmentList, setEquipmentList] = useState([]);
     const [folders, setFolders] = useState([]);
@@ -186,8 +192,14 @@ export const EquipmentProvider = ({ children }) => {
     // ============================================
 
     const addFolder = React.useCallback(async (folderData) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para crear carpetas');
+            return null;
+        }
+        validateRequiredString(folderData.name, 'nombre carpeta', 100);
+
         const newFolder = {
-            name: folderData.name,
+            name: sanitizeText(folderData.name),
             icon: folderData.icon || 'Package',
             color: folderData.color || 'blue',
             createdAt: new Date().toISOString()
@@ -202,9 +214,14 @@ export const EquipmentProvider = ({ children }) => {
             toast.error('Error al crear carpeta');
             return null;
         }
-    }, []);
+    }, [user]);
 
     const deleteFolder = React.useCallback(async (folderId) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para eliminar carpetas');
+            return false;
+        }
+
         const folder = folders.find(f => f.id === folderId);
         const itemsInFolder = equipmentList.filter(item => item.folderId === folderId);
 
@@ -230,9 +247,18 @@ export const EquipmentProvider = ({ children }) => {
             toast.error('Error al eliminar carpeta');
             return false;
         }
-    }, [folders, equipmentList]);
+    }, [user, folders, equipmentList]);
 
     const updateFolder = React.useCallback(async (folderId, updates) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para actualizar carpetas');
+            return;
+        }
+        if (updates.name) {
+            validateRequiredString(updates.name, 'nombre carpeta', 100);
+            updates.name = sanitizeText(updates.name);
+        }
+
         try {
             await updateDocument('equipment_folders', folderId, { ...updates, updatedAt: new Date().toISOString() });
             toast.success('Carpeta actualizada', { description: `${updates.name || 'Carpeta'} actualizada correctamente` });
@@ -240,7 +266,7 @@ export const EquipmentProvider = ({ children }) => {
             console.error(error);
             toast.error('Error al actualizar carpeta');
         }
-    }, []);
+    }, [user]);
 
     const getItemsByFolder = React.useCallback((folderId) => {
         return equipmentList.filter(item => item.folderId === folderId);
@@ -251,13 +277,21 @@ export const EquipmentProvider = ({ children }) => {
     // ============================================
 
     const addItem = React.useCallback(async (item) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para agregar equipos');
+            return null;
+        }
+
+        validateRequiredString(item.name, 'nombre del equipo', 100);
+        const stock = validatePositiveNumber(item.stock || 1, 'stock');
+
         const newItem = {
-            name: item.name,
+            name: sanitizeText(item.name),
             icon: item.icon || 'Plug',
-            category: item.category || 'General',
-            stock: parseInt(item.stock) || 1,
+            category: sanitizeText(item.category || 'General'),
+            stock: Math.min(stock, 9999),
             status: 'active',
-            description: item.description || '',
+            description: sanitizeText(item.description || ''),
             folderId: item.folderId || null,
             createdAt: new Date().toISOString()
         };
@@ -271,9 +305,22 @@ export const EquipmentProvider = ({ children }) => {
             toast.error('Error al agregar equipo');
             return null;
         }
-    }, []);
+    }, [user]);
 
     const updateItem = React.useCallback(async (id, updatedFields) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para actualizar equipos');
+            return;
+        }
+        // Validate stock if being updated
+        if (updatedFields.stock !== undefined) {
+            updatedFields.stock = validatePositiveNumber(updatedFields.stock, 'stock');
+            updatedFields.stock = Math.min(updatedFields.stock, 9999);
+        }
+        if (updatedFields.name) {
+            updatedFields.name = sanitizeText(updatedFields.name);
+        }
+
         try {
             await updateDocument('equipment', String(id), { ...updatedFields, updatedAt: new Date().toISOString() });
             toast.success('Equipo actualizado', { description: 'Los cambios se han guardado correctamente' });
@@ -281,9 +328,14 @@ export const EquipmentProvider = ({ children }) => {
             console.error(error);
             toast.error('Error al actualizar equipo');
         }
-    }, []);
+    }, [user]);
 
     const deleteItem = React.useCallback(async (id) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para eliminar equipos');
+            return;
+        }
+
         const item = equipmentList.find(eq => eq.id === id);
         try {
             await removeDocument('equipment', String(id));
@@ -292,31 +344,45 @@ export const EquipmentProvider = ({ children }) => {
             console.error(error);
             toast.error('Error al eliminar equipo');
         }
-    }, [equipmentList]);
+    }, [user, equipmentList]);
 
     const toggleStatus = React.useCallback(async (id) => {
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para cambiar estado de equipos');
+            return;
+        }
+
         const item = equipmentList.find(eq => eq.id === id);
         if (item) {
             const newStatus = item.status === 'active' ? 'maintenance' : 'active';
             try {
                 await updateDocument('equipment', String(id), { status: newStatus, updatedAt: new Date().toISOString() });
-                toast.info(newStatus === 'maintenance' ? 'Equipo en mantención' : 'Equipo disponible', { description: item.name });
+                toast.info(newStatus === 'maintenance' ? 'Equipo en mantencion' : 'Equipo disponible', { description: item.name });
             } catch (error) {
                 console.error(error);
                 toast.error('Error al cambiar de estado');
             }
         }
-    }, [equipmentList]);
+    }, [user, equipmentList]);
 
     // ============================================
     // REQUEST OPERATIONS
     // ============================================
 
     const addRequest = React.useCallback(async (requestData) => {
+        if (!user) throw new Error('No autenticado');
+
+        validateUserId(requestData.userId);
+        validateRequiredString(requestData.userName, 'nombre', 100);
+
+        if (!Array.isArray(requestData.items) || requestData.items.length === 0) {
+            throw new Error('Debes seleccionar al menos un equipo');
+        }
+
         const newRequest = {
             userId: requestData.userId,
-            userName: requestData.userName,
-            items: requestData.items, // Array of equipment IDs
+            userName: sanitizeText(requestData.userName),
+            items: requestData.items,
             date: requestData.date,
             block: requestData.block,
             status: REQUEST_STATUS.PENDING.id,
@@ -349,6 +415,14 @@ export const EquipmentProvider = ({ children }) => {
     }, [requests]);
 
     const updateRequestStatus = React.useCallback(async (requestId, newStatus) => {
+        // Only admins can approve/reject equipment requests
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para actualizar solicitudes de equipos');
+            return;
+        }
+
+        validateEnum(newStatus, VALID_REQUEST_STATUSES, 'estado');
+
         try {
             await updateDocument('equipment_requests', String(requestId), { status: newStatus, updatedAt: new Date().toISOString() });
             const statusInfo = Object.values(REQUEST_STATUS).find(s => s.id === newStatus);
@@ -357,7 +431,7 @@ export const EquipmentProvider = ({ children }) => {
             console.error(error);
             toast.error('Error al actualizar solicitud');
         }
-    }, []);
+    }, [user]);
 
     const getEquipmentById = React.useCallback((equipmentId) => {
         return equipmentList.find(eq => eq.id === equipmentId) || null;

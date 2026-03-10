@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { subscribeToCollection, createDocument, updateDocument, setDocument, removeDocument } from '../lib/firestoreService';
 import { toast } from 'sonner';
+import { validateDate, validateRequiredString, validateUserId, sanitizeText, sanitizeName } from '../lib/validation';
 
 const AdministrativeDaysContext = createContext();
 
@@ -81,13 +82,17 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, []);
 
     const addRequest = React.useCallback(async (userId, userName, date, reason) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
-            reason,
+            reason: sanitizeText(reason),
             status: 'pending',
-            // createdAt is handled by createDocument
         };
 
         try {
@@ -134,11 +139,16 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, [requests]);
 
     const assignDayManual = React.useCallback(async (userId, userName, date, reason) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
-            reason,
+            reason: sanitizeText(reason),
             status: 'approved',
         };
 
@@ -146,7 +156,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
             await createDocument('admin_requests', newRequest);
             const currentBalance = balances[userId] !== undefined ? balances[userId] : 6;
             await updateMetrics(userId, { balance: currentBalance - 1 });
-            toast.success('Día asignado exitosamente');
+            toast.success('Dia asignado exitosamente');
             return true;
         } catch (error) {
             console.error('Error', error);
@@ -156,11 +166,16 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, [balances]);
 
     const assignSpecialPermission = React.useCallback(async (userId, userName, date, reason) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
-            reason: `[Excepción] ${reason}`,
+            reason: `[Excepcion] ${sanitizeText(reason)}`,
             status: 'approved',
         };
 
@@ -176,18 +191,26 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, []);
 
     const assignHoursManual = React.useCallback(async (userId, userName, date, startTime, endTime, minutesUsed, reason) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+        const validMinutes = typeof minutesUsed === 'number' && minutesUsed > 0 && minutesUsed <= 1440 ? minutesUsed : 0;
+        if (validMinutes <= 0) throw new Error('Minutos debe ser mayor a 0');
+
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
-            reason: `[Horas] ${startTime} - ${endTime} (${minutesUsed} min): ${reason}`,
+            reason: `[Horas] ${sanitizeText(startTime)} - ${sanitizeText(endTime)} (${validMinutes} min): ${sanitizeText(reason)}`,
             status: 'approved',
-            type: 'hour_permission'
+            type: 'hour_permission',
+            minutesUsed: validMinutes
         };
 
         try {
             await createDocument('admin_requests', newRequest);
-            const hoursToAdd = minutesUsed / 60;
+            const hoursToAdd = validMinutes / 60;
             const currentUsage = hoursUsedState[userId] !== undefined ? hoursUsedState[userId] : 0;
             await updateMetrics(userId, { hoursUsed: currentUsage + hoursToAdd });
             toast.success('Horas asignadas exitosamente');
@@ -200,37 +223,50 @@ export const AdministrativeDaysProvider = ({ children }) => {
     }, [hoursUsedState]);
 
     const returnHoursManual = React.useCallback(async (userId, userName, date, startTime, endTime, minutesReturned, reason) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+        const validMinutes = typeof minutesReturned === 'number' && minutesReturned > 0 && minutesReturned <= 1440 ? minutesReturned : 0;
+        if (validMinutes <= 0) throw new Error('Minutos debe ser mayor a 0');
+
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
-            reason: `[Devolución] ${startTime} - ${endTime} (${minutesReturned} min): ${reason}`,
+            reason: `[Devolucion] ${sanitizeText(startTime)} - ${sanitizeText(endTime)} (${validMinutes} min): ${sanitizeText(reason)}`,
             status: 'approved',
-            type: 'hour_return'
+            type: 'hour_return',
+            minutesReturned: validMinutes
         };
 
         try {
             await createDocument('admin_requests', newRequest);
-            const hoursToSubtract = minutesReturned / 60;
+            const hoursToSubtract = validMinutes / 60;
             const currentUsage = hoursUsedState[userId] !== undefined ? hoursUsedState[userId] : 0;
             await updateMetrics(userId, { hoursUsed: currentUsage - hoursToSubtract });
-            toast.success('Devolución de horas registrada');
+            toast.success('Devolucion de horas registrada');
             return true;
         } catch (error) {
             console.error('Error', error);
-            toast.error('Error al registrar devolución');
+            toast.error('Error al registrar devolucion');
             return false;
         }
     }, [hoursUsedState]);
 
     const assignDiscountDay = React.useCallback(async (userId, userName, date, reason, observation) => {
+        validateUserId(userId);
+        validateRequiredString(userName, 'nombre', 100);
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo');
+
         const reasonText = observation
-            ? `[Descuento] ${reason}: ${observation}`
-            : `[Descuento] ${reason}`;
+            ? `[Descuento] ${sanitizeText(reason)}: ${sanitizeText(observation)}`
+            : `[Descuento] ${sanitizeText(reason)}`;
 
         const newRequest = {
             userId,
-            userName,
+            userName: sanitizeName(userName),
             date,
             reason: reasonText,
             status: 'approved',
@@ -241,7 +277,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
             await createDocument('admin_requests', newRequest);
             const currentCount = discountDaysState[userId] !== undefined ? discountDaysState[userId] : 0;
             await updateMetrics(userId, { discountDays: currentCount + 1 });
-            toast.success('Día de descuento registrado');
+            toast.success('Dia de descuento registrado');
             return true;
         } catch (error) {
             console.error('Error', error);

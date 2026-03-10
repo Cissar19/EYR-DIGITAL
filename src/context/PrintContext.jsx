@@ -3,12 +3,17 @@ import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
+import { useAuth } from './AuthContext';
+import { validateRequiredString, validateUserId, validatePositiveNumber, validateEnum, sanitizeText } from '../lib/validation';
 
 const PrintContext = createContext();
 
 export const usePrint = () => useContext(PrintContext);
 
+const VALID_STATUSES = ['pending', 'reviewing', 'ready', 'completed', 'rejected'];
+
 export const PrintProvider = ({ children }) => {
+    const { user } = useAuth();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -28,16 +33,23 @@ export const PrintProvider = ({ children }) => {
     }, []);
 
     const addRequest = React.useCallback(async (fileDetails) => {
+        if (!user) throw new Error('No autenticado');
+
+        validateUserId(fileDetails.userId);
+        validateRequiredString(fileDetails.userName, 'nombre', 100);
+        validateRequiredString(fileDetails.fileName, 'nombre de archivo', 200);
+        const copies = validatePositiveNumber(fileDetails.copies || 1, 'copias');
+
         try {
             await createDocument('print_requests', {
                 userId: fileDetails.userId,
-                userName: fileDetails.userName,
-                fileName: fileDetails.fileName,
-                copies: fileDetails.copies || 1,
-                doubleSided: fileDetails.doubleSided || false,
-                isColor: fileDetails.isColor || false,
-                stapled: fileDetails.stapled || false,
-                legalSize: fileDetails.legalSize || false,
+                userName: sanitizeText(fileDetails.userName),
+                fileName: sanitizeText(fileDetails.fileName),
+                copies: Math.min(copies, 999),
+                doubleSided: !!fileDetails.doubleSided,
+                isColor: !!fileDetails.isColor,
+                stapled: !!fileDetails.stapled,
+                legalSize: !!fileDetails.legalSize,
                 status: 'pending'
             });
 
@@ -48,7 +60,7 @@ export const PrintProvider = ({ children }) => {
             toast.error('Error al enviar solicitud');
             throw error;
         }
-    }, []);
+    }, [user]);
 
     const getRequestsByUser = React.useCallback((userId) => {
         return requests.filter(r => r.userId === userId);
@@ -63,6 +75,14 @@ export const PrintProvider = ({ children }) => {
     }, [requests]);
 
     const updateRequestStatus = React.useCallback(async (requestId, newStatus) => {
+        // Only printer role or admins can update print request status
+        if (!user || (user.role !== 'printer' && user.role !== 'admin' && user.role !== 'super_admin')) {
+            toast.error('No tienes permisos para actualizar solicitudes de impresion');
+            return;
+        }
+
+        validateEnum(newStatus, VALID_STATUSES, 'estado');
+
         try {
             await updateDocument('print_requests', requestId, { status: newStatus });
 
@@ -80,9 +100,18 @@ export const PrintProvider = ({ children }) => {
             toast.error('Error al actualizar solicitud');
             throw error;
         }
-    }, []);
+    }, [user]);
 
     const deleteRequest = React.useCallback(async (requestId) => {
+        if (!user) throw new Error('No autenticado');
+
+        // Only the owner or admin/printer can delete
+        const request = requests.find(r => r.id === requestId);
+        if (request && request.userId !== user.id && user.role !== 'printer' && user.role !== 'admin' && user.role !== 'super_admin') {
+            toast.error('No tienes permisos para eliminar esta solicitud');
+            return;
+        }
+
         try {
             await removeDocument('print_requests', requestId);
             toast.info("Solicitud eliminada");
@@ -91,7 +120,7 @@ export const PrintProvider = ({ children }) => {
             toast.error('Error al eliminar solicitud');
             throw error;
         }
-    }, []);
+    }, [user, requests]);
 
     const value = React.useMemo(() => ({
         requests,

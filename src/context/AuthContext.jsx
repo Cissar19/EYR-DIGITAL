@@ -160,20 +160,54 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     /**
+     * Generate a random temporary password
+     */
+    const generateTempPassword = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+        let password = '';
+        const array = new Uint8Array(12);
+        crypto.getRandomValues(array);
+        for (let i = 0; i < 12; i++) {
+            password += chars[array[i] % chars.length];
+        }
+        return password;
+    };
+
+    /**
      * Add new user — uses a secondary Firebase app to create auth user
-     * without signing out the current admin
+     * without signing out the current admin.
+     * Only admin/super_admin/director can create users.
      */
     const addUser = React.useCallback(async (newUserData) => {
+        // Authorization check
+        if (!user || !isAdmin(user) && !isDirectorOrHigher(user)) {
+            throw new Error('No tienes permisos para crear usuarios');
+        }
+
+        // Role hierarchy: only super_admin can create admin/super_admin/director
+        const protectedRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DIRECTOR];
+        if (protectedRoles.includes(newUserData.role) && !isSuperAdmin(user)) {
+            throw new Error('Solo super_admin puede crear roles administrativos');
+        }
+
+        // Validate role is a known role
+        const validRoles = Object.values(ROLES);
+        if (!validRoles.includes(newUserData.role)) {
+            throw new Error('Rol invalido');
+        }
+
         // Create a secondary app instance to avoid signing out current user
         const secondaryApp = initializeApp(auth.app.options, 'secondary-' + Date.now());
         const secondaryAuth = getAuth(secondaryApp);
 
+        const tempPassword = generateTempPassword();
+
         try {
-            // Create auth user
+            // Create auth user with random password
             const credential = await createUserWithEmailAndPassword(
                 secondaryAuth,
                 newUserData.email,
-                '123456' // Default password
+                tempPassword
             );
 
             const uid = credential.user.uid;
@@ -181,7 +215,7 @@ export const AuthProvider = ({ children }) => {
             // Create Firestore profile
             const userDoc = {
                 uid,
-                name: newUserData.name,
+                name: newUserData.name?.trim().slice(0, 100) || '',
                 email: newUserData.email,
                 role: newUserData.role,
                 avatar: null,
@@ -197,30 +231,57 @@ export const AuthProvider = ({ children }) => {
             // Refresh users list
             await fetchUsers();
 
-            return { id: uid, ...userDoc };
+            return { id: uid, ...userDoc, tempPassword };
         } catch (error) {
             // Clean up secondary app
             try { await signOut(secondaryAuth); } catch (_) { }
             throw error;
         }
-    }, [fetchUsers]);
+    }, [fetchUsers, user]);
 
     /**
-     * Update existing user in Firestore
+     * Update existing user in Firestore.
+     * Only admins can update other users. Users can update their own profile (name, avatar only).
      */
     const updateUser = React.useCallback(async (userId, updatedFields) => {
+        if (!user) throw new Error('No autenticado');
+
+        const isSelf = user.id === userId;
+        const userIsAdmin = isAdmin(user) || isDirectorOrHigher(user);
+
+        // Non-admins can only update themselves
+        if (!isSelf && !userIsAdmin) {
+            throw new Error('No tienes permisos para modificar otros usuarios');
+        }
+
+        // Block role changes unless super_admin
+        if (updatedFields.role !== undefined && !isSuperAdmin(user)) {
+            throw new Error('Solo super_admin puede cambiar roles');
+        }
+
+        // Prevent uid/email tampering
+        const safeFields = { ...updatedFields };
+        delete safeFields.uid;
+        delete safeFields.email;
+        delete safeFields.id;
+
+        // Sanitize name if provided
+        if (safeFields.name) {
+            safeFields.name = safeFields.name.trim().slice(0, 100);
+        }
+
         try {
-            await updateDoc(doc(db, 'users', userId), updatedFields);
+            await updateDoc(doc(db, 'users', userId), safeFields);
 
             // Update local state
             setUsers(prev => prev.map(u =>
-                u.id === userId ? { ...u, ...updatedFields } : u
+                u.id === userId ? { ...u, ...safeFields } : u
             ));
 
             // Update current session if updating self
             setUser(prev => {
                 if (prev?.id === userId) {
-                    return { ...prev, ...updatedFields };
+                    return { ...prev, ...safeFields };
                 }
                 return prev;
             });
@@ -228,12 +289,21 @@ export const AuthProvider = ({ children }) => {
             console.error('Error updating user:', error);
             throw error;
         }
-    }, []);
+    }, [user]);
 
     /**
-     * Delete user from Firestore (auth user remains — admin SDK needed for full delete)
+     * Delete user from Firestore (auth user remains — admin SDK needed for full delete).
+     * Only admins can delete users. Cannot delete yourself.
      */
     const deleteUser = React.useCallback(async (userId) => {
+        if (!user || (!isAdmin(user) && !isDirectorOrHigher(user))) {
+            throw new Error('No tienes permisos para eliminar usuarios');
+        }
+
+        if (userId === user.id) {
+            throw new Error('No puedes eliminar tu propia cuenta');
+        }
+
         try {
             await deleteDoc(doc(db, 'users', userId));
             setUsers(prev => prev.filter(u => u.id !== userId));
@@ -241,7 +311,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Error deleting user:', error);
             throw error;
         }
-    }, []);
+    }, [user]);
 
     /**
      * Get all users

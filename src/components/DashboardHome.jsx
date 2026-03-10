@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEquipment } from '../context/EquipmentContext';
+import { useTickets } from '../context/TicketContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -23,14 +24,12 @@ import {
     Box,
     CalendarClock,
     UserX,
-    HeartPulse,
-    BarChart3
+    BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import NextClassWidget from './NextClassWidget';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
-import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import UserDetailPanel from './UserDetailPanel';
 
 // Helper for Role Labels (Critical Requirement)
@@ -406,20 +405,14 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
 const AdminDashboardView = () => {
     const { user, users } = useAuth();
     const { getLowStockItems } = useEquipment();
-    const { getAllLeaves } = useMedicalLeaves();
+    const { tickets } = useTickets();
     const navigate = useNavigate();
     const [selectedUser, setSelectedUser] = useState(null);
 
     // Data Integration
-    const pendingTickets = 3; // Mocked as requested
+    const pendingTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
     const staffCount = users.length;
     const lowStockCount = getLowStockItems(3).length;
-
-    // Medical Leaves - active leaves (endDate >= today)
-    const allLeaves = getAllLeaves();
-    const todayStr = new Date().toISOString().split('T')[0];
-    const activeLeaves = allLeaves.filter(l => l.endDate >= todayStr);
-    const activeLeavesCount = activeLeaves.length;
 
     // Date Format
     const today = new Date().toLocaleDateString('es-CL', {
@@ -597,47 +590,15 @@ const AdminDashboardView = () => {
                 </div>
             </BentoCard>
 
-            {/* 6. Licencias Médicas */}
+            {/* 6. Estadísticas */}
             <BentoCard
                 delay={0.5}
-                onClick={() => navigate('/medical-leaves')}
-                className="bg-white group"
-            >
-                <div className="flex flex-col h-full justify-between">
-                    <div>
-                        <div className="p-3 bg-rose-50 rounded-2xl text-rose-500 w-fit mb-4">
-                            <HeartPulse className="w-8 h-8" />
-                        </div>
-
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-slate-800 tracking-tighter">
-                                {activeLeavesCount}
-                            </span>
-                            <span className="text-xl text-slate-400 font-medium">{activeLeavesCount === 1 ? 'Activa' : 'Activas'}</span>
-                        </div>
-                    </div>
-
-                    <div className="mt-4">
-                        <h3 className="font-bold text-slate-700 text-lg">Licencias Médicas</h3>
-                        <p className="text-slate-500 text-sm mb-4">
-                            Registro y seguimiento de licencias del personal.
-                        </p>
-                        <div className="flex items-center text-rose-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                            Ver Licencias <ChevronRight className="w-4 h-4" />
-                        </div>
-                    </div>
-                </div>
-            </BentoCard>
-
-            {/* 7. Estadísticas */}
-            <BentoCard
-                delay={0.6}
                 onClick={() => navigate('/admin/stats')}
                 className="bg-white group"
             >
                 <div className="flex flex-col h-full justify-between">
                     <div>
-                        <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 w-fit mb-4">
+                        <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 w-fit mb-4 group-hover:scale-110 transition-transform duration-300">
                             <BarChart3 className="w-8 h-8" />
                         </div>
 
@@ -646,10 +607,10 @@ const AdminDashboardView = () => {
 
                     <div className="mt-2">
                         <p className="text-slate-500 text-sm mb-4">
-                            Panel de análisis integral: rendimiento, asistencia y eficiencia.
+                            Datos y gráficos del sistema en tiempo real.
                         </p>
                         <div className="flex items-center text-indigo-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                            Ver Análisis <ChevronRight className="w-4 h-4" />
+                            Ver Estadísticas <ChevronRight className="w-4 h-4" />
                         </div>
                     </div>
                 </div>

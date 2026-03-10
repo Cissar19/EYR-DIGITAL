@@ -1,47 +1,153 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper: Validar autenticacion
+
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper: Validar si es administrador buscando en la coleccion users
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
     function isAdmin() {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super_admin']);
+      return isAuthenticated() && getUserRole() in ['admin', 'super_admin'];
     }
 
-    // 1. Coleccion de Usuarios
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'super_admin';
+    }
+
+    function isManagement() {
+      return isAuthenticated() && getUserRole() in ['admin', 'super_admin', 'director', 'utp_head', 'inspector'];
+    }
+
+    function isPrinterOrAdmin() {
+      return isAuthenticated() && getUserRole() in ['printer', 'admin', 'super_admin'];
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
     match /users/{userId} {
-      // Todos pueden leer perfiles (necesario para ver nombres de profesores, etc)
       allow read: if isAuthenticated();
-      // Solo el usuario mismo o un admin puede editar su perfil
-      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      // Solo admins pueden eliminar usuarios
-      allow delete: if isAdmin();
+
+      // Only admins can create users
+      allow create: if isAdmin();
+
+      // Users can update own profile (except role/uid/email), admins can update anyone
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid', 'email']))
+        || isAdmin()
+      );
+
+      // Only admins can delete, cannot delete self
+      allow delete: if isAdmin() && !isOwner(userId);
     }
 
-    // 2. Resto de Colecciones (Print requests, Tickets, etc.)
-    match /{collection}/{docId} {
-      // Lectura permitida a usuarios de la app
+    // ============================================
+    // ADMINISTRATIVE DAYS
+    // ============================================
+    match /admin_requests/{docId} {
       allow read: if isAuthenticated();
-      
-      // Escritura segura:
-      // - Si el documento tiene un campo 'userId', el usuario autenticado debe coincidir con ese userId.
-      // - Un administrador puede crear, modificar o eliminar cualquier documento.
-      allow create: if isAuthenticated() && (
-        !request.resource.data.keys().hasAll(['userId']) || 
-        request.resource.data.userId == request.auth.uid || 
-        isAdmin()
+      allow create: if isAuthenticated();
+      allow update: if isManagement();
+      allow delete: if isManagement();
+    }
+
+    match /admin_metrics/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isManagement();
+    }
+
+    // ============================================
+    // TICKETS
+    // ============================================
+    match /tickets/{ticketId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isManagement();
+      allow delete: if isManagement();
+    }
+
+    // ============================================
+    // LAB RESERVATIONS
+    // ============================================
+    match /lab_reservations/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
       );
-      
-      allow update, delete: if isAuthenticated() && (
-        !resource.data.keys().hasAll(['userId']) || 
-        resource.data.userId == request.auth.uid || 
-        isAdmin()
+      allow update: if isAdmin();
+    }
+
+    // ============================================
+    // PRINT REQUESTS
+    // ============================================
+    match /print_requests/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isPrinterOrAdmin();
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isPrinterOrAdmin()
       );
+    }
+
+    // ============================================
+    // EQUIPMENT & FOLDERS
+    // ============================================
+    match /equipment/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /equipment_folders/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /equipment_requests/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================
+    // MEDICAL LEAVES
+    // ============================================
+    match /medical_leaves/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isManagement();
+    }
+
+    // ============================================
+    // SCHEDULES
+    // ============================================
+    match /schedules/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isManagement() || isAdmin();
+    }
+
+    // ============================================
+    // INVENTORY
+    // ============================================
+    match /inventory_categories/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /inventory_items/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, BarChart3, HeartPulse, PanelLeftClose, Award, UserCheck, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, PanelLeftClose, BarChart3, HeartPulse } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import logoEyr from '../assets/logo_eyr.png';
@@ -57,34 +57,16 @@ const ROLE_SPECIFIC_ITEMS = [
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR]
     },
     {
-        name: 'Licencias Médicas',
+        name: 'Licencias Medicas',
         icon: HeartPulse,
-        path: '/medical-leaves',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.DIRECTOR]
+        path: '/admin/medical-leaves',
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR]
     },
     {
         name: 'Estadísticas',
         icon: BarChart3,
         path: '/admin/stats',
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR]
-    },
-    {
-        name: 'SIMCE',
-        icon: Award,
-        path: '/admin/simce',
-        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
-    },
-    {
-        name: 'Asistencia',
-        icon: UserCheck,
-        path: '/admin/attendance',
-        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
-    },
-    {
-        name: 'Cobertura Curricular',
-        icon: BookOpen,
-        path: '/admin/curriculum',
-        roles: [ROLES.UTP_HEAD, ROLES.SUPER_ADMIN]
     },
     {
         name: 'Mi Horario',

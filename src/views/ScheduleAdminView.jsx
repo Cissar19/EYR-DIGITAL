@@ -212,7 +212,7 @@ export default function ScheduleAdminView() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
+                    className="relative z-20 bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
                 >
                     <div className="max-w-md">
                         <TeacherCombobox
