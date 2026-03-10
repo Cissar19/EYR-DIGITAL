@@ -138,7 +138,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
         }
     }, [requests]);
 
-    const assignDayManual = React.useCallback(async (userId, userName, date, reason) => {
+    const assignDayManual = React.useCallback(async (userId, userName, date, reason, isHalfDay = false) => {
         validateUserId(userId);
         validateRequiredString(userName, 'nombre', 100);
         validateDate(date, 'fecha');
@@ -150,13 +150,14 @@ export const AdministrativeDaysProvider = ({ children }) => {
             date,
             reason: sanitizeText(reason),
             status: 'approved',
+            isHalfDay,
         };
 
         try {
             await createDocument('admin_requests', newRequest);
             const currentBalance = balances[userId] !== undefined ? balances[userId] : 6;
-            await updateMetrics(userId, { balance: currentBalance - 1 });
-            toast.success('Dia asignado exitosamente');
+            await updateMetrics(userId, { balance: currentBalance - (isHalfDay ? 0.5 : 1) });
+            toast.success(isHalfDay ? 'Medio dia asignado exitosamente' : 'Dia asignado exitosamente');
             return true;
         } catch (error) {
             console.error('Error', error);
@@ -165,7 +166,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
         }
     }, [balances]);
 
-    const assignSpecialPermission = React.useCallback(async (userId, userName, date, reason) => {
+    const assignSpecialPermission = React.useCallback(async (userId, userName, date, reason, isHalfDay = false) => {
         validateUserId(userId);
         validateRequiredString(userName, 'nombre', 100);
         validateDate(date, 'fecha');
@@ -177,6 +178,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
             date,
             reason: `[Excepcion] ${sanitizeText(reason)}`,
             status: 'approved',
+            isHalfDay,
         };
 
         try {

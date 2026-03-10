@@ -28,30 +28,28 @@ const getToday = () => {
     return `${year}-${month}-${day}`;
 };
 
-const calcBusinessDays = (start, end) => {
-    const s = new Date(start + 'T12:00:00');
-    const e = new Date(end + 'T12:00:00');
-    if (e < s) return 0;
-    let count = 0;
-    const current = new Date(s);
-    while (current <= e) {
-        const day = current.getDay();
-        if (day !== 0 && day !== 6) count++;
-        current.setDate(current.getDate() + 1);
-    }
-    return count;
+const formatYMD = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
+// Calcula fecha de termino: startDate + (days - 1) dias corridos
+const calcEndDate = (startDate, days) => {
+    const d = new Date(startDate + 'T12:00:00');
+    d.setDate(d.getDate() + (days - 1));
+    return formatYMD(d);
+};
+
+// Calcula fecha de reintegro: dia habil siguiente al termino
 const getReturnDate = (endDate) => {
     const d = new Date(endDate + 'T12:00:00');
     d.setDate(d.getDate() + 1);
     while (d.getDay() === 0 || d.getDay() === 6) {
         d.setDate(d.getDate() + 1);
     }
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatYMD(d);
 };
 
 export default function MedicalLeavesView() {
@@ -68,7 +66,7 @@ export default function MedicalLeavesView() {
     const [formData, setFormData] = useState({
         userId: '',
         startDate: today,
-        endDate: today,
+        leaveDays: 1,
         diagnosis: ''
     });
 
@@ -138,7 +136,7 @@ export default function MedicalLeavesView() {
 
     const handleOpenModal = () => {
         const t = getToday();
-        setFormData({ userId: '', startDate: t, endDate: t, diagnosis: '' });
+        setFormData({ userId: '', startDate: t, leaveDays: 1, diagnosis: '' });
         setTeacherSearch('');
         setShowTeacherDropdown(false);
         setIsModalOpen(true);
@@ -146,7 +144,7 @@ export default function MedicalLeavesView() {
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setFormData({ userId: '', startDate: today, endDate: today, diagnosis: '' });
+        setFormData({ userId: '', startDate: today, leaveDays: 1, diagnosis: '' });
         setTeacherSearch('');
         setShowTeacherDropdown(false);
     };
@@ -157,23 +155,23 @@ export default function MedicalLeavesView() {
         setShowTeacherDropdown(false);
     };
 
-    const calculatedDays = calcBusinessDays(formData.startDate, formData.endDate);
-    const returnDate = getReturnDate(formData.endDate);
+    const calculatedEndDate = calcEndDate(formData.startDate, formData.leaveDays);
+    const returnDate = getReturnDate(calculatedEndDate);
 
     const handleSubmit = () => {
         if (!formData.userId || !formData.diagnosis.trim()) {
             alert('Por favor completa todos los campos');
             return;
         }
-        if (calculatedDays <= 0) {
-            alert('La fecha de termino debe ser igual o posterior a la de inicio (y debe incluir al menos un dia habil)');
+        if (formData.leaveDays < 1) {
+            alert('La licencia debe tener al menos 1 dia');
             return;
         }
 
         const selected = relevantUsers.find(u => u.id === formData.userId);
         if (!selected) return;
 
-        addLeave(selected.id, selected.name, formData.startDate, formData.endDate, calculatedDays, formData.diagnosis, returnDate);
+        addLeave(selected.id, selected.name, formData.startDate, calculatedEndDate, formData.leaveDays, formData.diagnosis, returnDate);
         handleCloseModal();
     };
 
@@ -353,7 +351,7 @@ export default function MedicalLeavesView() {
                                     {formatDate(leave.startDate)} — {formatDate(leave.endDate)}
                                 </div>
                                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700">
-                                    {leave.days} {leave.days === 1 ? 'dia habil' : 'dias habiles'}
+                                    {leave.days} {leave.days === 1 ? 'dia' : 'dias'} corridos
                                 </div>
                                 {leave.returnDate && (
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700">
@@ -505,15 +503,30 @@ export default function MedicalLeavesView() {
                                     {/* Start Date */}
                                     {renderDatePicker('Fecha Inicio', formData.startDate, (val) => setFormData({ ...formData, startDate: val }))}
 
-                                    {/* End Date */}
-                                    {renderDatePicker('Fecha Termino', formData.endDate, (val) => setFormData({ ...formData, endDate: val }))}
+                                    {/* Number of Days */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                            Dias de licencia (corridos)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={365}
+                                            value={formData.leaveDays}
+                                            onChange={(e) => {
+                                                const val = Math.max(1, Math.min(365, parseInt(e.target.value) || 1));
+                                                setFormData({ ...formData, leaveDays: val });
+                                            }}
+                                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-rose-400 focus:ring-4 focus:ring-rose-100 focus:outline-none transition-all text-sm font-semibold"
+                                        />
+                                    </div>
 
-                                    {/* Calculated Business Days + Return Date */}
+                                    {/* Auto-calculated End Date + Return Date */}
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
                                             <Calendar className="w-5 h-5 text-indigo-500" />
                                             <span className="text-sm font-semibold text-indigo-700">
-                                                Dias habiles: {calculatedDays}
+                                                Fecha termino: {formatDateFull(calculatedEndDate)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">

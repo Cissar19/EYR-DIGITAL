@@ -25,6 +25,7 @@ const getTypeConfig = (request) => {
     if (request.type === 'hour_permission') return { label: 'Permiso Horas', icon: Clock, color: 'text-amber-500' };
     if (request.type === 'discount') return { label: 'Descuento', icon: Ban, color: 'text-red-500' };
     if (request.reason?.startsWith('[Excepción]')) return { label: 'Excepción', icon: AlertCircle, color: 'text-purple-500' };
+    if (request.isHalfDay) return { label: '½ Día Admin.', icon: Calendar, color: 'text-blue-500' };
     return { label: 'Día Admin.', icon: Calendar, color: 'text-blue-500' };
 };
 

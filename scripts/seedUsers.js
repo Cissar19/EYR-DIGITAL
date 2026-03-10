@@ -37,7 +37,7 @@ const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
 const USERS = [
     // --- Roles administrativos ---
     { name: "Soporte Plataforma", email: "dev@plataforma.cl", role: "super_admin" },
-    { name: "Damaris Contreras", email: "adm.ernestoyanez@eduhuechuraba.cl", role: "admin" },
+    { name: "Damaris Contreras", email: "adm.ernestoyanez@eduhuechuraba.cl", role: "super_admin" },
     { name: "Director General", email: "director@escuela.cl", role: "director" },
     { name: "Jefa UTP", email: "utp@escuela.cl", role: "utp_head" },
     { name: "Inspector General", email: "inspectoria@escuela.cl", role: "inspector" },
@@ -98,7 +98,7 @@ const USERS = [
     { name: "Melanie Aracelly Contreras Díaz", email: "mcontrerasd@eduhuechuraba.cl", role: "teacher" },
     { name: "Natalia Stephanie Díaz Pérez", email: "ndiazp@eduhuechuraba.cl", role: "teacher" },
     { name: "Juan Ricardo Figueroa Huinca", email: "jfigueroah@eduhuechuraba.cl", role: "teacher" },
-    { name: "María Paz Flores Corvalán", email: "utp.ernestoyanez@eduhuechuraba.cl", role: "teacher" },
+    { name: "María Paz Flores Corvalán", email: "utp.ernestoyanez@eduhuechuraba.cl", role: "utp_head" },
     { name: "María Eugenia Fuentes Ávila", email: "mfuentesa@eduhuechuraba.cl", role: "teacher" },
     { name: "Álvaro Francisco Jara Barrientos", email: "ajarab@eduhuechuraba.cl", role: "teacher" },
     { name: "Belén Isabel Leal Moraga", email: "blealm@eduhuechuraba.cl", role: "teacher" },

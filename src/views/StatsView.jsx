@@ -150,17 +150,19 @@ const DiasAdminTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDa
 
     // Type distribution
     const typeDistribution = useMemo(() => {
-        const types = { day: 0, hour: 0, return: 0, discount: 0, exception: 0 };
+        const types = { day: 0, halfDay: 0, hour: 0, return: 0, discount: 0, exception: 0 };
         requests.forEach(r => {
             if (r.status !== 'approved') return;
             if (r.type === 'hour_permission') types.hour++;
             else if (r.type === 'hour_return') types.return++;
             else if (r.type === 'discount') types.discount++;
             else if (r.type === 'exception') types.exception++;
+            else if (r.isHalfDay) types.halfDay++;
             else types.day++;
         });
         return [
             { name: 'Dias Admin', value: types.day },
+            { name: '½ Dias Admin', value: types.halfDay },
             { name: 'Horas', value: types.hour },
             { name: 'Devoluciones', value: types.return },
             { name: 'Descuentos', value: types.discount },
@@ -403,9 +405,10 @@ const DiasAdminTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDa
                                                     <span className={cn(
                                                         "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
                                                         row.absenceType === 'Dia Admin' ? 'bg-indigo-50 text-indigo-700' :
-                                                            row.absenceType === 'Horas' ? 'bg-cyan-50 text-cyan-700' :
-                                                                row.absenceType === 'Descuento' ? 'bg-red-50 text-red-700' :
-                                                                    'bg-amber-50 text-amber-700'
+                                                            row.absenceType === '½ Dia Admin' ? 'bg-blue-50 text-blue-700' :
+                                                                row.absenceType === 'Horas' ? 'bg-cyan-50 text-cyan-700' :
+                                                                    row.absenceType === 'Descuento' ? 'bg-red-50 text-red-700' :
+                                                                        'bg-amber-50 text-amber-700'
                                                     )}>
                                                         {row.absenceType}
                                                     </span>
@@ -622,7 +625,8 @@ const DetalleTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDays
         const teacherStaff = users.filter(u => ['teacher', 'staff'].includes(u.role));
         return teacherStaff.map(u => {
             const userReqs = requests.filter(r => r.userId === u.id && r.status === 'approved');
-            const daysUsed = userReqs.filter(r => !r.type || r.type === 'day').length;
+            const daysUsed = userReqs.filter(r => !r.type || r.type === 'day')
+                .reduce((sum, r) => sum + (r.isHalfDay ? 0.5 : 1), 0);
             const hours = userReqs.filter(r => r.type === 'hour_permission').length;
             const returns = userReqs.filter(r => r.type === 'hour_return').length;
             const discounts = userReqs.filter(r => r.type === 'discount').length;
@@ -723,6 +727,7 @@ function getAbsenceTypeLabel(req) {
     if (req.type === 'hour_permission') return 'Horas';
     if (req.type === 'discount') return 'Descuento';
     if (req.reason?.startsWith('[Excepcion]')) return 'Excepcion';
+    if (req.isHalfDay) return '½ Dia Admin';
     return 'Dia Admin';
 }
 

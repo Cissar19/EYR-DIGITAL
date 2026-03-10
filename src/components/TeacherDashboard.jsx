@@ -174,7 +174,14 @@ export default function TeacherDashboard() {
                                                             <p className="font-bold text-slate-800 text-lg">
                                                                 {new Date(req.date + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                                                             </p>
-                                                            <p className="text-sm text-slate-500 capitalize">{req.reason}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm text-slate-500 capitalize">{req.reason}</p>
+                                                                {req.isHalfDay && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                                        ½ Día Admin.
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
 

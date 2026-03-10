@@ -58,7 +58,8 @@ export default function AdminDaysTrackingView() {
         mode: 'day', // 'day', 'hour', 'discount', or 'return'
         startTime: '',
         endTime: '',
-        observation: ''
+        observation: '',
+        isHalfDay: false
     });
     const [toastMessage, setToastMessage] = useState('');
 
@@ -187,11 +188,12 @@ export default function AdminDaysTrackingView() {
         setFormData({
             userId: '',
             date: getToday2026(),
-            reason: mode === 'discount' ? DISCOUNT_REASONS[0] : '',
+            reason: mode === 'discount' ? DISCOUNT_REASONS[0] : mode === 'day' ? 'Personal' : '',
             mode,
             startTime: '',
             endTime: '',
-            observation: ''
+            observation: '',
+            isHalfDay: false
         });
         setTeacherSearch('');
         setShowTeacherDropdown(false);
@@ -200,7 +202,7 @@ export default function AdminDaysTrackingView() {
 
     const handleCloseAssignModal = () => {
         setIsAssignModalOpen(false);
-        setFormData({ userId: '', date: '', reason: '', mode: 'day', startTime: '', endTime: '', observation: '' });
+        setFormData({ userId: '', date: '', reason: '', mode: 'day', startTime: '', endTime: '', observation: '', isHalfDay: false });
         setTeacherSearch('');
         setShowTeacherDropdown(false);
     };
@@ -223,8 +225,19 @@ export default function AdminDaysTrackingView() {
             return;
         }
 
+        // Para modo day con "Otro", validar que se haya ingresado el detalle
+        if (formData.mode === 'day' && formData.reason === 'Otro' && !formData.observation.trim()) {
+            alert('Por favor especifique el motivo');
+            return;
+        }
+
         const selectedUser = relevantUsers.find(u => u.id === formData.userId);
         if (!selectedUser) return;
+
+        // Resolver el motivo final para modo day
+        const resolvedReason = formData.mode === 'day' && formData.reason === 'Otro'
+            ? formData.observation.trim()
+            : formData.reason;
 
         if (formData.mode === 'discount') {
             assignDiscountDay(selectedUser.id, selectedUser.name, formData.date, formData.reason, formData.observation);
@@ -282,16 +295,17 @@ export default function AdminDaysTrackingView() {
 
         // Day Mode Logic
         const currentBalance = getBalance(selectedUser.id);
+        const needed = formData.isHalfDay ? 0.5 : 1;
 
-        if (currentBalance <= 0) {
+        if (currentBalance < needed) {
             // Special Permission Flow
             const confirmSpecial = window.confirm(
                 `Este usuario no tiene días administrativos disponibles (Saldo ${currentBalance}).\n\n¿Desea registrar una Solicitud Especial (Permiso sin goce/Justificado)?\n\nEsto registrará el evento pero NO descontará días.`
             );
 
             if (confirmSpecial) {
-                assignSpecialPermission(selectedUser.id, selectedUser.name, formData.date, formData.reason);
-                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: formData.reason });
+                assignSpecialPermission(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
+                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: resolvedReason, details: formData.isHalfDay ? 'Medio día' : '' });
                 showToast(`Solicitud especial registrada. Se notificó a ${selectedUser.name}`);
                 handleCloseAssignModal();
             }
@@ -299,9 +313,9 @@ export default function AdminDaysTrackingView() {
         }
 
         // Call the manual assignment function (Normal Flow)
-        assignDayManual(selectedUser.id, selectedUser.name, formData.date, formData.reason);
-        sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: formData.reason });
-        showToast(`¡Día asignado! Se notificó a ${selectedUser.name}`);
+        assignDayManual(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
+        sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: resolvedReason, details: formData.isHalfDay ? 'Medio día' : '' });
+        showToast(formData.isHalfDay ? `¡Medio día asignado! Se notificó a ${selectedUser.name}` : `¡Día asignado! Se notificó a ${selectedUser.name}`);
         handleCloseAssignModal();
     };
 
@@ -740,6 +754,52 @@ export default function AdminDaysTrackingView() {
                                                     className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-red-400 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all resize-none"
                                                 />
                                             </div>
+                                        </>
+                                    ) : formData.mode === 'day' ? (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                    Motivo
+                                                </label>
+                                                <select
+                                                    value={formData.reason === 'Personal' || formData.reason === 'Otro' ? formData.reason : 'Otro'}
+                                                    onChange={(e) => setFormData({ ...formData, reason: e.target.value, observation: e.target.value === 'Personal' ? '' : formData.observation })}
+                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="Personal">Personal</option>
+                                                    <option value="Otro">Otro</option>
+                                                </select>
+                                            </div>
+                                            {formData.reason === 'Otro' && (
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Especifique motivo
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Ingrese el motivo..."
+                                                        value={formData.observation}
+                                                        onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
+                                                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all"
+                                                    />
+                                                </div>
+                                            )}
+                                            {/* Half Day Toggle */}
+                                            <label className="flex items-center gap-3 cursor-pointer select-none group">
+                                                <div className="relative">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.isHalfDay}
+                                                        onChange={(e) => setFormData({ ...formData, isHalfDay: e.target.checked })}
+                                                        className="sr-only peer"
+                                                    />
+                                                    <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
+                                                    <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform" />
+                                                </div>
+                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                    Medio dia (descuenta 0.5)
+                                                </span>
+                                            </label>
                                         </>
                                     ) : (
                                         <div>

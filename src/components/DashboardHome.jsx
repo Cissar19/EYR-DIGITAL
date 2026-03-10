@@ -458,15 +458,7 @@ const ReplacementsCard = () => {
     const { schedules } = useSchedule();
     const { users } = useAuth();
     const [expandedTeacher, setExpandedTeacher] = useState(null);
-    const [expandedBlocks, setExpandedBlocks] = useState(new Set());
-
-    const toggleBlockExpand = (key) => {
-        setExpandedBlocks(prev => {
-            const next = new Set(prev);
-            next.has(key) ? next.delete(key) : next.add(key);
-            return next;
-        });
-    };
+    const [detailModal, setDetailModal] = useState(null); // { teacherName, block }
 
     const replacementData = useMemo(() => {
         const today = new Date();
@@ -608,7 +600,7 @@ const ReplacementsCard = () => {
     const matchColors = {
         exact: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Ideal' },
         related: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Afín' },
-        available: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-500', dot: 'bg-slate-300', label: 'Disponible' },
+        available: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', dot: 'bg-green-500', label: 'Disponible' },
     };
 
     const totalAbsent = teacherSections.length;
@@ -671,9 +663,7 @@ const ReplacementsCard = () => {
                                     >
                                         <div className="px-4 py-3 space-y-3 border-t border-slate-100">
                                             {teacher.blocks.map((block, idx) => {
-                                                const blockKey = `${teacher.userId}-${idx}`;
-                                                const isBlockExpanded = expandedBlocks.has(blockKey);
-                                                const visibleCandidates = isBlockExpanded ? block.candidates : block.candidates.slice(0, VISIBLE_COUNT);
+                                                const visibleCandidates = block.candidates.slice(0, VISIBLE_COUNT);
                                                 const hiddenCount = block.candidates.length - VISIBLE_COUNT;
 
                                                 return (
@@ -715,10 +705,10 @@ const ReplacementsCard = () => {
                                                                     })}
                                                                     {hiddenCount > 0 && (
                                                                         <button
-                                                                            onClick={() => toggleBlockExpand(blockKey)}
+                                                                            onClick={() => setDetailModal({ teacherName: teacher.userName, block })}
                                                                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                                                                         >
-                                                                            {isBlockExpanded ? 'ver menos' : `+${hiddenCount} más`}
+                                                                            +{hiddenCount} más
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -737,6 +727,66 @@ const ReplacementsCard = () => {
                     );
                 })}
             </div>
+
+            {/* Detail Modal */}
+            <AnimatePresence>
+                {detailModal && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm"
+                        onClick={() => setDetailModal(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                        >
+                            {/* Modal header */}
+                            <div className="p-5 border-b border-slate-100 bg-slate-50/80">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-bold text-slate-800">Candidatos Disponibles</h3>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Reemplazo para {detailModal.teacherName} · {detailModal.block.startTime} · {detailModal.block.subject}{detailModal.block.course ? ` · ${detailModal.block.course}` : ''}
+                                        </p>
+                                    </div>
+                                    <button onClick={() => setDetailModal(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Candidates list */}
+                            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-1.5">
+                                {detailModal.block.candidates.map((c, i) => {
+                                    const style = matchColors[c.matchLevel];
+                                    return (
+                                        <div
+                                            key={c.userId}
+                                            className={cn("flex items-center justify-between p-3 rounded-xl border", style.bg, style.border)}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.dot)} />
+                                                <div className="min-w-0">
+                                                    <span className={cn("text-sm font-semibold block truncate", style.text)}>{c.name}</span>
+                                                    {c.matchSubject && (
+                                                        <span className="text-xs text-slate-400">Enseña {c.matchSubject}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0", style.bg, style.text, style.border, "border")}>
+                                                {style.label}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </BentoCard>
     );
 };
