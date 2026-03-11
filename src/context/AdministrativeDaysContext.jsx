@@ -287,6 +287,40 @@ export const AdministrativeDaysProvider = ({ children }) => {
         }
     }, [discountDaysState]);
 
+    const deleteRequestStable = React.useCallback(async (requestId) => {
+        const request = requests.find(r => r.id === requestId);
+        if (!request) return;
+
+        try {
+            await removeDocument('admin_requests', requestId);
+
+            // Revert metrics if the record was approved
+            if (request.status === 'approved') {
+                const uid = request.userId;
+                if (request.type === 'hour_permission' && request.minutesUsed) {
+                    const currentUsage = hoursUsedState[uid] || 0;
+                    await updateMetrics(uid, { hoursUsed: currentUsage - (request.minutesUsed / 60) });
+                } else if (request.type === 'hour_return' && request.minutesReturned) {
+                    const currentUsage = hoursUsedState[uid] || 0;
+                    await updateMetrics(uid, { hoursUsed: currentUsage + (request.minutesReturned / 60) });
+                } else if (request.type === 'discount') {
+                    const currentCount = discountDaysState[uid] || 0;
+                    await updateMetrics(uid, { discountDays: currentCount - 1 });
+                } else if (!request.reason?.startsWith('[Excepcion]')) {
+                    // Regular day or half day — restore balance
+                    const currentBalance = balances[uid] !== undefined ? balances[uid] : 6;
+                    const restore = request.isHalfDay ? 0.5 : 1;
+                    await updateMetrics(uid, { balance: currentBalance + restore });
+                }
+            }
+
+            toast.success('Registro eliminado');
+        } catch (error) {
+            console.error('Error deleting request', error);
+            toast.error('Error al eliminar');
+        }
+    }, [requests, balances, hoursUsedState, discountDaysState]);
+
     const value = React.useMemo(() => ({
         requests,
         balances,
@@ -295,6 +329,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
         addRequest,
         approveRequest: approveRequestStable,
         rejectRequest: rejectRequestStable,
+        deleteRequest: deleteRequestStable,
         assignDayManual,
         assignSpecialPermission,
         assignHoursManual,
@@ -304,7 +339,7 @@ export const AdministrativeDaysProvider = ({ children }) => {
         getUserRequests,
         getHoursUsed,
         getDiscountDays
-    }), [requests, balances, hoursUsedState, discountDaysState, getBalance, getHoursUsed, getDiscountDays, adjustBalance, addRequest, approveRequestStable, rejectRequestStable, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay, getPendingRequests, getUserRequests]);
+    }), [requests, balances, hoursUsedState, discountDaysState, getBalance, getHoursUsed, getDiscountDays, adjustBalance, addRequest, approveRequestStable, rejectRequestStable, deleteRequestStable, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay, getPendingRequests, getUserRequests]);
 
     return (
         <AdministrativeDaysContext.Provider value={value}>

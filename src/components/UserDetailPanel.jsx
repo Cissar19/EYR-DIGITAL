@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
-import { Calendar, Clock, Ban, X, ChevronRight, TrendingUp, TrendingDown, AlertCircle, FileText, RotateCcw, HeartPulse, CalendarCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, Clock, Ban, X, ChevronRight, TrendingUp, TrendingDown, AlertCircle, FileText, RotateCcw, HeartPulse, CalendarCheck, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getRoleLabel } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
+
+const DELETE_HASH = '93f88608d4f448485a255f815515d0f730a00eb4ea05fb2c1ecd464a1428e420';
+
+async function verifyPassword(input) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex === DELETE_HASH;
+}
 
 const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -59,8 +71,33 @@ const getDaysLeft = (leave) => {
 
 export default function UserDetailPanel({ user, onClose, variant = 'default' }) {
     const isMedical = variant === 'medical';
-    const { getUserRequests, getBalance, getHoursUsed, getDiscountDays } = useAdministrativeDays();
+    const { getUserRequests, getBalance, getHoursUsed, getDiscountDays, deleteRequest } = useAdministrativeDays();
     const { getLeavesByUser } = useMedicalLeaves();
+    const { canEdit } = useAuth();
+    const userCanEdit = canEdit();
+
+    // Delete modal state
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteError, setDeleteError] = useState('');
+
+    const handleDeleteClick = (request) => {
+        setDeleteTarget(request);
+        setDeletePassword('');
+        setDeleteError('');
+    };
+
+    const handleDeleteConfirm = async () => {
+        const valid = await verifyPassword(deletePassword);
+        if (!valid) {
+            setDeleteError('Contraseña incorrecta');
+            return;
+        }
+        await deleteRequest(deleteTarget.id);
+        setDeleteTarget(null);
+        setDeletePassword('');
+        setDeleteError('');
+    };
 
     if (!user) return null;
 
@@ -357,9 +394,20 @@ export default function UserDetailPanel({ user, onClose, variant = 'default' }) 
                                                         <Calendar className="w-3 h-3" />
                                                         <span className="text-xs font-medium">{formatDate(request.date)}</span>
                                                     </div>
-                                                    <span className="text-[10px] text-slate-300 font-medium">
-                                                        Creado {formatDate(request.createdAt)}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-slate-300 font-medium">
+                                                            Creado {formatDate(request.createdAt)}
+                                                        </span>
+                                                        {userCanEdit && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(request); }}
+                                                                className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                                title="Eliminar registro"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         );
@@ -370,6 +418,72 @@ export default function UserDetailPanel({ user, onClose, variant = 'default' }) 
                     )}
                 </div>
             </motion.div>
+
+            {/* Delete Password Modal */}
+            <AnimatePresence>
+                {deleteTarget && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setDeleteTarget(null)}
+                            className="fixed inset-0 bg-black/40 z-[80]"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+                        >
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-red-100 rounded-xl">
+                                        <Trash2 className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800">Eliminar registro</h3>
+                                        <p className="text-xs text-slate-500">{deleteTarget.userName} — {formatDate(deleteTarget.date)}</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-sm text-slate-600 mb-4">
+                                    {deleteTarget.status === 'approved' && 'Se revertirá el descuento del saldo. '}
+                                    Ingresa la contraseña para confirmar.
+                                </p>
+
+                                <input
+                                    type="password"
+                                    value={deletePassword}
+                                    onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleDeleteConfirm()}
+                                    placeholder="Contraseña"
+                                    autoFocus
+                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-red-400 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all mb-2"
+                                />
+                                {deleteError && (
+                                    <p className="text-xs text-red-600 font-medium mb-2">{deleteError}</p>
+                                )}
+
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        onClick={() => setDeleteTarget(null)}
+                                        className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteConfirm}
+                                        className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </>,
         document.body
     );
