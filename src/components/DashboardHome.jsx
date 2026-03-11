@@ -191,7 +191,7 @@ const TeacherView = ({ user, notifications }) => {
 };
 
 // Weekly Absences Widget
-const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser }) => {
+const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }) => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { users } = useAuth();
@@ -308,21 +308,21 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser }) => {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); }}
+                        onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); onDayChange?.(null); }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                     <span className="text-sm font-semibold text-slate-600 min-w-[240px] text-center">{weekLabel}</span>
                     <button
-                        onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); }}
+                        onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); onDayChange?.(null); }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <ChevronRight className="w-5 h-5" />
                     </button>
                     {weekOffset !== 0 && (
                         <button
-                            onClick={() => { setWeekOffset(0); setSelectedDay(null); }}
+                            onClick={() => { setWeekOffset(0); setSelectedDay(null); onDayChange?.(null); }}
                             className="ml-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded-md hover:bg-indigo-50 transition-colors"
                         >
                             Hoy
@@ -342,7 +342,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser }) => {
                     return (
                         <button
                             key={day.dateStr}
-                            onClick={() => setSelectedDay(isSelected ? null : day.dateStr)}
+                            onClick={() => { const next = isSelected ? null : day.dateStr; setSelectedDay(next); onDayChange?.(next); }}
                             className={cn(
                                 "flex flex-col items-center py-3 px-2 rounded-xl border-2 transition-all duration-200",
                                 isSelected
@@ -496,7 +496,7 @@ const DAY_NAMES_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'V
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-const ReplacementsCard = () => {
+const ReplacementsCard = ({ externalDate }) => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { schedules } = useSchedule();
@@ -507,8 +507,28 @@ const ReplacementsCard = () => {
     const [assigning, setAssigning] = useState(null); // "absentId-startTime" key while saving
     const [dayOffset, setDayOffset] = useState(0);
 
-    // Compute selected date based on offset (skip weekends)
+    // Reset dayOffset when external date changes
+    React.useEffect(() => {
+        if (externalDate) {
+            setDayOffset(0);
+            setExpandedTeacher(null);
+        }
+    }, [externalDate]);
+
+    // Compute selected date based on offset (skip weekends), or use externalDate
     const { selectedDateStr, selectedDayName, selectedDateLabel, isToday } = useMemo(() => {
+        if (externalDate && dayOffset === 0) {
+            const d = new Date(externalDate + 'T12:00:00');
+            const now = new Date();
+            const todayCheck = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            return {
+                selectedDateStr: externalDate,
+                selectedDayName: DAY_NAMES_FULL[d.getDay()],
+                selectedDateLabel: `${DAY_NAMES_FULL[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`,
+                isToday: externalDate === todayCheck,
+            };
+        }
+
         const base = new Date();
         let offset = dayOffset;
         const dir = offset >= 0 ? 1 : -1;
@@ -529,7 +549,7 @@ const ReplacementsCard = () => {
             selectedDateLabel: `${DAY_NAMES_FULL[base.getDay()]} ${base.getDate()} de ${MONTH_NAMES[base.getMonth()]}`,
             isToday: dateStr === todayCheck,
         };
-    }, [dayOffset]);
+    }, [dayOffset, externalDate]);
 
     // Check if a block already has an assigned replacement for selected date
     const getAssignedLog = (absentId, startTime) => {
@@ -969,6 +989,7 @@ const AdminDashboardView = () => {
     const navigate = useNavigate();
     const [selectedUser, setSelectedUser] = useState(null); // { user, variant }
     const [detailVariant, setDetailVariant] = useState('default');
+    const [absenceSelectedDay, setAbsenceSelectedDay] = useState(null);
 
     // Data Integration
     const { getPendingRequests } = useAdministrativeDays();
@@ -1032,10 +1053,11 @@ const AdminDashboardView = () => {
             <WeeklyAbsencesWidget
                 onSelectUser={(u) => { setSelectedUser(u); setDetailVariant('default'); }}
                 onSelectMedicalUser={(u) => { setSelectedUser(u); setDetailVariant('medical'); }}
+                onDayChange={setAbsenceSelectedDay}
             />
 
-            {/* Replacement Suggestions (only when absences today) */}
-            <ReplacementsCard />
+            {/* Replacement Suggestions (synced with selected day) */}
+            <ReplacementsCard externalDate={absenceSelectedDay} />
 
             {/* 2. Solicitudes y Tickets (Urgent Action - Pixel Perfect) */}
             <BentoCard
