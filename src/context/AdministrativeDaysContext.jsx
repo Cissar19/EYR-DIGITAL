@@ -114,9 +114,10 @@ export const AdministrativeDaysProvider = ({ children }) => {
             // Update request
             await updateDocument('admin_requests', requestId, { status: 'approved' });
 
-            // Decrement balance
+            // Decrement balance (respect isHalfDay)
+            const decrement = request.isHalfDay ? 0.5 : 1;
             const currentBalance = balances[request.userId] !== undefined ? balances[request.userId] : 6;
-            await updateMetrics(request.userId, { balance: currentBalance - 1 });
+            await updateMetrics(request.userId, { balance: currentBalance - decrement });
 
             toast.success('Solicitud aprobada');
         } catch (error) {
