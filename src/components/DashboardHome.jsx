@@ -971,6 +971,8 @@ const AdminDashboardView = () => {
     const [detailVariant, setDetailVariant] = useState('default');
 
     // Data Integration
+    const { getPendingRequests } = useAdministrativeDays();
+    const pendingAdminDays = getPendingRequests().length;
     const pendingTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
     const staffCount = users.length;
     const lowStockCount = getLowStockItems(3).length;
@@ -1135,8 +1137,13 @@ const AdminDashboardView = () => {
             <BentoCard
                 delay={0.4}
                 onClick={() => navigate('/admin/days-tracking')}
-                className="bg-white group"
+                className={cn("bg-white group relative", pendingAdminDays > 0 && "border-l-4 border-l-amber-400")}
             >
+                {pendingAdminDays > 0 && (
+                    <div className="absolute top-6 right-6 bg-amber-100 text-amber-800 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                        {pendingAdminDays} POR APROBAR
+                    </div>
+                )}
                 <div className="flex flex-col h-full justify-between">
                     <div>
                         <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 w-fit mb-4">
@@ -1148,10 +1155,12 @@ const AdminDashboardView = () => {
 
                     <div className="mt-2">
                         <p className="text-slate-500 text-sm mb-4">
-                            Revisar solicitudes de permisos y balance de días del personal.
+                            {pendingAdminDays > 0
+                                ? `${pendingAdminDays} solicitud${pendingAdminDays !== 1 ? 'es' : ''} pendiente${pendingAdminDays !== 1 ? 's' : ''} de aprobación.`
+                                : 'Revisar solicitudes de permisos y balance de días del personal.'}
                         </p>
-                        <div className="flex items-center text-emerald-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                            Gestionar Permisos <ChevronRight className="w-4 h-4" />
+                        <div className={cn("flex items-center font-semibold text-sm group-hover:translate-x-1 transition-transform", pendingAdminDays > 0 ? "text-amber-600" : "text-emerald-600")}>
+                            {pendingAdminDays > 0 ? 'Revisar ahora' : 'Gestionar Permisos'} <ChevronRight className="w-4 h-4" />
                         </div>
                     </div>
                 </div>

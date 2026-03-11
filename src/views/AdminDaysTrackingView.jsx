@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CalendarCheck, Search, TrendingDown, TrendingUp, Circle,
-    Eye, AlertCircle, Users, ChevronLeft, ChevronRight, X, Calendar, Plus, Check, Clock, Ban, RotateCcw
+    Eye, AlertCircle, Users, ChevronLeft, ChevronRight, X, Calendar, Plus, Check, Clock, Ban, RotateCcw, Bell
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
@@ -43,7 +43,8 @@ export default function AdminDaysTrackingView() {
     const { users: MOCK_USERS, canEdit, isUtpHead } = useAuth();
     const userCanEdit = canEdit();
     const canReturn = userCanEdit || isUtpHead();
-    const { getBalance, getHoursUsed, getDiscountDays, getUserRequests, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay } = useAdministrativeDays();
+    const { getBalance, getHoursUsed, getDiscountDays, getUserRequests, getPendingRequests, approveRequest, rejectRequest, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay } = useAdministrativeDays();
+    const { users: allUsers } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedUser, setSelectedUser] = useState(null);
@@ -181,6 +182,37 @@ export default function AdminDaysTrackingView() {
                     label: 'Desconocido',
                     className: 'bg-slate-100 text-slate-700 border-slate-200'
                 };
+        }
+    };
+
+    // --- Pending approval handlers ---
+    const pendingRequests = getPendingRequests();
+
+    const handleApprovePending = (id) => {
+        const req = pendingRequests.find(r => r.id === id);
+        const periodLabel = req?.isHalfDay === 'am' ? ' (Mañana)' : req?.isHalfDay === 'pm' ? ' (Tarde)' : '';
+        const dayLabel = req?.isHalfDay ? `0.5 día${periodLabel}` : '1 día';
+        if (confirm(`¿Aprobar solicitud de ${req?.userName}? Se descontará ${dayLabel}.`)) {
+            approveRequest(id);
+            if (req) {
+                const reqUser = allUsers.find(u => u.id === req.userId);
+                if (reqUser) {
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason });
+                }
+            }
+        }
+    };
+
+    const handleRejectPending = (id) => {
+        const req = pendingRequests.find(r => r.id === id);
+        if (confirm(`¿Rechazar solicitud de ${req?.userName}?`)) {
+            rejectRequest(id);
+            if (req) {
+                const reqUser = allUsers.find(u => u.id === req.userId);
+                if (reqUser) {
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason });
+                }
+            }
         }
     };
 
@@ -402,6 +434,56 @@ export default function AdminDaysTrackingView() {
                         </div>
                     )}
                 </div>
+
+                {/* Pending Approvals */}
+                {userCanEdit && pendingRequests.length > 0 && (
+                    <div className="mb-8">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
+                                <Bell className="w-3.5 h-3.5" />
+                                {pendingRequests.length} pendiente{pendingRequests.length !== 1 && 's'}
+                            </div>
+                            <h2 className="text-lg font-bold text-slate-800">Solicitudes por Aprobar</h2>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            {pendingRequests.map(req => (
+                                <div key={req.id} className="bg-white rounded-2xl p-5 shadow-sm border border-amber-200 flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-bold text-slate-800 text-sm">{req.userName}</span>
+                                            {req.isHalfDay && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                    ½ {req.isHalfDay === 'am' ? 'Mañana' : req.isHalfDay === 'pm' ? 'Tarde' : 'Día'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>{formatDate(req.date)}</span>
+                                        </div>
+                                        <p className="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 mb-4">
+                                            {req.reason}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleApprovePending(req.id)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+                                        >
+                                            <Check className="w-4 h-4" /> Aprobar
+                                        </button>
+                                        <button
+                                            onClick={() => handleRejectPending(req.id)}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" /> Rechazar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Users Grid */}
                 <div className="space-y-3 mb-8">
