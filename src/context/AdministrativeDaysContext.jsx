@@ -149,22 +149,20 @@ export const AdministrativeDaysProvider = ({ children }) => {
             userName: sanitizeName(userName),
             date,
             reason: sanitizeText(reason),
-            status: 'approved',
+            status: 'pending',
             isHalfDay,
         };
 
         try {
             await createDocument('admin_requests', newRequest);
-            const currentBalance = balances[userId] !== undefined ? balances[userId] : 6;
-            await updateMetrics(userId, { balance: currentBalance - (isHalfDay ? 0.5 : 1) });
-            toast.success(isHalfDay ? 'Medio dia asignado exitosamente' : 'Dia asignado exitosamente');
+            toast.success('Día asignado — pendiente de aprobación');
             return true;
         } catch (error) {
             console.error('Error', error);
             toast.error('Error al asignar');
             return false;
         }
-    }, [balances]);
+    }, []);
 
     const assignSpecialPermission = React.useCallback(async (userId, userName, date, reason, isHalfDay = false) => {
         validateUserId(userId);
