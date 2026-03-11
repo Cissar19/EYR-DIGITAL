@@ -14,12 +14,12 @@ var LOG_SHEET = 'NotifDiasAdmin';
 var SECRET = 'CHANGE_ME'; // Mismo valor que VITE_APPS_SCRIPT_SECRET
 
 var ACTION_CONFIG = {
-  day:       { title: 'Día Administrativo Asignado',     color: '#1B3A8C', icon: '📋', statusText: 'Pendiente de aprobación' },
-  approval:  { title: 'Solicitud Aprobada',              color: '#16a34a', icon: '✅', statusText: 'Aprobada — se descontará del saldo' },
-  rejection: { title: 'Solicitud Rechazada',             color: '#dc2626', icon: '❌', statusText: 'Rechazada — no se descontará del saldo' },
-  hours:     { title: 'Horas Administrativas Registradas', color: '#d97706', icon: '🕐', statusText: 'Registrado' },
-  discount:  { title: 'Día de Descuento Registrado',     color: '#dc2626', icon: '⚠️', statusText: 'Registrado como descuento' },
-  special:   { title: 'Permiso Especial Registrado',     color: '#7c3aed', icon: '📌', statusText: 'Sin descuento de saldo' },
+  day:       { subject: 'Tu D\u00eda Administrativo se est\u00e1 Procesando',     title: 'Tu D\u00eda Administrativo<br>se est\u00e1 Procesando', subtitle: 'SOLICITUD EN PROCESO', statusText: 'Pendiente de aprobaci\u00f3n', accentColor: '#1B3A8C', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Tu solicitud est\u00e1 siendo revisada. Te notificaremos cuando sea aprobada.' },
+  approval:  { subject: 'Tu D\u00eda Administrativo fue Aprobado',               title: 'Tu D\u00eda Administrativo<br>fue Aprobado',             subtitle: 'SOLICITUD APROBADA',    statusText: 'Aprobada \u2014 se descontar\u00e1 del saldo',     accentColor: '#16a34a', bannerColor: '#16a34a', bannerTextColor: '#ffffff', bannerMsg: 'Tu d\u00eda administrativo ha sido aprobado exitosamente.' },
+  rejection: { subject: 'Tu D\u00eda Administrativo fue Rechazado',              title: 'Tu D\u00eda Administrativo<br>fue Rechazado',            subtitle: 'SOLICITUD RECHAZADA',   statusText: 'Rechazada \u2014 no se descontar\u00e1 del saldo', accentColor: '#dc2626', bannerColor: '#dc2626', bannerTextColor: '#ffffff', bannerMsg: 'Tu solicitud de d\u00eda administrativo no fue aprobada.' },
+  hours:     { subject: 'Horas Administrativas Registradas',                      title: 'Horas Administrativas<br>Registradas',                   subtitle: 'REGISTRO DE HORAS',     statusText: 'Registrado',                                       accentColor: '#d97706', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se han registrado horas administrativas en tu cuenta.' },
+  discount:  { subject: 'D\u00eda de Descuento Registrado',                      title: 'D\u00eda de Descuento<br>Registrado',                    subtitle: 'REGISTRO DE DESCUENTO', statusText: 'Registrado como descuento',                         accentColor: '#dc2626', bannerColor: '#dc2626', bannerTextColor: '#ffffff', bannerMsg: 'Se ha registrado un d\u00eda de descuento en tu cuenta.' },
+  special:   { subject: 'Permiso Especial Registrado',                            title: 'Permiso Especial<br>Registrado',                         subtitle: 'PERMISO ESPECIAL',      statusText: 'Sin descuento de saldo',                           accentColor: '#7c3aed', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se ha registrado un permiso especial. No afecta tu saldo de d\u00edas.' },
 };
 
 function doPost(e) {
@@ -57,8 +57,8 @@ function doPost(e) {
         '<table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f2f4f8;padding:36px 0;"><tr><td align="center">' +
         '<table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dde3f0;box-shadow:0 6px 32px rgba(27,58,140,0.10);">' +
 
-        // Barra top color
-        '<tr><td style="background-color:' + cfg.color + ';height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+        // Barra top amarilla
+        '<tr><td style="background-color:#F5D33A;height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
 
         // Header azul
         '<tr><td align="center" style="background-color:#1B3A8C;padding:30px 40px 26px 40px;">' +
@@ -67,40 +67,42 @@ function doPost(e) {
         '<p style="margin:0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Huechuraba \u00b7 Santiago</p>' +
         '</td></tr>' +
 
-        // Icono + Título
+        // T\u00edtulo
         '<tr><td align="center" style="padding:42px 48px 10px 48px;">' +
-        '<p style="margin:0 0 16px 0;font-size:48px;line-height:1;">' + cfg.icon + '</p>' +
-        '<p style="margin:0 0 12px 0;color:' + cfg.color + ';font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">Notificaci\u00f3n</p>' +
-        '<h2 style="margin:0;color:#1B3A8C;font-size:30px;font-weight:900;line-height:1.2;">' + cfg.title + '</h2>' +
+        '<p style="margin:0 0 12px 0;color:' + cfg.accentColor + ';font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">' + cfg.subtitle + '</p>' +
+        '<h2 style="margin:0;color:#1B3A8C;font-size:36px;font-weight:900;line-height:1.1;">' + cfg.title + '</h2>' +
         '</td></tr>' +
 
-        // Saludo
-        '<tr><td style="padding:28px 52px 8px 52px;text-align:center;">' +
-        '<p style="margin:0;color:#555555;font-size:17px;line-height:1.6;">Estimado/a <strong style="color:#1B3A8C;">' + toName + '</strong>,</p>' +
+        // Nombre del funcionario
+        '<tr><td style="padding:32px 52px 12px 52px;text-align:center;">' +
+        '<p style="margin:0;color:#222222;font-size:22px;line-height:1.6;">Funcionario: <strong style="color:#1B3A8C;font-size:26px;">' + toName + '</strong></p>' +
         '</td></tr>' +
 
         // Caja detalle
-        '<tr><td style="padding:16px 52px 38px 52px;">' +
-        '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fd;border-radius:14px;border-left:5px solid ' + cfg.color + ';">' +
+        '<tr><td style="padding:10px 52px 38px 52px;">' +
+        '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fd;border-radius:14px;border-left:5px solid ' + cfg.accentColor + ';">' +
         '<tr><td style="padding:24px 28px;">' +
-        '<p style="margin:0 0 14px 0;color:#333333;font-size:17px;line-height:2.0;">' +
+        '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;">' +
         '<strong>Fecha:</strong> ' + dateLabel + '</p>' +
-        '<p style="margin:0 0 14px 0;color:#333333;font-size:17px;line-height:2.0;">' +
+        '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;">' +
         '<strong>Motivo:</strong> ' + (reason || 'No especificado') + '</p>' +
-        (details ? '<p style="margin:0 0 14px 0;color:#333333;font-size:17px;line-height:2.0;"><strong>Detalle:</strong> ' + details + '</p>' : '') +
+        (details ? '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;"><strong>Detalle:</strong> ' + details + '</p>' : '') +
         '<p style="margin:0;color:#333333;font-size:17px;line-height:2.0;">' +
-        '<strong>Estado:</strong> <span style="color:' + cfg.color + ';font-weight:700;">' + cfg.statusText + '</span></p>' +
+        '<strong>Estado:</strong> <span style="color:' + cfg.accentColor + ';font-weight:700;">' + cfg.statusText + '</span></p>' +
         '</td></tr></table>' +
         '</td></tr>' +
 
-        // Franja cierre
-        '<tr><td style="background-color:' + cfg.color + ';padding:18px 48px;text-align:center;">' +
-        '<p style="margin:0;color:#ffffff;font-size:14px;font-weight:600;line-height:1.6;">Este correo es informativo. No es necesario responder.</p>' +
+        // Franja de cierre (mismo estilo que Code.gs)
+        '<tr><td style="background-color:' + cfg.bannerColor + ';padding:20px 48px;text-align:center;">' +
+        '<p style="margin:0;color:' + cfg.bannerTextColor + ';font-size:18px;font-weight:800;line-height:1.6;">' + cfg.bannerMsg + '</p>' +
         '</td></tr>' +
+
+        // Separador
+        '<tr><td style="padding:0 48px;"><table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td style="border-top:1px solid #e5e8f0;font-size:0;">&nbsp;</td></tr></table></td></tr>' +
 
         // Footer
         '<tr><td style="padding:20px 40px 22px 40px;text-align:center;">' +
-        '<p style="margin:0 0 3px 0;color:#1B3A8C;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Sistema EYR Digital</p>' +
+        '<p style="margin:0 0 3px 0;color:#1B3A8C;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Sistema D\u00edas Admin</p>' +
         '<p style="margin:0;color:#aaaaaa;font-size:12px;">Centro Educacional Ernesto Y\u00e1\u00f1ez Rivera \u00b7 Huechuraba</p>' +
         '</td></tr>' +
 
@@ -108,9 +110,9 @@ function doPost(e) {
         '<tr><td style="background:linear-gradient(to right,#1B3A8C 33%,#F5D33A 33%,#F5D33A 66%,#8C1B1B 66%);height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
         '</table></td></tr></table></body></html>';
 
-      GmailApp.sendEmail(toEmail, cfg.title + ' - EYR Digital', '', {
+      GmailApp.sendEmail(toEmail, cfg.subject + ' - ' + toName, '', {
         htmlBody: htmlBody,
-        name: 'Sistema EYR Digital',
+        name: 'Sistema D\u00edas Admin',
       });
     } catch (mailErr) {
       status = 'Error: ' + mailErr;
@@ -122,9 +124,9 @@ function doPost(e) {
       var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(LOG_SHEET);
       if (!sheet) {
         sheet = SpreadsheetApp.openById(SHEET_ID).insertSheet(LOG_SHEET);
-        sheet.appendRow(['Fecha', 'Funcionario', 'Email', 'Acción', 'Fecha Día', 'Motivo', 'Estado']);
+        sheet.appendRow(['Fecha', 'Funcionario', 'Email', 'Acci\u00f3n', 'Fecha D\u00eda', 'Motivo', 'Estado']);
       }
-      sheet.appendRow([new Date(), toName, toEmail, cfg.title, date, reason, status]);
+      sheet.appendRow([new Date(), toName, toEmail, cfg.subject, date, reason, status]);
     } catch (sheetErr) {
       Logger.log('Error logging to sheet: ' + sheetErr);
     }
