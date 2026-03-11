@@ -12,6 +12,7 @@
 var SHEET_ID = '1YjDgy4qCOvyf9KPwNaLLh2Pc099apjQAxhyAU0QRIKY';
 var LOG_SHEET = 'NotifDiasAdmin';
 var SECRET = 'CHANGE_ME'; // Mismo valor que VITE_APPS_SCRIPT_SECRET
+var ADMIN_BCC = 'adm.ernestoyanez@eduhuechuraba.cl';
 
 var ACTION_CONFIG = {
   day:       { subject: 'Tu D\u00eda Administrativo se est\u00e1 Procesando',     title: 'Tu D\u00eda Administrativo<br>se est\u00e1 Procesando', subtitle: 'SOLICITUD EN PROCESO', statusText: 'Pendiente de aprobaci\u00f3n', accentColor: '#1B3A8C', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Tu solicitud est\u00e1 siendo revisada. Te notificaremos cuando sea aprobada.' },
@@ -113,6 +114,7 @@ function doPost(e) {
       GmailApp.sendEmail(toEmail, cfg.subject + ' - ' + toName, '', {
         htmlBody: htmlBody,
         name: 'Sistema D\u00edas Admin',
+        bcc: ADMIN_BCC,
       });
     } catch (mailErr) {
       status = 'Error: ' + mailErr;

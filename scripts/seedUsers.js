@@ -55,7 +55,7 @@ const USERS = [
     { name: "Pablo Vicente Contreras Romero", email: "p.contreras@escuela.cl", role: "staff" },
     { name: "Javiera Belén Contreras Vergara", email: "j.contreras@escuela.cl", role: "staff" },
     { name: "Jennifer Andrea Cortés Oyanedel", email: "j.cortes@escuela.cl", role: "staff" },
-    { name: "María Gabriela Denordenflycht Valdés", email: "m.denordenflycht@escuela.cl", role: "staff" },
+    { name: "María Gabriela Denordenflycht Valdés", email: "mdenord@eduhuechuraba.cl", role: "staff" },
     { name: "Alejandra Del Carmen Estay Curín", email: "a.estay@escuela.cl", role: "staff" },
     { name: "Amaro Joel Farías Araneda", email: "a.farias@escuela.cl", role: "staff" },
     { name: "Nicolette Patricia Flores Norambuena", email: "n.flores@escuela.cl", role: "staff" },
