@@ -233,7 +233,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
     const getAbsencesForDate = (dateStr) => {
         // Admin day absences
         const adminAbsences = requests
-            .filter(r => r.status === 'approved' && r.date === dateStr)
+            .filter(r => (r.status === 'approved' || r.status === 'pending') && r.date === dateStr)
             .map(r => {
                 const userRecord = users.find(u => u.id === r.userId);
                 const roleLabel = getRoleLabelForUser(userRecord?.role);
@@ -583,7 +583,7 @@ const ReplacementsCard = ({ externalDate }) => {
         const absentMap = new Map();
 
         requests
-            .filter(r => r.status === 'approved' && r.date === targetStr && r.type !== 'discount' && r.type !== 'hour_return')
+            .filter(r => (r.status === 'approved' || r.status === 'pending') && r.date === targetStr && r.type !== 'discount' && r.type !== 'hour_return')
             .forEach(r => {
                 let typeLabel = r.isHalfDay ? (r.isHalfDay === 'am' ? '½ AM' : r.isHalfDay === 'pm' ? '½ PM' : '½ Día Admin.') : 'Día Admin.';
                 if (r.type === 'hour_permission') typeLabel = 'Permiso Horas';
