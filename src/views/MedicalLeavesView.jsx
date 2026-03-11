@@ -66,8 +66,7 @@ export default function MedicalLeavesView() {
     const [formData, setFormData] = useState({
         userId: '',
         startDate: today,
-        leaveDays: 1,
-        diagnosis: ''
+        leaveDays: 1
     });
 
     // Autocomplete state
@@ -159,8 +158,8 @@ export default function MedicalLeavesView() {
     const returnDate = getReturnDate(calculatedEndDate);
 
     const handleSubmit = () => {
-        if (!formData.userId || !formData.diagnosis.trim()) {
-            alert('Por favor completa todos los campos');
+        if (!formData.userId) {
+            alert('Por favor selecciona un funcionario');
             return;
         }
         if (formData.leaveDays < 1) {
@@ -171,7 +170,7 @@ export default function MedicalLeavesView() {
         const selected = relevantUsers.find(u => u.id === formData.userId);
         if (!selected) return;
 
-        addLeave(selected.id, selected.name, formData.startDate, calculatedEndDate, formData.leaveDays, formData.diagnosis, returnDate);
+        addLeave(selected.id, selected.name, formData.startDate, calculatedEndDate, formData.leaveDays, '', returnDate);
         handleCloseModal();
     };
 
@@ -297,9 +296,6 @@ export default function MedicalLeavesView() {
                                         <h3 className="text-sm font-semibold text-slate-900 truncate">
                                             {leave.userName}
                                         </h3>
-                                        <p className="text-xs text-slate-500 mt-0.5 truncate">
-                                            {leave.diagnosis}
-                                        </p>
                                     </div>
                                 </div>
 
@@ -463,7 +459,7 @@ export default function MedicalLeavesView() {
                                     {/* Teacher Autocomplete */}
                                     <div className="relative" ref={autocompleteRef}>
                                         <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Seleccionar Funcionario
+                                            Seleccionar Persona
                                         </label>
                                         <input
                                             type="text"
@@ -537,19 +533,6 @@ export default function MedicalLeavesView() {
                                         </div>
                                     </div>
 
-                                    {/* Diagnosis */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Diagnostico / Motivo
-                                        </label>
-                                        <textarea
-                                            placeholder="Ej: Reposo medico por..."
-                                            value={formData.diagnosis}
-                                            onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                                            rows={3}
-                                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-rose-400 focus:ring-4 focus:ring-rose-100 focus:outline-none transition-all resize-none"
-                                        />
-                                    </div>
                                 </div>
 
                                 {/* Modal Footer */}

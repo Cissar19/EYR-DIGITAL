@@ -23,6 +23,7 @@ import InventoryView from './views/InventoryView';
 import AdminDaysTrackingView from './views/AdminDaysTrackingView';
 import StatsView from './views/StatsView';
 import MedicalLeavesView from './views/MedicalLeavesView';
+import ReplacementLogsView from './views/ReplacementLogsView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -201,6 +202,7 @@ export default function App() {
           <Route path="/admin/days-tracking" element={<AdminDaysTrackingView />} />
           <Route path="/admin/stats" element={<StatsView />} />
           <Route path="/admin/medical-leaves" element={<MedicalLeavesView />} />
+          <Route path="/admin/replacements" element={<ReplacementLogsView />} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

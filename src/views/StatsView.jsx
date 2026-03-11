@@ -634,7 +634,7 @@ const DetalleTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDays
             return {
                 id: u.id,
                 name: u.name,
-                role: u.role === 'teacher' ? 'Docente' : 'Funcionario',
+                role: u.role === 'teacher' ? 'Docente' : 'Asistente',
                 balance: getBalance(u.id),
                 daysUsed,
                 hours,

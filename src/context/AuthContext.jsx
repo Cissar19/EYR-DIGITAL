@@ -34,7 +34,7 @@ const AuthContext = createContext();
  * - utp_head: Jefa UTP (Curriculum oversight, academic coordination)
  * - inspector: Inspectoria (Attendance, discipline, daily operations oversight)
  * - teacher: Docente (Reservations, prints, administrative days)
- * - staff: Funcionario (Basic access, attendance, simple requests)
+ * - staff: Asistente (Basic access, attendance, simple requests)
  * - printer: Print Manager (Print request management only)
  */
 export const ROLES = {
@@ -58,7 +58,7 @@ export const ROLE_LABELS = {
     [ROLES.UTP_HEAD]: 'Jefa UTP',
     [ROLES.INSPECTOR]: 'Inspectoria',
     [ROLES.TEACHER]: 'Docente',
-    [ROLES.STAFF]: 'Funcionario',
+    [ROLES.STAFF]: 'Asistente',
     [ROLES.PRINTER]: 'Encargado Impresiones'
 };
 

@@ -135,7 +135,7 @@ export default function AdminUsers() {
                 return {
                     bgColor: 'bg-teal-100',
                     textColor: 'text-teal-600',
-                    label: 'Funcionario',
+                    label: 'Asistente',
                     icon: Briefcase
                 };
             case ROLES.ADMIN:
@@ -226,7 +226,7 @@ export default function AdminUsers() {
                             {allUsers.length} Miembros
                         </span>
                     </h1>
-                    <p className="text-slate-500 mt-2 text-lg">Gestión de todo el personal de la escuela (Docentes y Funcionarios).</p>
+                    <p className="text-slate-500 mt-2 text-lg">Gestión de todo el personal de la escuela (Docentes y Asistentes).</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -495,7 +495,7 @@ export default function AdminUsers() {
                                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                                         >
                                             <Briefcase className="w-4 h-4" />
-                                            Funcionario
+                                            Asistente
                                         </button>
                                         <button
                                             type="button"

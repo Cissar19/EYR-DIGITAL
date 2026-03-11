@@ -34,6 +34,7 @@ import NextClassWidget from './NextClassWidget';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
+import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import UserDetailPanel from './UserDetailPanel';
 
 // Helper for Role Labels (Critical Requirement)
@@ -51,7 +52,7 @@ const getRoleLabel = (role) => {
         case 'teacher':
             return 'Docente';
         case 'staff':
-            return 'Funcionario';
+            return 'Asistente';
         case 'printer':
             return 'Encargado de Impresiones';
         default:
@@ -190,7 +191,7 @@ const TeacherView = ({ user, notifications }) => {
 };
 
 // Weekly Absences Widget
-const WeeklyAbsencesWidget = ({ onSelectUser }) => {
+const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser }) => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { users } = useAuth();
@@ -221,7 +222,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
     const todayStr = new Date().toISOString().split('T')[0];
 
     const getRoleLabelForUser = (role) => {
-        if (role === 'staff') return 'Funcionario';
+        if (role === 'staff') return 'Asistente';
         if (role === 'admin' || role === 'super_admin') return 'Administradora';
         if (role === 'director') return 'Directora';
         if (role === 'utp_head') return 'Jefa UTP';
@@ -250,11 +251,28 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
             .map(l => {
                 const userRecord = users.find(u => u.id === l.userId);
                 const roleLabel = getRoleLabelForUser(userRecord?.role);
+
+                // Calculate days remaining from selected date to endDate
+                const selDate = new Date(dateStr + 'T12:00:00');
+                const endDate = new Date(l.endDate + 'T12:00:00');
+                const diffMs = endDate - selDate;
+                const daysLeft = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+
+                // Format return date for display
+                let returnLabel = '';
+                if (l.returnDate) {
+                    const ret = new Date(l.returnDate + 'T12:00:00');
+                    const DAY_ABBR = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                    returnLabel = `${DAY_ABBR[ret.getDay()]} ${ret.getDate()}/${ret.getMonth() + 1}`;
+                }
+
                 return {
                     ...l,
                     roleLabel,
                     typeLabel: 'Licencia Médica',
                     reason: l.diagnosis || 'Licencia médica',
+                    daysLeft,
+                    returnLabel,
                 };
             });
 
@@ -347,14 +365,19 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
                                 {day.dayNum}
                             </span>
                             {count > 0 ? (
-                                <span className={cn(
-                                    "mt-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full",
-                                    count >= 3
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-amber-100 text-amber-700"
-                                )}>
-                                    {count} {count === 1 ? 'ausencia' : 'ausencias'}
-                                </span>
+                                <>
+                                    <span className={cn(
+                                        "mt-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full",
+                                        count >= 3
+                                            ? "bg-red-100 text-red-700"
+                                            : "bg-amber-100 text-amber-700"
+                                    )}>
+                                        {count} {count === 1 ? 'ausencia' : 'ausencias'}
+                                    </span>
+                                    <span className="mt-1 text-[10px] font-semibold text-indigo-500">
+                                        Ver detalle
+                                    </span>
+                                </>
                             ) : (
                                 <span className="mt-1.5 text-xs font-medium text-slate-300 px-2.5 py-0.5">
                                     Sin ausencias
@@ -392,22 +415,41 @@ const WeeklyAbsencesWidget = ({ onSelectUser }) => {
                                                             {initials}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className="text-sm font-semibold text-slate-700 truncate">{item.userName}</span>
                                                                 <span className={cn(
                                                                     "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0",
-                                                                    item.roleLabel === 'Funcionario'
+                                                                    item.roleLabel === 'Asistente'
                                                                         ? "bg-blue-100 text-blue-700"
                                                                         : "bg-purple-100 text-purple-700"
                                                                 )}>
                                                                     {item.roleLabel}
                                                                 </span>
+                                                                {isMedical && item.daysLeft !== undefined && (
+                                                                    <span className={cn(
+                                                                        "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+                                                                        item.daysLeft === 0
+                                                                            ? "bg-emerald-100 text-emerald-700"
+                                                                            : item.daysLeft <= 2
+                                                                                ? "bg-amber-100 text-amber-700"
+                                                                                : "bg-rose-100 text-rose-700"
+                                                                    )}>
+                                                                        {item.daysLeft === 0 ? 'Último día' : `${item.daysLeft} ${item.daysLeft === 1 ? 'día' : 'días'} restantes`}
+                                                                    </span>
+                                                                )}
+                                                                {isMedical && item.returnLabel && (
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0">
+                                                                        Reintegro: {item.returnLabel}
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                            <span className="text-xs text-slate-400 truncate block">{item.reason}</span>
                                                         </div>
                                                     </div>
                                                     <button
-                                                        onClick={() => userRecord && onSelectUser(userRecord)}
+                                                        onClick={() => {
+                                                            if (!userRecord) return;
+                                                            isMedical ? onSelectMedicalUser(userRecord) : onSelectUser(userRecord);
+                                                        }}
                                                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition-all shrink-0 ml-3 hover:scale-105 active:scale-95"
                                                     >
                                                         Ver Detalle
@@ -452,30 +494,76 @@ const RELATED_SUBJECTS = {
 
 const DAY_NAMES_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
 const ReplacementsCard = () => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { schedules } = useSchedule();
-    const { users } = useAuth();
+    const { users, user: currentUser } = useAuth();
+    const { logs, assignReplacement } = useReplacementLogs();
     const [expandedTeacher, setExpandedTeacher] = useState(null);
-    const [detailModal, setDetailModal] = useState(null); // { teacherName, block }
+    const [detailModal, setDetailModal] = useState(null); // { teacherName, absentId, absenceType, block }
+    const [assigning, setAssigning] = useState(null); // "absentId-startTime" key while saving
+    const [dayOffset, setDayOffset] = useState(0);
+
+    // Compute selected date based on offset (skip weekends)
+    const { selectedDateStr, selectedDayName, selectedDateLabel, isToday } = useMemo(() => {
+        const base = new Date();
+        let offset = dayOffset;
+        const dir = offset >= 0 ? 1 : -1;
+        let remaining = Math.abs(offset);
+        while (remaining > 0) {
+            base.setDate(base.getDate() + dir);
+            if (base.getDay() !== 0 && base.getDay() !== 6) remaining--;
+        }
+        const yyyy = base.getFullYear();
+        const mm = String(base.getMonth() + 1).padStart(2, '0');
+        const dd = String(base.getDate()).padStart(2, '0');
+        const now = new Date();
+        const todayCheck = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        return {
+            selectedDateStr: dateStr,
+            selectedDayName: DAY_NAMES_FULL[base.getDay()],
+            selectedDateLabel: `${DAY_NAMES_FULL[base.getDay()]} ${base.getDate()} de ${MONTH_NAMES[base.getMonth()]}`,
+            isToday: dateStr === todayCheck,
+        };
+    }, [dayOffset]);
+
+    // Check if a block already has an assigned replacement for selected date
+    const getAssignedLog = (absentId, startTime) => {
+        return logs.find(l => l.date === selectedDateStr && l.absentId === absentId && l.startTime === startTime);
+    };
+
+    const handleAssign = async (teacher, block, candidate) => {
+        const key = `${teacher.userId}-${block.startTime}`;
+        setAssigning(key);
+        await assignReplacement({
+            date: selectedDateStr,
+            absentId: teacher.userId,
+            absentName: teacher.userName,
+            absenceType: teacher.typeLabel,
+            startTime: block.startTime,
+            subject: block.subject,
+            course: block.course,
+            replacementId: candidate.userId,
+            replacementName: candidate.name,
+            assignedBy: currentUser.id,
+            assignedByName: currentUser.name,
+        });
+        setAssigning(null);
+    };
 
     const replacementData = useMemo(() => {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${yyyy}-${mm}-${dd}`;
-        const dayName = DAY_NAMES_FULL[today.getDay()];
-
-        // Weekend — no classes
-        if (today.getDay() === 0 || today.getDay() === 6) return null;
+        const targetStr = selectedDateStr;
+        const dayName = selectedDayName;
 
         // Collect absent user IDs with absence type
         const absentMap = new Map();
 
         requests
-            .filter(r => r.status === 'approved' && r.date === todayStr && r.type !== 'discount' && r.type !== 'hour_return')
+            .filter(r => r.status === 'approved' && r.date === targetStr && r.type !== 'discount' && r.type !== 'hour_return')
             .forEach(r => {
                 let typeLabel = r.isHalfDay ? '½ Día Admin.' : 'Día Admin.';
                 if (r.type === 'hour_permission') typeLabel = 'Permiso Horas';
@@ -485,7 +573,7 @@ const ReplacementsCard = () => {
             });
 
         leaves
-            .filter(l => l.startDate && l.endDate && todayStr >= l.startDate && todayStr <= l.endDate)
+            .filter(l => l.startDate && l.endDate && targetStr >= l.startDate && targetStr <= l.endDate)
             .forEach(l => {
                 if (!absentMap.has(l.userId)) {
                     absentMap.set(l.userId, { userId: l.userId, userName: l.userName, typeLabel: 'Licencia Médica' });
@@ -504,6 +592,12 @@ const ReplacementsCard = () => {
                 blocks.filter(b => b.day === dayName).map(b => b.startTime)
             );
         }
+
+        // Also mark users already assigned as replacements at a given time as busy
+        logs.filter(l => l.date === targetStr).forEach(l => {
+            if (!busyByUser[l.replacementId]) busyByUser[l.replacementId] = new Set();
+            busyByUser[l.replacementId].add(l.startTime);
+        });
 
         // For each absent teacher, find their blocks and candidates
         let totalUncovered = 0;
@@ -589,11 +683,10 @@ const ReplacementsCard = () => {
         if (teacherSections.length === 0) return null;
 
         return { teacherSections, totalUncovered };
-    }, [requests, leaves, schedules, users]);
+    }, [requests, leaves, schedules, users, logs, selectedDateStr, selectedDayName]);
 
-    if (!replacementData) return null;
-
-    const { teacherSections, totalUncovered } = replacementData;
+    const teacherSections = replacementData?.teacherSections || [];
+    const totalUncovered = replacementData?.totalUncovered || 0;
 
     const VISIBLE_COUNT = 3;
 
@@ -608,12 +701,39 @@ const ReplacementsCard = () => {
     return (
         <BentoCard delay={0.08} className="md:col-span-2 lg:col-span-3 border-teal-100/50 bg-gradient-to-br from-white to-teal-50/20">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-teal-50 rounded-xl text-teal-600">
                         <Shuffle className="w-5 h-5" />
                     </div>
-                    <h3 className="font-bold text-slate-700">Posibles Reemplazos Hoy</h3>
+                    <div>
+                        <h3 className="font-bold text-slate-700">Posibles Reemplazos</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <button
+                                onClick={() => { setDayOffset(d => d - 1); setExpandedTeacher(null); }}
+                                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-semibold text-slate-600 min-w-[180px] text-center">
+                                {selectedDateLabel}
+                            </span>
+                            <button
+                                onClick={() => { setDayOffset(d => d + 1); setExpandedTeacher(null); }}
+                                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                            {!isToday && (
+                                <button
+                                    onClick={() => { setDayOffset(0); setExpandedTeacher(null); }}
+                                    className="ml-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 px-2 py-0.5 rounded-md hover:bg-indigo-50 transition-colors"
+                                >
+                                    Hoy
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100">
@@ -626,6 +746,12 @@ const ReplacementsCard = () => {
             </div>
 
             {/* Teacher sections */}
+            {teacherSections.length === 0 ? (
+                <div className="text-center py-8">
+                    <Shuffle className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                    <p className="text-slate-400 text-sm">No hay ausencias registradas para este día.</p>
+                </div>
+            ) : (
             <div className="space-y-2">
                 {teacherSections.map(teacher => {
                     const isExpanded = expandedTeacher === teacher.userId;
@@ -663,6 +789,9 @@ const ReplacementsCard = () => {
                                     >
                                         <div className="px-4 py-3 space-y-3 border-t border-slate-100">
                                             {teacher.blocks.map((block, idx) => {
+                                                const assignedLog = getAssignedLog(teacher.userId, block.startTime);
+                                                const blockKey = `${teacher.userId}-${block.startTime}`;
+                                                const isAssigning = assigning === blockKey;
                                                 const visibleCandidates = block.candidates.slice(0, VISIBLE_COUNT);
                                                 const hiddenCount = block.candidates.length - VISIBLE_COUNT;
 
@@ -678,21 +807,34 @@ const ReplacementsCard = () => {
                                                             {block.course && (
                                                                 <span className="text-xs text-slate-400">· {block.course}</span>
                                                             )}
-                                                            {block.candidates.length > 0 && (
+                                                            {!assignedLog && block.candidates.length > 0 && (
                                                                 <span className="text-[10px] text-slate-400 ml-auto">{block.candidates.length} disponibles</span>
                                                             )}
                                                         </div>
 
-                                                        {block.candidates.length > 0 ? (
+                                                        {assignedLog ? (
+                                                            <div className="ml-1">
+                                                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                                                                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                                    <span className="text-sm font-semibold text-emerald-700">Asignado: {assignedLog.replacementName}</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : block.candidates.length > 0 ? (
                                                             <div className="ml-1">
                                                                 <div className="flex flex-wrap gap-1.5">
                                                                     {visibleCandidates.map(c => {
                                                                         const style = matchColors[c.matchLevel];
                                                                         return (
-                                                                            <div
+                                                                            <button
                                                                                 key={c.userId}
-                                                                                title={`${c.name}${c.matchSubject ? ` — enseña ${c.matchSubject}` : ''}`}
-                                                                                className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold", style.bg, style.border, style.text)}
+                                                                                disabled={isAssigning}
+                                                                                onClick={() => handleAssign(teacher, block, c)}
+                                                                                title={`Asignar a ${c.name}${c.matchSubject ? ` — enseña ${c.matchSubject}` : ''}`}
+                                                                                className={cn(
+                                                                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all",
+                                                                                    style.bg, style.border, style.text,
+                                                                                    isAssigning ? "opacity-50 cursor-wait" : "hover:ring-2 hover:ring-offset-1 hover:ring-indigo-300 cursor-pointer active:scale-95"
+                                                                                )}
                                                                             >
                                                                                 <span className={cn("w-2 h-2 rounded-full shrink-0", style.dot)} />
                                                                                 <span>{c.firstName}</span>
@@ -700,12 +842,12 @@ const ReplacementsCard = () => {
                                                                                     <span className="opacity-70">({c.matchSubject})</span>
                                                                                 )}
                                                                                 <span className="opacity-50 hidden sm:inline">· {style.label}</span>
-                                                                            </div>
+                                                                            </button>
                                                                         );
                                                                     })}
                                                                     {hiddenCount > 0 && (
                                                                         <button
-                                                                            onClick={() => setDetailModal({ teacherName: teacher.userName, block })}
+                                                                            onClick={() => setDetailModal({ teacherName: teacher.userName, absentId: teacher.userId, absenceType: teacher.typeLabel, block })}
                                                                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                                                                         >
                                                                             +{hiddenCount} más
@@ -727,6 +869,7 @@ const ReplacementsCard = () => {
                     );
                 })}
             </div>
+            )}
 
             {/* Detail Modal */}
             <AnimatePresence>
@@ -760,28 +903,55 @@ const ReplacementsCard = () => {
 
                             {/* Candidates list */}
                             <div className="p-4 max-h-[60vh] overflow-y-auto space-y-1.5">
-                                {detailModal.block.candidates.map((c, i) => {
-                                    const style = matchColors[c.matchLevel];
-                                    return (
-                                        <div
-                                            key={c.userId}
-                                            className={cn("flex items-center justify-between p-3 rounded-xl border", style.bg, style.border)}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.dot)} />
-                                                <div className="min-w-0">
-                                                    <span className={cn("text-sm font-semibold block truncate", style.text)}>{c.name}</span>
-                                                    {c.matchSubject && (
-                                                        <span className="text-xs text-slate-400">Enseña {c.matchSubject}</span>
-                                                    )}
-                                                </div>
+                                {(() => {
+                                    const modalAssignedLog = getAssignedLog(detailModal.absentId, detailModal.block.startTime);
+                                    if (modalAssignedLog) {
+                                        return (
+                                            <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                                                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                                                <span className="text-sm font-semibold text-emerald-700">Asignado: {modalAssignedLog.replacementName}</span>
                                             </div>
-                                            <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0", style.bg, style.text, style.border, "border")}>
-                                                {style.label}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    }
+                                    const modalBlockKey = `${detailModal.absentId}-${detailModal.block.startTime}`;
+                                    const isModalAssigning = assigning === modalBlockKey;
+                                    return detailModal.block.candidates.map((c) => {
+                                        const style = matchColors[c.matchLevel];
+                                        return (
+                                            <div
+                                                key={c.userId}
+                                                className={cn("flex items-center justify-between p-3 rounded-xl border", style.bg, style.border)}
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.dot)} />
+                                                    <div className="min-w-0">
+                                                        <span className={cn("text-sm font-semibold block truncate", style.text)}>{c.name}</span>
+                                                        {c.matchSubject && (
+                                                            <span className="text-xs text-slate-400">Enseña {c.matchSubject}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    disabled={isModalAssigning}
+                                                    onClick={() => handleAssign(
+                                                        { userId: detailModal.absentId, userName: detailModal.teacherName, typeLabel: detailModal.absenceType },
+                                                        detailModal.block,
+                                                        c
+                                                    )}
+                                                    className={cn(
+                                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ml-2",
+                                                        isModalAssigning
+                                                            ? "bg-slate-100 text-slate-400 cursor-wait"
+                                                            : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-sm"
+                                                    )}
+                                                >
+                                                    <UserPlus className="w-3.5 h-3.5" />
+                                                    Asignar
+                                                </button>
+                                            </div>
+                                        );
+                                    });
+                                })()}
                             </div>
                         </motion.div>
                     </div>
@@ -797,7 +967,8 @@ const AdminDashboardView = () => {
     const { getLowStockItems } = useEquipment();
     const { tickets } = useTickets();
     const navigate = useNavigate();
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUser, setSelectedUser] = useState(null); // { user, variant }
+    const [detailVariant, setDetailVariant] = useState('default');
 
     // Data Integration
     const pendingTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
@@ -856,7 +1027,10 @@ const AdminDashboardView = () => {
             </motion.div>
 
             {/* Weekly Absences Widget (Full Width) */}
-            <WeeklyAbsencesWidget onSelectUser={setSelectedUser} />
+            <WeeklyAbsencesWidget
+                onSelectUser={(u) => { setSelectedUser(u); setDetailVariant('default'); }}
+                onSelectMedicalUser={(u) => { setSelectedUser(u); setDetailVariant('medical'); }}
+            />
 
             {/* Replacement Suggestions (only when absences today) */}
             <ReplacementsCard />
@@ -1011,7 +1185,7 @@ const AdminDashboardView = () => {
 
             {/* User Detail Panel (rendered outside grid to avoid overflow clipping) */}
             {selectedUser && (
-                <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} />
+                <UserDetailPanel user={selectedUser} onClose={() => setSelectedUser(null)} variant={detailVariant} />
             )}
         </div>
     );
