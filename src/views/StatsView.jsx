@@ -727,7 +727,7 @@ function getAbsenceTypeLabel(req) {
     if (req.type === 'hour_permission') return 'Horas';
     if (req.type === 'discount') return 'Descuento';
     if (req.reason?.startsWith('[Excepcion]')) return 'Excepcion';
-    if (req.isHalfDay) return '½ Dia Admin';
+    if (req.isHalfDay) return req.isHalfDay === 'am' ? '½ AM' : req.isHalfDay === 'pm' ? '½ PM' : '½ Dia Admin';
     return 'Dia Admin';
 }
 

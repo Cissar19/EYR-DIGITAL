@@ -178,7 +178,7 @@ export default function TeacherDashboard() {
                                                                 <p className="text-sm text-slate-500 capitalize">{req.reason}</p>
                                                                 {req.isHalfDay && (
                                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                                                        ½ Día Admin.
+                                                                        ½ {req.isHalfDay === 'am' ? 'Mañana' : req.isHalfDay === 'pm' ? 'Tarde' : 'Día Admin.'}
                                                                     </span>
                                                                 )}
                                                             </div>

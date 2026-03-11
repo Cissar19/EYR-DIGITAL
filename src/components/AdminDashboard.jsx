@@ -13,7 +13,10 @@ export default function AdminDashboard() {
     const pendingCount = pendingRequests.length;
 
     const handleApprove = (id) => {
-        if (confirm("¿Estás seguro de aprobar esta solicitud? Se descontará 1 día.")) {
+        const req = pendingRequests.find(r => r.id === id);
+        const periodLabel = req?.isHalfDay === 'am' ? ' (Mañana)' : req?.isHalfDay === 'pm' ? ' (Tarde)' : '';
+        const dayLabel = req?.isHalfDay ? `0.5 día${periodLabel}` : '1 día';
+        if (confirm(`¿Estás seguro de aprobar esta solicitud? Se descontará ${dayLabel}.`)) {
             const req = pendingRequests.find(r => r.id === id);
             approveRequest(id);
             if (req) {
@@ -97,6 +100,11 @@ export default function AdminDashboard() {
                                         <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
                                             <Calendar className="w-4 h-4" />
                                             <span>{req.date}</span>
+                                            {req.isHalfDay && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                    ½ {req.isHalfDay === 'am' ? 'Mañana' : req.isHalfDay === 'pm' ? 'Tarde' : 'Día'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         <p className="text-slate-600 bg-slate-50 p-3 rounded-lg text-sm mb-6 border border-slate-100 min-h-[80px]">

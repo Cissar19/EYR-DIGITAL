@@ -305,17 +305,19 @@ export default function AdminDaysTrackingView() {
 
             if (confirmSpecial) {
                 assignSpecialPermission(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
-                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: resolvedReason, details: formData.isHalfDay ? 'Medio día' : '' });
+                const halfLabel = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: resolvedReason, details: halfLabel });
                 showToast(`Solicitud especial registrada. Se notificó a ${selectedUser.name}`);
                 handleCloseAssignModal();
             }
             return;
         }
 
-        // Call the manual assignment function (Normal Flow)
+        // Call the manual assignment function (Normal Flow — goes to pending approval)
         assignDayManual(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
-        sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: resolvedReason, details: formData.isHalfDay ? 'Medio día' : '' });
-        showToast(formData.isHalfDay ? `¡Medio día asignado! Se notificó a ${selectedUser.name}` : `¡Día asignado! Se notificó a ${selectedUser.name}`);
+        const halfDetail = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+        sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: resolvedReason, details: halfDetail });
+        showToast(formData.isHalfDay ? `Medio día (${formData.isHalfDay === 'am' ? 'Mañana' : 'Tarde'}) asignado — pendiente de aprobación` : `Día asignado — pendiente de aprobación`);
         handleCloseAssignModal();
     };
 
@@ -789,8 +791,8 @@ export default function AdminDaysTrackingView() {
                                                 <div className="relative">
                                                     <input
                                                         type="checkbox"
-                                                        checked={formData.isHalfDay}
-                                                        onChange={(e) => setFormData({ ...formData, isHalfDay: e.target.checked })}
+                                                        checked={!!formData.isHalfDay}
+                                                        onChange={(e) => setFormData({ ...formData, isHalfDay: e.target.checked ? 'am' : false })}
                                                         className="sr-only peer"
                                                     />
                                                     <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
@@ -800,6 +802,35 @@ export default function AdminDaysTrackingView() {
                                                     Medio dia (descuenta 0.5)
                                                 </span>
                                             </label>
+                                            {/* AM / PM selector */}
+                                            {formData.isHalfDay && (
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData({ ...formData, isHalfDay: 'am' })}
+                                                        className={cn(
+                                                            "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                                                            formData.isHalfDay === 'am'
+                                                                ? "bg-indigo-50 border-indigo-400 text-indigo-700"
+                                                                : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
+                                                        )}
+                                                    >
+                                                        Mañana (AM)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData({ ...formData, isHalfDay: 'pm' })}
+                                                        className={cn(
+                                                            "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                                                            formData.isHalfDay === 'pm'
+                                                                ? "bg-indigo-50 border-indigo-400 text-indigo-700"
+                                                                : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
+                                                        )}
+                                                    >
+                                                        Tarde (PM)
+                                                    </button>
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <div>
