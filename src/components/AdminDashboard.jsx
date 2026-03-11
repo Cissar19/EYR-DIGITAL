@@ -22,7 +22,8 @@ export default function AdminDashboard() {
             if (req) {
                 const reqUser = users.find(u => u.id === req.userId);
                 if (reqUser) {
-                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason });
+                    const halfDetail = req.isHalfDay === 'am' ? 'Medio día (Mañana)' : req.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason, details: halfDetail });
                 }
             }
         }
@@ -30,11 +31,14 @@ export default function AdminDashboard() {
 
     const handleReject = (id) => {
         const req = pendingRequests.find(r => r.id === id);
-        rejectRequest(id);
-        if (req) {
-            const reqUser = users.find(u => u.id === req.userId);
-            if (reqUser) {
-                sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason });
+        if (confirm(`¿Rechazar solicitud de ${req?.userName}?`)) {
+            rejectRequest(id);
+            if (req) {
+                const reqUser = users.find(u => u.id === req.userId);
+                if (reqUser) {
+                    const halfDetail = req.isHalfDay === 'am' ? 'Medio día (Mañana)' : req.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason, details: halfDetail });
+                }
             }
         }
     };

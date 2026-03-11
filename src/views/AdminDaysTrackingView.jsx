@@ -197,7 +197,8 @@ export default function AdminDaysTrackingView() {
             if (req) {
                 const reqUser = allUsers.find(u => u.id === req.userId);
                 if (reqUser) {
-                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason });
+                    const halfDetail = req.isHalfDay === 'am' ? 'Medio día (Mañana)' : req.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'approval', date: req.date, reason: req.reason, details: halfDetail });
                 }
             }
         }
@@ -210,7 +211,8 @@ export default function AdminDaysTrackingView() {
             if (req) {
                 const reqUser = allUsers.find(u => u.id === req.userId);
                 if (reqUser) {
-                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason });
+                    const halfDetail = req.isHalfDay === 'am' ? 'Medio día (Mañana)' : req.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                    sendAssignmentEmail({ toEmail: reqUser.email, toName: reqUser.name, actionType: 'rejection', date: req.date, reason: req.reason, details: halfDetail });
                 }
             }
         }

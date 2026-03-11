@@ -18,19 +18,23 @@ export function sendAssignmentEmail({ toEmail, toName, actionType, date, reason,
         return;
     }
 
+    const payload = {
+        secret: APPS_SCRIPT_SECRET,
+        toEmail,
+        toName,
+        actionType,
+        date,
+        reason: reason || 'Sin motivo especificado',
+        details: details || '',
+    };
+
+    console.log('[EmailService] Enviando email:', { toEmail, toName, actionType, date });
+
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-            secret: APPS_SCRIPT_SECRET,
-            toEmail,
-            toName,
-            actionType,
-            date,
-            reason: reason || 'Sin motivo especificado',
-            details: details || '',
-        }),
+        body: JSON.stringify(payload),
         redirect: 'follow',
     }).catch((error) => {
         console.error('[EmailService] Error al enviar email:', error);
