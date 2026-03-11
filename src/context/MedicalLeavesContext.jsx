@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { createDocument, removeDocument } from '../lib/firestoreService';
+import { createDocument, removeDocument, updateDocument } from '../lib/firestoreService';
+import { addBusinessDays } from '../lib/businessDays';
+import { sendExpiryNotification } from '../lib/notificationService';
 import { useAuth } from './AuthContext';
 import { validateDate, validateRequiredString, validateUserId, validatePositiveNumber, sanitizeText, sanitizeName } from '../lib/validation';
 
@@ -31,6 +33,42 @@ export const MedicalLeavesProvider = ({ children }) => {
 
         return () => unsubscribe();
     }, []);
+
+    // Check for expired medical leaves and notify admin
+    useEffect(() => {
+        if (loading || !user || !MANAGEMENT_ROLES.includes(user.role) || leaves.length === 0) return;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        leaves.forEach((leave) => {
+            if (!leave.endDate || leave.endDate >= today) return;
+            if (leave.notifiedExpiry) return;
+
+            const deadlineDate = addBusinessDays(leave.endDate, 3);
+            if (today < deadlineDate) return;
+
+            // Check if user has another leave starting before the deadline
+            const hasCoveringLeave = leaves.some(
+                (other) =>
+                    other.id !== leave.id &&
+                    other.userId === leave.userId &&
+                    other.startDate &&
+                    other.startDate <= deadlineDate
+                    && other.startDate > leave.endDate
+            );
+            if (hasCoveringLeave) return;
+
+            sendExpiryNotification({
+                employeeName: leave.userName,
+                leaveEndDate: leave.endDate,
+                deadlineDate,
+            });
+
+            updateDocument('medical_leaves', leave.id, { notifiedExpiry: true }).catch((err) => {
+                console.error('[MedicalLeaves] Error marcando notifiedExpiry:', err);
+            });
+        });
+    }, [leaves, loading, user]);
 
     const addLeave = React.useCallback(async (userId, userName, startDate, endDate, days, diagnosis, returnDate) => {
         if (!user || !MANAGEMENT_ROLES.includes(user.role)) {

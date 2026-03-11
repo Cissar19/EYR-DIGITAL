@@ -47,3 +47,4 @@ export function sendAssignmentEmail({ toEmail, toName, actionType, date, reason,
         console.error('[EmailService] Error al enviar email:', error);
     });
 }
+
