@@ -1,26 +1,45 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth, getRoleLabel } from '../context/AuthContext';
-import { User, Bell, Search, Menu, LogOut, Settings, ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useAuth, getRoleLabel, ROLES } from '../context/AuthContext';
+import { useSchedule } from '../context/ScheduleContext';
+import { User, Bell, Search, Menu, LogOut, Settings, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Topbar({ onMenuClick }) {
-    const { user, logout } = useAuth();
+    const { user, logout, users, canEdit } = useAuth();
+    const { schedules } = useSchedule();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isBellOpen, setIsBellOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const bellRef = useRef(null);
+    const userCanEdit = canEdit();
 
-    // Close dropdown when clicking outside
+    // Teachers without schedules
+    const teachersWithoutSchedule = useMemo(() => {
+        if (!userCanEdit) return [];
+        return users
+            .filter(u => u.role === ROLES.TEACHER)
+            .filter(u => !schedules[u.id] || schedules[u.id].length === 0)
+            .map(u => u.name);
+    }, [users, schedules, userCanEdit]);
+
+    const alertCount = teachersWithoutSchedule.length;
+
+    // Close dropdowns when clicking outside
     useEffect(() => {
         function handleClickOutside(event) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
+            }
+            if (bellRef.current && !bellRef.current.contains(event.target)) {
+                setIsBellOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [dropdownRef]);
+    }, []);
 
     return (
         <header className="sticky top-0 z-40 px-4 md:px-8 h-16 md:h-20 flex items-center justify-between bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all">
@@ -49,10 +68,82 @@ export default function Topbar({ onMenuClick }) {
             <div className="flex items-center gap-3 md:gap-5">
 
                 {/* Notification Bell */}
-                <button className="relative p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse"></span>
-                </button>
+                {userCanEdit && (
+                    <div className="relative" ref={bellRef}>
+                        <button
+                            onClick={() => setIsBellOpen(!isBellOpen)}
+                            className="relative p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all active:scale-95"
+                        >
+                            <Bell className="w-5 h-5" />
+                            {alertCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full ring-2 ring-white px-1">
+                                    {alertCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <AnimatePresence>
+                            {isBellOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                                    transition={{ duration: 0.15, ease: "easeOut" }}
+                                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden origin-top-right"
+                                >
+                                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                        <span className="text-sm font-bold text-slate-700">Alertas</span>
+                                    </div>
+
+                                    <div className="max-h-72 overflow-y-auto">
+                                        {alertCount === 0 ? (
+                                            <div className="px-4 py-6 text-center text-slate-400 text-sm">
+                                                No hay alertas pendientes.
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100">
+                                                    <p className="text-xs font-semibold text-amber-700">
+                                                        {alertCount} docente{alertCount !== 1 && 's'} sin horario cargado
+                                                    </p>
+                                                    <p className="text-[11px] text-amber-600 mt-0.5">
+                                                        No aparecerán en posibles reemplazos.
+                                                    </p>
+                                                </div>
+                                                {teachersWithoutSchedule.map((name, i) => (
+                                                    <div key={i} className="px-4 py-2.5 flex items-center gap-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors">
+                                                        <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-[11px] font-bold shrink-0">
+                                                            {name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-sm text-slate-700 truncate">{name}</span>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {alertCount > 0 && (
+                                        <Link
+                                            to="/schedules"
+                                            onClick={() => setIsBellOpen(false)}
+                                            className="block px-4 py-2.5 text-center text-xs font-semibold text-indigo-600 hover:bg-indigo-50 border-t border-slate-100 transition-colors"
+                                        >
+                                            Ir a Gestionar Horarios
+                                        </Link>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
+
+                {/* Bell for non-admin (no dropdown) */}
+                {!userCanEdit && (
+                    <button className="relative p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all active:scale-95">
+                        <Bell className="w-5 h-5" />
+                    </button>
+                )}
 
                 {/* Profile Dropdown Trigger */}
                 <div className="relative" ref={dropdownRef}>
@@ -106,7 +197,7 @@ export default function Topbar({ onMenuClick }) {
                                         onClick={() => setIsDropdownOpen(false)}
                                     >
                                         <Settings className="w-4 h-4 text-slate-400" />
-                                        <span>Configuración</span>
+                                        <span>Configuracion</span>
                                     </Link>
                                 </div>
 
@@ -121,7 +212,7 @@ export default function Topbar({ onMenuClick }) {
                                         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
                                     >
                                         <LogOut className="w-4 h-4" />
-                                        <span>Cerrar Sesión</span>
+                                        <span>Cerrar Sesion</span>
                                     </button>
                                 </div>
                             </motion.div>
