@@ -1,0 +1,2438 @@
+[
+  {
+    "teacherName": "Belén Leal",
+    "blocks": [
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Claudia Pincheira",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Coordinación PIE",
+        "course": ""
+      }
+    ]
+  },
+  {
+    "teacherName": "Constanza Vargas",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Orientación",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "Taller Len",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "Taller Len",
+        "course": "8° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Corina Camilo",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Coordinación PIE",
+        "course": ""
+      }
+    ]
+  },
+  {
+    "teacherName": "Daniela Alvarado",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Música",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Música",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Orientación",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Música",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Música",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Música",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Música",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "Música",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Música",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "Música",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "Música",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Música",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "Música",
+        "course": "2° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Daniela Lobos",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "Coordinación PIE",
+        "course": ""
+      }
+    ]
+  },
+  {
+    "teacherName": "Eduardo Baeza",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "8° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Filippa Leporati",
+    "blocks": [
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Artes",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Artes",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Artes",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Artes",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Artes",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Artes",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Música/Arte",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Artes",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Artes",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "Música/Arte",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Artes",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "Artes",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Artes",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "Artes",
+        "course": "6° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Francisco Pérez",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Ed. Física",
+        "course": "Prekinder A"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Ed. Física",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Ed. Física",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Ed. Física",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Orientación",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Ed. Física",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Ed. Física",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Ed. Física",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Ed. Física",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Ed. Física",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Ed. Física",
+        "course": "Kinder A"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Ed. Física",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Ed. Física",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Ed. Física",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Ed. Física",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Ed. Física",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Ed. Física",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Ed. Física",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Ed. Física",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Ed. Física",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "Ed. Física",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Ed. Física",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Ed. Física",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Ed. Física",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Ed. Física",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Ed. Física",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Ed. Física",
+        "course": "8° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Juan Figueroa",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Tecnología",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Orientación",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "C. Nat",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "C. Nat",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "T. Lenguaje",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "T. Lenguaje",
+        "course": "2° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Leslye Valencia",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Tecnología",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Tecnología",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Tecnología",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Tecnología",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Tecnología",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Orientación",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Tecnología",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "T. Lenguaje",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "T. Lenguaje",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "T. Lenguaje",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "T. Lenguaje",
+        "course": "4° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Manuel Astudillo",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Matemática",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "Orientación",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "4° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Marisol Molina",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Tecnología",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Orientación",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "C. Nat",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Leng. y Lit.",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "T. Lenguaje",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "T. Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "C. Nat",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "T. Lenguaje",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "T. Matemática",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "1° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "María Eugenia Fuentes",
+    "blocks": [
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "Religión",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "Religión / FC",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "María José Silva",
+    "blocks": [
+      {
+        "day": "Miércoles",
+        "startTime": "10:15",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:15",
+        "subject": "Coordinación PIE",
+        "course": ""
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Coordinación PIE",
+        "course": ""
+      }
+    ]
+  },
+  {
+    "teacherName": "Pamela Olivero",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:00",
+        "subject": "Jefatura",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "C. Nat",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "C. Nat",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "Orientación",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "C. Nat",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "C. Nat",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:55",
+        "subject": "C. Nat",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "C. Nat",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "C. Nat",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "C. Nat",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "C. Nat",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "C. Nat",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "C. Nat",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "C. Nat",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "C. Nat",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "C. Nat",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "C. Nat",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "C. Nat",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "C. Nat",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "T. Ciencias",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "T. Lenguaje",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "T. Ciencias",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "C. Nat",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "T. Ciencias",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "T. Lenguaje",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "T. Ciencias",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "14:40",
+        "subject": "C. Nat",
+        "course": "3° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Virna Caniupil",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "Inglés",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "Inglés",
+        "course": "2° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "09:55",
+        "subject": "Inglés",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Inglés",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "Inglés",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "10:40",
+        "subject": "Inglés",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Inglés",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "Inglés",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "Inglés",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "Inglés",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "Inglés",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "Inglés",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "Inglés",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "12:25",
+        "subject": "Inglés",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "Inglés",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "Inglés",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "Inglés",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Inglés",
+        "course": "1° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "Inglés",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "Inglés",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "Inglés",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Inglés",
+        "course": "1° Básico"
+      }
+    ]
+  },
+  {
+    "teacherName": "Álvaro Jara",
+    "blocks": [
+      {
+        "day": "Lunes",
+        "startTime": "08:10",
+        "subject": "H. G. y Cs. S.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:10",
+        "subject": "H. G. y Cs. S.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:10",
+        "subject": "H. G. y Cs. S.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:10",
+        "subject": "H. G. y Cs. S.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "08:10",
+        "subject": "H. G. y Cs. S.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "08:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "3° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "08:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "08:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "08:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "09:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "09:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "09:55",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "10:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "10:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "10:40",
+        "subject": "Religión / FC",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "11:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "11:40",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "12:25",
+        "subject": "H. G. y Cs. S.",
+        "course": "7° Básico"
+      },
+      {
+        "day": "Viernes",
+        "startTime": "12:25",
+        "subject": "Religión / FC",
+        "course": "4° Básico"
+      },
+      {
+        "day": "Lunes",
+        "startTime": "13:55",
+        "subject": "H. G. y Cs. S.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "13:55",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      },
+      {
+        "day": "Jueves",
+        "startTime": "13:55",
+        "subject": "Centro Estudiantes",
+        "course": ""
+      },
+      {
+        "day": "Lunes",
+        "startTime": "14:40",
+        "subject": "H. G. y Cs. S.",
+        "course": "5° Básico"
+      },
+      {
+        "day": "Martes",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "6° Básico"
+      },
+      {
+        "day": "Miércoles",
+        "startTime": "14:40",
+        "subject": "Religión / FC",
+        "course": "8° Básico"
+      }
+    ]
+  }
+]
