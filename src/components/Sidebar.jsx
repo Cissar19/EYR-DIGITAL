@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, PanelLeftClose, BarChart3, HeartPulse, Shuffle } from 'lucide-react';
+import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, PanelLeftClose, BarChart3, HeartPulse, Shuffle, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import logoEyr from '../assets/logo_eyr.png';
@@ -67,6 +67,12 @@ const ROLE_SPECIFIC_ITEMS = [
         icon: Shuffle,
         path: '/admin/replacements',
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR]
+    },
+    {
+        name: 'Convivencia Escolar',
+        icon: Shield,
+        path: '/convivencia',
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.CONVIVENCIA]
     },
     {
         name: 'Estadísticas',

@@ -8,7 +8,7 @@ import { cn } from '../lib/utils';
 const Switch = ({ checked, onChange, label }) => {
     return (
         <label className="flex items-center justify-between cursor-pointer group py-3">
-            <span className="text-[15px] font-medium text-slate-800 select-none">
+            <span className="text-sm md:text-base font-medium text-slate-800 select-none">
                 {label}
             </span>
             <div
@@ -117,7 +117,7 @@ const TeacherView = () => {
             {/* Left Column: New Request (2/5) */}
             <div className="lg:col-span-2">
                 <div className="bg-white rounded-[20px] shadow-sm border border-slate-100/50 p-5 md:p-8">
-                    <h3 className="text-[22px] font-semibold text-slate-900 mb-6">
+                    <h3 className="text-xl md:text-2xl font-semibold text-slate-900 mb-6">
                         Nueva Solicitud
                     </h3>
 
@@ -139,7 +139,7 @@ const TeacherView = () => {
                                             <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mb-3">
                                                 <FileText className="w-7 h-7 text-blue-600" />
                                             </div>
-                                            <p className="text-[15px] font-semibold text-blue-700 truncate max-w-full px-4 mb-1">
+                                            <p className="text-sm md:text-base font-semibold text-blue-700 truncate max-w-full px-4 mb-1">
                                                 {fileName}
                                             </p>
                                             <p className="text-[13px] text-blue-500">
@@ -151,7 +151,7 @@ const TeacherView = () => {
                                             <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                                                 <Upload className="w-7 h-7 text-slate-400" />
                                             </div>
-                                            <p className="text-[15px] font-medium text-slate-700 mb-1">
+                                            <p className="text-sm md:text-base font-medium text-slate-700 mb-1">
                                                 Seleccionar archivo
                                             </p>
                                             <p className="text-[13px] text-slate-400">
@@ -172,7 +172,7 @@ const TeacherView = () => {
 
                         {/* Copies */}
                         <div className="space-y-2">
-                            <label className="text-[15px] font-medium text-slate-700">
+                            <label className="text-sm md:text-base font-medium text-slate-700">
                                 Cantidad de Copias
                             </label>
                             <input
@@ -181,13 +181,13 @@ const TeacherView = () => {
                                 max="100"
                                 value={copies}
                                 onChange={(e) => setCopies(parseInt(e.target.value))}
-                                className="w-full bg-white border border-slate-200 text-slate-900 text-[17px] rounded-[12px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-3.5 transition-all outline-none font-medium"
+                                className="w-full bg-white border border-slate-200 text-slate-900 text-base md:text-lg rounded-[12px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 p-3.5 transition-all outline-none font-medium"
                             />
                         </div>
 
                         {/* Options - iOS Switches */}
                         <div className="space-y-1 pt-2">
-                            <label className="text-[15px] font-medium text-slate-700 mb-3 block">
+                            <label className="text-sm md:text-base font-medium text-slate-700 mb-3 block">
                                 Opciones de Impresión
                             </label>
 
@@ -231,7 +231,7 @@ const TeacherView = () => {
                             type="submit"
                             disabled={!fileName}
                             className={cn(
-                                "w-full flex items-center justify-center gap-2 px-5 py-4 rounded-[12px] font-semibold text-[17px] transition-all duration-200 mt-6",
+                                "w-full flex items-center justify-center gap-2 px-5 py-4 rounded-[12px] font-semibold text-base md:text-lg transition-all duration-200 mt-6",
                                 fileName
                                     ? "bg-blue-500 text-white hover:bg-blue-600 active:scale-[0.98] shadow-sm"
                                     : "bg-slate-100 text-slate-400 cursor-not-allowed"
@@ -246,7 +246,7 @@ const TeacherView = () => {
 
             {/* Right Column: Request History (3/5) */}
             <div className="lg:col-span-3 space-y-5">
-                <h3 className="text-[22px] font-semibold text-slate-900">
+                <h3 className="text-xl md:text-2xl font-semibold text-slate-900">
                     Mis Solicitudes
                 </h3>
 
@@ -255,10 +255,10 @@ const TeacherView = () => {
                         <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
                             <Printer className="w-10 h-10 text-slate-300" />
                         </div>
-                        <p className="text-slate-500 font-medium text-[17px] mb-1">
+                        <p className="text-slate-500 font-medium text-base md:text-lg mb-1">
                             No hay solicitudes
                         </p>
-                        <p className="text-slate-400 text-[15px]">
+                        <p className="text-slate-400 text-sm md:text-base">
                             Tus pedidos aparecerán aquí
                         </p>
                     </div>
@@ -279,10 +279,10 @@ const TeacherView = () => {
                                                 <FileText className="w-5 h-5 text-slate-500" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-semibold text-slate-900 text-[17px] truncate mb-1">
+                                                <h4 className="font-semibold text-slate-900 text-base md:text-lg truncate mb-1">
                                                     {request.fileName}
                                                 </h4>
-                                                <p className="text-[15px] text-slate-500">
+                                                <p className="text-sm md:text-base text-slate-500">
                                                     {request.copies} {request.copies === 1 ? 'copia' : 'copias'}
                                                     {request.doubleSided && ' • Doble cara'}
                                                     {request.isColor && ' • Color'}
@@ -355,7 +355,7 @@ const PrinterView = () => {
 
     const getFilterButtonClass = (filterType) => {
         return cn(
-            "px-4 py-2 rounded-[10px] text-[15px] font-semibold transition-all duration-200",
+            "px-4 py-2 rounded-[10px] text-sm md:text-base font-semibold transition-all duration-200",
             filter === filterType
                 ? "bg-blue-500 text-white shadow-sm"
                 : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
@@ -367,17 +367,17 @@ const PrinterView = () => {
             {/* Header with Stats */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl md:text-[28px] font-bold text-slate-900 flex items-center gap-3">
+                    <h2 className="text-xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
                         <Users className="w-7 h-7 md:w-8 md:h-8 text-blue-500" />
                         Cola de Impresión General
                     </h2>
-                    <p className="text-[15px] text-slate-500 mt-1">
+                    <p className="text-sm md:text-base text-slate-500 mt-1">
                         Gestiona las solicitudes de todos los docentes
                     </p>
                 </div>
                 <div className="bg-white rounded-[16px] px-6 py-4 border border-slate-100 shadow-sm">
-                    <div className="text-[13px] text-slate-500 font-medium">Total Pendientes</div>
-                    <div className="text-[28px] font-bold text-blue-600">
+                    <div className="text-xs md:text-sm text-slate-500 font-medium">Total Pendientes</div>
+                    <div className="text-2xl md:text-3xl font-bold text-blue-600">
                         {allRequests.filter(r => r.status === 'pending' || r.status === 'reviewing').length}
                     </div>
                 </div>
@@ -411,10 +411,10 @@ const PrinterView = () => {
                     <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
                         <Printer className="w-10 h-10 text-slate-300" />
                     </div>
-                    <p className="text-slate-500 font-medium text-[17px] mb-1">
+                    <p className="text-slate-500 font-medium text-base md:text-lg mb-1">
                         No hay solicitudes {filter === 'pending' ? 'pendientes' : filter === 'completed' ? 'completadas' : 'rechazadas'}
                     </p>
-                    <p className="text-slate-400 text-[15px]">
+                    <p className="text-slate-400 text-sm md:text-base">
                         Las solicitudes aparecerán aquí
                     </p>
                 </div>
@@ -451,7 +451,7 @@ const PrinterView = () => {
                                             )}
                                         </div>
 
-                                        <p className="text-[15px] text-slate-600 font-medium mb-2">
+                                        <p className="text-sm md:text-base text-slate-600 font-medium mb-2">
                                             👤 {request.userName}
                                         </p>
 
@@ -492,21 +492,21 @@ const PrinterView = () => {
                                     <div className="flex flex-wrap gap-2 shrink-0 w-full md:w-auto">
                                         <button
                                             onClick={() => handleReview(request.id)}
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-500 text-white rounded-[10px] font-semibold text-[15px] hover:bg-purple-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-500 text-white rounded-[10px] font-semibold text-sm md:text-base hover:bg-purple-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
                                         >
                                             <Eye className="w-4 h-4" />
                                             Revisar
                                         </button>
                                         <button
                                             onClick={() => handleApprove(request.id)}
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-[10px] font-semibold text-[15px] hover:bg-emerald-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-[10px] font-semibold text-sm md:text-base hover:bg-emerald-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
                                         >
                                             <CheckCheck className="w-4 h-4" />
                                             Listo
                                         </button>
                                         <button
                                             onClick={() => handleReject(request.id)}
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-[10px] font-semibold text-[15px] hover:bg-red-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-[10px] font-semibold text-sm md:text-base hover:bg-red-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
                                         >
                                             <XCircle className="w-4 h-4" />
                                             Rechazar
@@ -518,14 +518,14 @@ const PrinterView = () => {
                                     <div className="flex flex-wrap gap-2 shrink-0 w-full md:w-auto">
                                         <button
                                             onClick={() => handleApprove(request.id)}
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-[10px] font-semibold text-[15px] hover:bg-emerald-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-[10px] font-semibold text-sm md:text-base hover:bg-emerald-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
                                         >
                                             <CheckCheck className="w-4 h-4" />
                                             Listo
                                         </button>
                                         <button
                                             onClick={() => handleReject(request.id)}
-                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-[10px] font-semibold text-[15px] hover:bg-red-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
+                                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-[10px] font-semibold text-sm md:text-base hover:bg-red-600 active:scale-95 transition-all shadow-sm w-full md:w-auto"
                                         >
                                             <XCircle className="w-4 h-4" />
                                             Rechazar
@@ -567,10 +567,10 @@ export default function PrintsView() {
         <div className="max-w-7xl mx-auto space-y-6 pb-10 font-[system-ui,-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Segoe_UI',sans-serif]">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-2xl md:text-[34px] font-bold text-slate-900 tracking-tight leading-tight mb-2">
+                <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight mb-2">
                     Centro de Copiado
                 </h1>
-                <p className="text-[17px] text-slate-500">
+                <p className="text-base md:text-lg text-slate-500">
                     {user.role === 'printer'
                         ? 'Panel de gestión para el encargado de impresiones'
                         : 'Envía tus documentos sin hacer fila'}

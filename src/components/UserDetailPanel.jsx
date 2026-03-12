@@ -136,7 +136,7 @@ export default function UserDetailPanel({ user, onClose, variant = 'default' }) 
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
                 transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-                className="fixed right-0 top-0 h-screen w-full md:w-[440px] bg-slate-50 shadow-2xl z-[70] flex flex-col"
+                className="fixed right-0 top-0 h-screen w-full md:w-[440px] max-w-full bg-slate-50 shadow-2xl z-[70] flex flex-col overflow-hidden"
             >
                 {/* Close button */}
                 <button

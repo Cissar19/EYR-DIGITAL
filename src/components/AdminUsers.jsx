@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminUsers() {
@@ -165,6 +165,13 @@ export default function AdminUsers() {
                     textColor: 'text-orange-600',
                     label: 'Inspectoría',
                     icon: Eye
+                };
+            case ROLES.CONVIVENCIA:
+                return {
+                    bgColor: 'bg-rose-100',
+                    textColor: 'text-rose-600',
+                    label: 'Convivencia Escolar',
+                    icon: Heart
                 };
             default:
                 return {
@@ -438,9 +445,9 @@ export default function AdminUsers() {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
                         >
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                                 <h3 className="text-lg font-bold text-slate-800">
                                     {editingUserId ? 'Editar Usuario' : 'Nuevo Miembro'}
                                 </h3>
@@ -449,7 +456,7 @@ export default function AdminUsers() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-1">Nombre Completo</label>
                                     <input
@@ -541,6 +548,17 @@ export default function AdminUsers() {
                                             <Eye className="w-4 h-4" />
                                             Inspectoría
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, role: 'convivencia' })}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'convivencia'
+                                                    ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <Heart className="w-4 h-4" />
+                                            Convivencia
+                                        </button>
                                     </div>
                                 </div>
 
@@ -573,7 +591,7 @@ export default function AdminUsers() {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border-4 border-indigo-50"
+                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden border-4 border-indigo-50"
                         >
                             <div className="p-6 border-b border-indigo-100 flex justify-between items-center bg-indigo-50/50">
                                 <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
@@ -584,7 +602,7 @@ export default function AdminUsers() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleAttributesSubmit} className="p-6 space-y-5">
+                            <form onSubmit={handleAttributesSubmit} className="p-4 md:p-6 space-y-5">
                                 <div className="bg-blue-50 p-4 rounded-xl text-sm text-blue-800 mb-4">
                                     Configura la carga académica para este docente. Esto afectará cómo se muestra en los horarios y reportes.
                                 </div>
@@ -643,9 +661,9 @@ export default function AdminUsers() {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
                         >
-                            <div className="p-6 border-b border-red-100 flex justify-between items-center bg-red-50">
+                            <div className="p-4 md:p-6 border-b border-red-100 flex justify-between items-center bg-red-50">
                                 <h3 className="text-lg font-bold text-red-800 flex items-center gap-2">
                                     <div className="bg-red-100 p-1.5 rounded-full">
                                         <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -657,7 +675,7 @@ export default function AdminUsers() {
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-4">
+                            <div className="p-4 md:p-6 space-y-4">
                                 <p className="text-slate-600 font-medium">
                                     Estás a punto de borrar todos los datos y restaurar la configuración de fábrica con los usuarios originales.
                                     <br /><br />
@@ -697,9 +715,9 @@ export default function AdminUsers() {
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                            className="bg-white rounded-2xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full overflow-hidden"
                         >
-                            <div className="p-6 space-y-4">
+                            <div className="p-4 md:p-6 space-y-4">
                                 {/* Icon + Title Section */}
                                 <div className="flex items-start gap-4">
                                     {/* Alert Icon */}

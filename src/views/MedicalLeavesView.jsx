@@ -83,10 +83,8 @@ export default function MedicalLeavesView() {
     };
 
     const relevantUsers = allUsers.filter(user =>
-        user.role === ROLES.TEACHER ||
-        user.role === ROLES.ADMIN ||
-        user.role === ROLES.STAFF ||
-        user.role === ROLES.DIRECTOR
+        user.role !== ROLES.SUPER_ADMIN &&
+        user.role !== ROLES.PRINTER
     );
 
     // All leaves, filtered by search

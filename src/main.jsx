@@ -14,6 +14,7 @@ import { EquipmentProvider } from './context/EquipmentContext.jsx'
 import { ScheduleProvider } from './context/ScheduleContext.jsx'
 import { MedicalLeavesProvider } from './context/MedicalLeavesContext.jsx'
 import { ReplacementLogsProvider } from './context/ReplacementLogsContext.jsx'
+import { ConvivenciaProvider } from './context/ConvivenciaContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -34,7 +35,9 @@ const DataProviders = ({ children }) => {
               <ScheduleProvider>
                 <MedicalLeavesProvider>
                   <ReplacementLogsProvider>
-                    {children}
+                    <ConvivenciaProvider>
+                      {children}
+                    </ConvivenciaProvider>
                   </ReplacementLogsProvider>
                 </MedicalLeavesProvider>
               </ScheduleProvider>

@@ -24,6 +24,7 @@ import AdminDaysTrackingView from './views/AdminDaysTrackingView';
 import StatsView from './views/StatsView';
 import MedicalLeavesView from './views/MedicalLeavesView';
 import ReplacementLogsView from './views/ReplacementLogsView';
+import ConvivenciaReservation from './components/ConvivenciaReservation';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -203,6 +204,7 @@ export default function App() {
           <Route path="/admin/stats" element={<StatsView />} />
           <Route path="/admin/medical-leaves" element={<MedicalLeavesView />} />
           <Route path="/admin/replacements" element={<ReplacementLogsView />} />
+          <Route path="/convivencia" element={<ConvivenciaReservation />} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

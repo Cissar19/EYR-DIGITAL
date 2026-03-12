@@ -80,10 +80,8 @@ export default function AdminDaysTrackingView() {
 
     // Filter users by role (exclude super_admin and printer)
     const relevantUsers = MOCK_USERS.filter(user =>
-        user.role === ROLES.TEACHER ||
-        user.role === ROLES.ADMIN ||
-        user.role === ROLES.STAFF ||
-        user.role === ROLES.DIRECTOR
+        user.role !== ROLES.SUPER_ADMIN &&
+        user.role !== ROLES.PRINTER
     );
 
     // Filter by search query (accent-insensitive, case-insensitive)
@@ -673,7 +671,7 @@ export default function AdminDaysTrackingView() {
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full p-5 md:p-8">
                                 {/* Modal Header */}
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-3">

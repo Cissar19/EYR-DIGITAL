@@ -148,7 +148,7 @@ export default function ScheduleAdminView() {
     const horasInfo = canShowSchedule ? calcularHoras() : null;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4 md:p-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <motion.div
@@ -156,13 +156,13 @@ export default function ScheduleAdminView() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-8"
                 >
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-xl shadow-blue-300/50">
-                                <CalendarClock className="w-8 h-8 text-white" />
+                            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl shadow-blue-300/50 shrink-0">
+                                <CalendarClock className="w-6 h-6 md:w-8 md:h-8 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-4xl font-light text-slate-900 tracking-tight">
+                                <h1 className="text-2xl md:text-4xl font-light text-slate-900 tracking-tight">
                                     Gestión de Horarios
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
@@ -276,7 +276,7 @@ export default function ScheduleAdminView() {
                                         Asignar tiempo completo — llena todos los bloques de clase con un solo curso
                                     </p>
                                     <div className="flex flex-wrap items-end gap-4">
-                                        <div className="flex-1 min-w-[180px]">
+                                        <div className="flex-1 min-w-0 w-full md:min-w-[180px]">
                                             <label className="text-xs font-medium text-teal-700 mb-1 block">Curso</label>
                                             <div className="relative">
                                                 <select
@@ -292,7 +292,7 @@ export default function ScheduleAdminView() {
                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400 pointer-events-none" />
                                             </div>
                                         </div>
-                                        <div className="flex-1 min-w-[180px]">
+                                        <div className="flex-1 min-w-0 w-full md:min-w-[180px]">
                                             <label className="text-xs font-medium text-teal-700 mb-1 block">Asignatura (opcional)</label>
                                             <div className="relative">
                                                 <select

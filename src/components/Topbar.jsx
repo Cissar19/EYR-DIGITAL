@@ -89,7 +89,7 @@ export default function Topbar({ onMenuClick }) {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -4, scale: 0.97 }}
                                     transition={{ duration: 0.15, ease: "easeOut" }}
-                                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden origin-top-right"
+                                    className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden origin-top-right"
                                 >
                                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                                         <AlertTriangle className="w-4 h-4 text-amber-500" />

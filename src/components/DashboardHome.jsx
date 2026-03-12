@@ -27,6 +27,7 @@ import {
     UserX,
     BarChart3,
     Shuffle,
+    FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -36,6 +37,7 @@ import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import UserDetailPanel from './UserDetailPanel';
+import { exportAbsencesPDF } from '../lib/pdfExport';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -195,6 +197,8 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { users } = useAuth();
+    const { schedules } = useSchedule();
+    const { logs } = useReplacementLogs();
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDay, setSelectedDay] = useState(null);
 
@@ -296,6 +300,96 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
         grouped[a.typeLabel].push(a);
     });
 
+    // Compute replacement data for PDF export (mirrors ReplacementsCard logic)
+    const pdfReplacementData = useMemo(() => {
+        if (!selectedDay) return null;
+        const targetStr = selectedDay;
+        const d = new Date(targetStr + 'T12:00:00');
+        const dayName = DAY_NAMES_FULL[d.getDay()];
+
+        const absentMap = new Map();
+        requests
+            .filter(r => (r.status === 'approved' || r.status === 'pending') && r.date === targetStr && r.type !== 'discount' && r.type !== 'hour_return')
+            .forEach(r => {
+                let typeLabel = r.isHalfDay ? (r.isHalfDay === 'am' ? '½ AM' : r.isHalfDay === 'pm' ? '½ PM' : '½ Día Admin.') : 'Día Admin.';
+                if (r.type === 'hour_permission') typeLabel = 'Permiso Horas';
+                if (!absentMap.has(r.userId)) {
+                    absentMap.set(r.userId, { userId: r.userId, userName: r.userName, typeLabel });
+                }
+            });
+        leaves
+            .filter(l => l.startDate && l.endDate && targetStr >= l.startDate && targetStr <= l.endDate)
+            .forEach(l => {
+                if (!absentMap.has(l.userId)) {
+                    absentMap.set(l.userId, { userId: l.userId, userName: l.userName, typeLabel: 'Licencia Médica' });
+                }
+            });
+        if (absentMap.size === 0) return null;
+        const absentIds = new Set(absentMap.keys());
+
+        const busyByUser = {};
+        for (const [uid, blocks] of Object.entries(schedules)) {
+            if (!blocks) continue;
+            busyByUser[uid] = new Set(blocks.filter(b => b.day === dayName).map(b => b.startTime));
+        }
+        logs.filter(l => l.date === targetStr).forEach(l => {
+            if (!busyByUser[l.replacementId]) busyByUser[l.replacementId] = new Set();
+            busyByUser[l.replacementId].add(l.startTime);
+        });
+
+        const teacherSections = [];
+        let totalUncovered = 0;
+        for (const absent of absentMap.values()) {
+            const userBlocks = (schedules[absent.userId] || [])
+                .filter(b => b.day === dayName && b.startTime !== '08:00');
+            if (userBlocks.length === 0) continue;
+            const blockDetails = [];
+            for (const block of userBlocks) {
+                totalUncovered++;
+                const schedBlock = SCHEDULE_BLOCKS.find(sb => sb.start === block.startTime);
+                const timeLabel = schedBlock ? schedBlock.start : block.startTime;
+                const candidates = [];
+                for (const u of users) {
+                    if (absentIds.has(u.id) || u.id === absent.userId) continue;
+                    const eligible = u.canReplace !== undefined ? u.canReplace : u.role === 'teacher';
+                    if (!eligible) continue;
+                    const userBusy = busyByUser[u.id];
+                    if (userBusy && userBusy.has(block.startTime)) continue;
+                    const userSubjects = new Set((schedules[u.id] || []).map(b => b.subject).filter(Boolean));
+                    let matchLevel = 'available';
+                    let matchSubject = null;
+                    if (block.subject && userSubjects.has(block.subject)) {
+                        matchLevel = 'exact'; matchSubject = block.subject;
+                    } else if (block.subject && RELATED_SUBJECTS[block.subject]) {
+                        for (const rel of RELATED_SUBJECTS[block.subject]) {
+                            if (userSubjects.has(rel)) { matchLevel = 'related'; matchSubject = rel; break; }
+                        }
+                    }
+                    candidates.push({ userId: u.id, name: u.name, firstName: u.name.split(' ')[0], matchLevel, matchSubject });
+                }
+                const order = { exact: 0, related: 1, available: 2 };
+                candidates.sort((a, b) => order[a.matchLevel] - order[b.matchLevel]);
+                blockDetails.push({ startTime: timeLabel, subject: block.subject, course: block.course, candidates });
+            }
+            if (blockDetails.length > 0) teacherSections.push({ ...absent, blocks: blockDetails });
+        }
+        if (teacherSections.length === 0) return null;
+        return { teacherSections, totalUncovered };
+    }, [selectedDay, requests, leaves, schedules, users, logs]);
+
+    const handleExportPDF = () => {
+        const d = new Date(selectedDay + 'T12:00:00');
+        const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const dateLabel = `${dayNames[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+        exportAbsencesPDF({
+            dateLabel,
+            dateStr: selectedDay,
+            groupedAbsences: grouped,
+            replacementData: pdfReplacementData,
+            logs,
+        });
+    };
+
     return (
         <BentoCard delay={0.05} className="md:col-span-2 lg:col-span-3">
             {/* Header */}
@@ -313,7 +407,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
-                    <span className="text-sm font-semibold text-slate-600 min-w-[240px] text-center">{weekLabel}</span>
+                    <span className="text-xs md:text-sm font-semibold text-slate-600 min-w-0 md:min-w-[240px] text-center">{weekLabel}</span>
                     <button
                         onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); onDayChange?.(null); }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
@@ -332,7 +426,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
             </div>
 
             {/* Days Row */}
-            <div className="grid grid-cols-5 gap-2 md:gap-3">
+            <div className="grid grid-cols-5 gap-1.5 md:gap-3">
                 {weekDays.map(day => {
                     const absences = getAbsencesForDate(day.dateStr);
                     const count = absences.length;
@@ -344,7 +438,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                             key={day.dateStr}
                             onClick={() => { const next = isSelected ? null : day.dateStr; setSelectedDay(next); onDayChange?.(next); }}
                             className={cn(
-                                "flex flex-col items-center py-3 px-2 rounded-xl border-2 transition-all duration-200",
+                                "flex flex-col items-center py-2 md:py-3 px-1 md:px-2 rounded-lg md:rounded-xl border-2 transition-all duration-200",
                                 isSelected
                                     ? "border-indigo-500 bg-indigo-50 shadow-sm"
                                     : isToday
@@ -353,13 +447,13 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                             )}
                         >
                             <span className={cn(
-                                "text-xs font-bold uppercase tracking-wider",
+                                "text-[10px] md:text-xs font-bold uppercase tracking-wider",
                                 isToday ? "text-indigo-600" : "text-slate-400"
                             )}>
                                 {day.dayName}
                             </span>
                             <span className={cn(
-                                "text-2xl font-black mt-0.5",
+                                "text-xl md:text-2xl font-black mt-0.5",
                                 isToday ? "text-indigo-700" : "text-slate-700"
                             )}>
                                 {day.dayNum}
@@ -367,20 +461,22 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                             {count > 0 ? (
                                 <>
                                     <span className={cn(
-                                        "mt-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full",
+                                        "mt-1 md:mt-1.5 text-[10px] md:text-xs font-bold px-1.5 md:px-2.5 py-0.5 rounded-full",
                                         count >= 3
                                             ? "bg-red-100 text-red-700"
                                             : "bg-amber-100 text-amber-700"
                                     )}>
-                                        {count} {count === 1 ? 'ausencia' : 'ausencias'}
+                                        {count}
+                                        <span className="hidden md:inline"> {count === 1 ? 'ausencia' : 'ausencias'}</span>
                                     </span>
-                                    <span className="mt-1 text-[10px] font-semibold text-indigo-500">
+                                    <span className="mt-1 text-[10px] font-semibold text-indigo-500 hidden md:block">
                                         Ver detalle
                                     </span>
                                 </>
                             ) : (
-                                <span className="mt-1.5 text-xs font-medium text-slate-300 px-2.5 py-0.5">
-                                    Sin ausencias
+                                <span className="mt-1 md:mt-1.5 text-[10px] md:text-xs font-medium text-slate-300 px-1.5 md:px-2.5 py-0.5">
+                                    <span className="hidden md:inline">Sin ausencias</span>
+                                    <span className="md:hidden">—</span>
                                 </span>
                             )}
                         </button>
@@ -396,6 +492,27 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                     exit={{ opacity: 0, height: 0 }}
                     className="mt-4 pt-4 border-t border-slate-100"
                 >
+                    {(() => {
+                        const d = new Date(selectedDay + 'T12:00:00');
+                        const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                        const selectedDateLabel = `${dayNames[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
+                        return (
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-slate-700">
+                                    Ausencias — {selectedDateLabel}
+                                </h3>
+                                {selectedAbsences.length > 0 && (
+                                    <button
+                                        onClick={handleExportPDF}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        <FileDown className="w-3.5 h-3.5" />
+                                        Exportar PDF
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })()}
                     {selectedAbsences.length === 0 ? (
                         <p className="text-sm text-slate-400 text-center py-4">No hay ausencias registradas para este día.</p>
                     ) : (
@@ -408,10 +525,35 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                                             const userRecord = users.find(u => u.id === item.userId);
                                             const initials = item.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
                                             const isMedical = item.typeLabel === 'Licencia Médica';
+                                            const isHalfAm = item.isHalfDay === 'am';
+                                            const isHalfPm = item.isHalfDay === 'pm';
+                                            const isHalfGeneric = item.isHalfDay === true;
+
+                                            // Color scheme per absence type
+                                            const rowColor = isMedical
+                                                ? "bg-rose-50/80 border-rose-100"
+                                                : isHalfAm
+                                                    ? "bg-amber-50/80 border-amber-200"
+                                                    : isHalfPm
+                                                        ? "bg-violet-50/80 border-violet-200"
+                                                        : isHalfGeneric
+                                                            ? "bg-teal-50/80 border-teal-200"
+                                                            : "bg-slate-50/80 border-slate-100 hover:bg-slate-100/80";
+
+                                            const avatarColor = isMedical
+                                                ? "from-rose-500 to-red-600"
+                                                : isHalfAm
+                                                    ? "from-amber-500 to-orange-600"
+                                                    : isHalfPm
+                                                        ? "from-violet-500 to-purple-600"
+                                                        : isHalfGeneric
+                                                            ? "from-teal-500 to-cyan-600"
+                                                            : "from-blue-500 to-indigo-600";
+
                                             return (
-                                                <div key={item.id} className={cn("flex items-center justify-between py-2.5 px-3 rounded-xl border hover:opacity-90 transition-all", isMedical ? "bg-rose-50/80 border-rose-100" : "bg-slate-50/80 border-slate-100 hover:bg-slate-100/80")}>
+                                                <div key={item.id} className={cn("flex items-center justify-between py-2.5 px-3 rounded-xl border hover:opacity-90 transition-all", rowColor)}>
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0", isMedical ? "from-rose-500 to-red-600" : "from-blue-500 to-indigo-600")}>
+                                                        <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0", avatarColor)}>
                                                             {initials}
                                                         </div>
                                                         <div className="min-w-0">
@@ -425,6 +567,21 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                                                                 )}>
                                                                     {item.roleLabel}
                                                                 </span>
+                                                                {isHalfAm && (
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-amber-100 text-amber-700">
+                                                                        ½ Mañana
+                                                                    </span>
+                                                                )}
+                                                                {isHalfPm && (
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-violet-100 text-violet-700">
+                                                                        ½ Tarde
+                                                                    </span>
+                                                                )}
+                                                                {isHalfGeneric && (
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-teal-100 text-teal-700">
+                                                                        ½ Día
+                                                                    </span>
+                                                                )}
                                                                 {isMedical && item.daysLeft !== undefined && (
                                                                     <span className={cn(
                                                                         "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
