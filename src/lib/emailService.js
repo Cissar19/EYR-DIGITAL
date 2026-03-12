@@ -28,15 +28,17 @@ export function sendAssignmentEmail({ toEmail, toName, actionType, date, reason,
         details: details || '',
     };
 
-    console.log('[EmailService] Enviando email:', { toEmail, toName, actionType, date });
+    console.log('[EmailService] Enviando email:', { url: APPS_SCRIPT_URL, toEmail, toName, actionType, date });
 
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
         redirect: 'follow',
-    }).catch((error) => {
+    })
+    .then((r) => r.text())
+    .then((t) => console.log('[EmailService] Respuesta:', t))
+    .catch((error) => {
         console.error('[EmailService] Error al enviar email:', error);
     });
 }
