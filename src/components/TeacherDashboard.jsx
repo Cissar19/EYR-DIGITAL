@@ -14,7 +14,7 @@ export default function TeacherDashboard() {
     const requests = getUserRequests(user.id);
     const balance = getBalance(user.id);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!date) {
             setMessage({ text: 'Por favor selecciona una fecha.', type: 'error' });
@@ -26,13 +26,14 @@ export default function TeacherDashboard() {
             return;
         }
 
-        const success = addRequest(user.id, user.name, date, reason);
-        if (success) {
+        try {
+            await addRequest(user.id, user.name, date, reason);
             setMessage({ text: 'Solicitud enviada exitosamente.', type: 'success' });
             setDate('');
             setReason('Personal');
-        } else {
-            setMessage({ text: 'Error al enviar solicitud.', type: 'error' });
+        } catch (error) {
+            console.error(error);
+            setMessage({ text: error.message || 'Error al enviar solicitud.', type: 'error' });
         }
         setTimeout(() => setMessage(''), 3000);
     };

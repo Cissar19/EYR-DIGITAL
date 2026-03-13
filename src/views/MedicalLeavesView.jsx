@@ -155,7 +155,7 @@ export default function MedicalLeavesView() {
     const calculatedEndDate = calcEndDate(formData.startDate, formData.leaveDays);
     const returnDate = getReturnDate(calculatedEndDate);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!formData.userId) {
             alert('Por favor selecciona un funcionario');
             return;
@@ -168,8 +168,15 @@ export default function MedicalLeavesView() {
         const selected = relevantUsers.find(u => u.id === formData.userId);
         if (!selected) return;
 
-        addLeave(selected.id, selected.name, formData.startDate, calculatedEndDate, formData.leaveDays, '', returnDate);
-        handleCloseModal();
+        try {
+            const success = await addLeave(selected.id, selected.name, formData.startDate, calculatedEndDate, formData.leaveDays, '', returnDate);
+            if (success) {
+                handleCloseModal();
+            }
+        } catch (error) {
+            console.error(error);
+            alert(error.message || 'Error registrando licencia');
+        }
     };
 
     const handleDelete = (id) => {

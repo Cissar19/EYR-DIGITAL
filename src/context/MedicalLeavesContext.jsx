@@ -80,7 +80,6 @@ export const MedicalLeavesProvider = ({ children }) => {
         validateRequiredString(userName, 'nombre', 100);
         validateDate(startDate, 'fecha inicio');
         validateDate(endDate, 'fecha termino');
-        validateRequiredString(diagnosis, 'diagnostico');
 
         if (endDate < startDate) {
             throw new Error('Fecha termino debe ser igual o posterior a fecha inicio');
@@ -98,7 +97,7 @@ export const MedicalLeavesProvider = ({ children }) => {
                 startDate,
                 endDate,
                 days: validDays,
-                diagnosis: sanitizeText(diagnosis),
+                diagnosis: sanitizeText(diagnosis || ''),
                 returnDate
             });
             toast.success('Licencia registrada exitosamente');

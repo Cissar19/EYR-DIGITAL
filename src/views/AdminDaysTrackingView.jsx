@@ -251,7 +251,7 @@ export default function AdminDaysTrackingView() {
         setTimeout(() => setShowSuccessToast(false), 3000);
     };
 
-    const handleAssign = () => {
+    const handleAssign = async () => {
         if (!formData.userId || !formData.date || !formData.reason.trim()) {
             alert('Por favor completa todos los campos básicos');
             return;
@@ -271,86 +271,91 @@ export default function AdminDaysTrackingView() {
             ? formData.observation.trim()
             : formData.reason;
 
-        if (formData.mode === 'discount') {
-            assignDiscountDay(selectedUser.id, selectedUser.name, formData.date, formData.reason, formData.observation);
-            sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'discount', date: formData.date, reason: formData.reason, details: formData.observation });
-            showToast(`Descuento registrado. Se notificó a ${selectedUser.name}`);
-            handleCloseAssignModal();
-            return;
-        }
-
-        if (formData.mode === 'hour') {
-            if (!formData.startTime || !formData.endTime) {
-                alert('Por favor ingresa hora de inicio y término');
-                return;
-            }
-
-            // Calculate duration
-            const start = new Date(`2000-01-01T${formData.startTime}`);
-            const end = new Date(`2000-01-01T${formData.endTime}`);
-            const diffMs = end - start;
-            const diffMinutes = Math.floor(diffMs / 60000);
-
-            if (diffMinutes <= 0) {
-                alert('La hora de término debe ser mayor a la de inicio');
-                return;
-            }
-
-            assignHoursManual(selectedUser.id, selectedUser.name, formData.date, formData.startTime, formData.endTime, diffMinutes, formData.reason);
-            sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'hours', date: formData.date, reason: formData.reason, details: `${formData.startTime} - ${formData.endTime} (${diffMinutes} min)` });
-            showToast(`Horas registradas. Se notificó a ${selectedUser.name}`);
-            handleCloseAssignModal();
-            return;
-        }
-
-        if (formData.mode === 'return') {
-            if (!formData.startTime || !formData.endTime) {
-                alert('Por favor ingresa hora de inicio y término');
-                return;
-            }
-
-            const start = new Date(`2000-01-01T${formData.startTime}`);
-            const end = new Date(`2000-01-01T${formData.endTime}`);
-            const diffMs = end - start;
-            const diffMinutes = Math.floor(diffMs / 60000);
-
-            if (diffMinutes <= 0) {
-                alert('La hora de término debe ser mayor a la de inicio');
-                return;
-            }
-
-            returnHoursManual(selectedUser.id, selectedUser.name, formData.date, formData.startTime, formData.endTime, diffMinutes, formData.reason);
-            showToast('Horas devueltas registradas');
-            handleCloseAssignModal();
-            return;
-        }
-
-        // Day Mode Logic
-        const currentBalance = getBalance(selectedUser.id);
-        const needed = formData.isHalfDay ? 0.5 : 1;
-
-        if (currentBalance < needed) {
-            // Special Permission Flow
-            const confirmSpecial = window.confirm(
-                `Este usuario no tiene días administrativos disponibles (Saldo ${currentBalance}).\n\n¿Desea registrar una Solicitud Especial (Permiso sin goce/Justificado)?\n\nEsto registrará el evento pero NO descontará días.`
-            );
-
-            if (confirmSpecial) {
-                assignSpecialPermission(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
-                const halfLabel = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
-                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: resolvedReason, details: halfLabel });
-                showToast(`Solicitud especial registrada. Se notificó a ${selectedUser.name}`);
+        try {
+            if (formData.mode === 'discount') {
+                await assignDiscountDay(selectedUser.id, selectedUser.name, formData.date, formData.reason, formData.observation);
+                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'discount', date: formData.date, reason: formData.reason, details: formData.observation });
+                showToast(`Descuento registrado. Se notificó a ${selectedUser.name}`);
                 handleCloseAssignModal();
+                return;
             }
-            return;
-        }
 
-        // Call the manual assignment function (Normal Flow — goes to pending approval)
-        assignDayManual(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
-        const halfDetail = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
-        sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: resolvedReason, details: halfDetail });
-        showToast(formData.isHalfDay ? `Medio día (${formData.isHalfDay === 'am' ? 'Mañana' : 'Tarde'}) asignado — pendiente de aprobación` : `Día asignado — pendiente de aprobación`);
-        handleCloseAssignModal();
+            if (formData.mode === 'hour') {
+                if (!formData.startTime || !formData.endTime) {
+                    alert('Por favor ingresa hora de inicio y término');
+                    return;
+                }
+
+                // Calculate duration
+                const start = new Date(`2000-01-01T${formData.startTime}`);
+                const end = new Date(`2000-01-01T${formData.endTime}`);
+                const diffMs = end - start;
+                const diffMinutes = Math.floor(diffMs / 60000);
+
+                if (diffMinutes <= 0) {
+                    alert('La hora de término debe ser mayor a la de inicio');
+                    return;
+                }
+
+                assignHoursManual(selectedUser.id, selectedUser.name, formData.date, formData.startTime, formData.endTime, diffMinutes, formData.reason);
+                sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'hours', date: formData.date, reason: formData.reason, details: `${formData.startTime} - ${formData.endTime} (${diffMinutes} min)` });
+                showToast(`Horas registradas. Se notificó a ${selectedUser.name}`);
+                handleCloseAssignModal();
+                return;
+            }
+
+            if (formData.mode === 'return') {
+                if (!formData.startTime || !formData.endTime) {
+                    alert('Por favor ingresa hora de inicio y término');
+                    return;
+                }
+
+                const start = new Date(`2000-01-01T${formData.startTime}`);
+                const end = new Date(`2000-01-01T${formData.endTime}`);
+                const diffMs = end - start;
+                const diffMinutes = Math.floor(diffMs / 60000);
+
+                if (diffMinutes <= 0) {
+                    alert('La hora de término debe ser mayor a la de inicio');
+                    return;
+                }
+
+                returnHoursManual(selectedUser.id, selectedUser.name, formData.date, formData.startTime, formData.endTime, diffMinutes, formData.reason);
+                showToast('Horas devueltas registradas');
+                handleCloseAssignModal();
+                return;
+            }
+
+            // Day Mode Logic
+            const currentBalance = getBalance(selectedUser.id);
+            const needed = formData.isHalfDay ? 0.5 : 1;
+
+            if (currentBalance < needed) {
+                // Special Permission Flow
+                const confirmSpecial = window.confirm(
+                    `Este usuario no tiene días administrativos disponibles (Saldo ${currentBalance}).\n\n¿Desea registrar una Solicitud Especial (Permiso sin goce/Justificado)?\n\nEsto registrará el evento pero NO descontará días.`
+                );
+
+                if (confirmSpecial) {
+                    await assignSpecialPermission(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
+                    const halfLabel = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+                    sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'special', date: formData.date, reason: resolvedReason, details: halfLabel });
+                    showToast(`Solicitud especial registrada. Se notificó a ${selectedUser.name}`);
+                    handleCloseAssignModal();
+                }
+                return;
+            }
+
+            // Call the manual assignment function (Normal Flow — goes to pending approval)
+            await assignDayManual(selectedUser.id, selectedUser.name, formData.date, resolvedReason, formData.isHalfDay);
+            const halfDetail = formData.isHalfDay === 'am' ? 'Medio día (Mañana)' : formData.isHalfDay === 'pm' ? 'Medio día (Tarde)' : '';
+            sendAssignmentEmail({ toEmail: selectedUser.email, toName: selectedUser.name, actionType: 'day', date: formData.date, reason: resolvedReason, details: halfDetail });
+            showToast(formData.isHalfDay ? `Medio día (${formData.isHalfDay === 'am' ? 'Mañana' : 'Tarde'}) asignado — pendiente de aprobación` : `Día asignado — pendiente de aprobación`);
+            handleCloseAssignModal();
+        } catch (error) {
+            console.error('Error in request:', error);
+            alert(error.message || 'Ocurrió un error al procesar la solicitud');
+        }
     };
 
     return (
