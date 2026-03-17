@@ -26,6 +26,10 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() in ['admin', 'super_admin', 'director', 'utp_head', 'inspector'];
     }
 
+    function isConvivenciaOrAdmin() {
+      return isAuthenticated() && getUserRole() in ['convivencia', 'admin', 'super_admin'];
+    }
+
     function isPrinterOrAdmin() {
       return isAuthenticated() && getUserRole() in ['printer', 'admin', 'super_admin'];
     }
@@ -148,6 +152,65 @@ service cloud.firestore {
     match /inventory_items/{docId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    // ============================================
+    // CONVIVENCIA RESERVATIONS
+    // ============================================
+    match /convivencia_reservations/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isConvivenciaOrAdmin()
+      );
+      allow update: if isConvivenciaOrAdmin();
+    }
+
+    // ============================================
+    // STUDENTS (Convivencia)
+    // ============================================
+    match /students/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isConvivenciaOrAdmin();
+      allow delete: if isConvivenciaOrAdmin();
+    }
+
+    // ============================================
+    // CONVIVENCIA INCIDENTS
+    // ============================================
+    match /convivencia_incidents/{docId} {
+      allow read: if isConvivenciaOrAdmin();
+      allow create, update: if isConvivenciaOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // PERMISSIONS & REPLACEMENT LOGS
+    // ============================================
+    match /permissions_role_defaults/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /replacement_logs/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isManagement();
+    }
+
+    // ============================================
+    // TEACHER HOURS (Entry/Exit Schedules)
+    // ============================================
+    match /teacher_hours/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ============================================
+    // ATTENDANCE REPORTS
+    // ============================================
+    match /attendance_reports/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isManagement();
     }
   }
 }
