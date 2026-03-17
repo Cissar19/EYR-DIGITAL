@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { usePermissions } from './context/PermissionsContext';
+import { getModuleByPath } from './data/moduleRegistry';
 import { cn } from './lib/utils';
 import logoEyr from './assets/logo_eyr.png';
 
@@ -25,6 +27,7 @@ import StatsView from './views/StatsView';
 import MedicalLeavesView from './views/MedicalLeavesView';
 import ReplacementLogsView from './views/ReplacementLogsView';
 import ConvivenciaReservation from './components/ConvivenciaReservation';
+import PermissionsManager from './views/PermissionsManager';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -178,6 +181,20 @@ const AdministrativeDaysView = () => {
   return adminRoles.includes(user.role) ? <AdminDashboard /> : <TeacherDashboard />;
 };
 
+// Permission gate: checks canAccess for a given moduleKey, redirects to / if denied
+const PermissionGate = ({ moduleKey, children }) => {
+  const { canAccess } = usePermissions();
+  if (!canAccess(moduleKey)) return <Navigate to="/" replace />;
+  return children;
+};
+
+// Home redirect: teachers and convivencia go straight to Convivencia
+const HomeRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'teacher' || user?.role === 'convivencia') return <Navigate to="/convivencia" replace />;
+  return <DashboardHome />;
+};
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -188,23 +205,24 @@ export default function App() {
 
         {/* Private Routes */}
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<DashboardHome />} />
-          <Route path="/users" element={<AdminUsers />} />
+          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
           <Route path="/administrative-days" element={<AdministrativeDaysView />} />
-          <Route path="/labs" element={<LabReservation />} />
+          <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />
 
           {/* Placeholders */}
           <Route path="/schedule" element={<PlaceholderView title="Mi Horario" />} />
           <Route path="/inventory" element={<InventoryView />} />
           <Route path="/prints" element={<PrintsView />} />
-          <Route path="/tickets" element={<TicketsView />} />
+          <Route path="/tickets" element={<PermissionGate moduleKey="tickets"><TicketsView /></PermissionGate>} />
           <Route path="/equipment" element={<EquipmentRequestView />} />
-          <Route path="/admin/schedules" element={<ScheduleAdminView />} />
-          <Route path="/admin/days-tracking" element={<AdminDaysTrackingView />} />
-          <Route path="/admin/stats" element={<StatsView />} />
-          <Route path="/admin/medical-leaves" element={<MedicalLeavesView />} />
-          <Route path="/admin/replacements" element={<ReplacementLogsView />} />
-          <Route path="/convivencia" element={<ConvivenciaReservation />} />
+          <Route path="/admin/schedules" element={<PermissionGate moduleKey="schedules"><ScheduleAdminView /></PermissionGate>} />
+          <Route path="/admin/days-tracking" element={<PermissionGate moduleKey="days_tracking"><AdminDaysTrackingView /></PermissionGate>} />
+          <Route path="/admin/stats" element={<PermissionGate moduleKey="stats"><StatsView /></PermissionGate>} />
+          <Route path="/admin/medical-leaves" element={<PermissionGate moduleKey="medical_leaves"><MedicalLeavesView /></PermissionGate>} />
+          <Route path="/admin/replacements" element={<PermissionGate moduleKey="replacements"><ReplacementLogsView /></PermissionGate>} />
+          <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
+          <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

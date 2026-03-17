@@ -1,20 +1,87 @@
 import React, { useState, useMemo } from 'react';
 import { useConvivencia, TIME_BLOCKS, DAYS } from '../context/ConvivenciaContext';
 import { useAuth } from '../context/AuthContext';
-import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon } from 'lucide-react';
+import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon, BookOpen, User, Clock, CheckCircle2, AlertCircle, Sparkles, BarChart3, TrendingUp, UserX, ChevronDown, Users as UsersIcon, Search } from 'lucide-react';
+import { useSchedule } from '../context/ScheduleContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ConvivenciaReservation() {
 
     const { user, getUsersByRole } = useAuth();
-    const { getReservation, addReservation, removeReservation } = useConvivencia();
+    const { reservations, getReservation, addReservation, removeReservation } = useConvivencia();
+    const { getSchedule } = useSchedule();
 
-    // Teachers list for "Profesor Jefe" select
+    // Teachers list
     const teachers = useMemo(() => {
         const list = getUsersByRole('teacher') || [];
         return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }, [getUsersByRole]);
+
+    // Filter: convivencia selects a teacher to see their schedule
+    const [filterTeacherId, setFilterTeacherId] = useState('');
+    const [teacherSearch, setTeacherSearch] = useState('');
+    const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+    const teacherDropdownRef = React.useRef(null);
+
+    // Close dropdown on outside click
+    React.useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (teacherDropdownRef.current && !teacherDropdownRef.current.contains(e.target)) {
+                setIsTeacherDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const normalizeSearch = (text) =>
+        text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
+
+    const filteredTeachersList = useMemo(() => {
+        if (!teacherSearch.trim()) return teachers;
+        const norm = normalizeSearch(teacherSearch);
+        return teachers.filter(t => normalizeSearch(t.name).includes(norm));
+    }, [teachers, teacherSearch]);
+
+    const filterTeacher = useMemo(() => {
+        if (!filterTeacherId) return null;
+        return teachers.find(t => t.id === filterTeacherId) || null;
+    }, [filterTeacherId, teachers]);
+
+    // Schedule overlay: teachers see own, admin/convivencia see selected teacher's
+    const isTeacherRole = user?.role === 'teacher';
+
+    const overlaySchedule = useMemo(() => {
+        if (!user) return [];
+        if (isTeacherRole) return getSchedule(user.id);
+        if (filterTeacherId) return getSchedule(filterTeacherId);
+        return [];
+    }, [user, isTeacherRole, filterTeacherId, getSchedule]);
+
+    const normalizeDay = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    const getTeacherClass = (dayName, startTime) => {
+        if (!overlaySchedule.length) return null;
+        return overlaySchedule.find(
+            s => normalizeDay(s.day) === normalizeDay(dayName) && s.startTime === startTime
+        );
+    };
+
+    // --- Today detection ---
+    const today = useMemo(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }, []);
+
+    const todayStr = useMemo(() => today.toLocaleDateString('en-CA'), [today]);
+
+    // --- Current time for "next available" hint ---
+    const [currentTime, setCurrentTime] = useState(() => {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    });
 
     // --- 1. Navigation Logic (Week Calculation) ---
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -67,14 +134,298 @@ export default function ConvivenciaReservation() {
     }, [currentWeekStart]);
 
 
+    // --- Helper: is a given date today? ---
+    const isToday = (dateObj) => {
+        return dateObj.toLocaleDateString('en-CA') === todayStr;
+    };
+
+    // --- Quick stats for teacher banner ---
+    const teacherStats = useMemo(() => {
+        if (!isTeacherRole) return null;
+
+        const classBlocks = TIME_BLOCKS.filter(b => b.type === 'class');
+        let availableToday = 0;
+        let myReservationsThisWeek = 0;
+        let nextFreeBlock = null;
+
+        // Count week reservations
+        for (const wd of weekDates) {
+            const dateStr = wd.date.toLocaleDateString('en-CA');
+            for (const block of classBlocks) {
+                const reservation = getReservation(dateStr, block.id);
+                if (reservation && reservation.userId === user?.id) {
+                    myReservationsThisWeek++;
+                }
+            }
+        }
+
+        // Count available blocks today & find next free
+        const todayDate = weekDates.find(wd => isToday(wd.date));
+        if (todayDate) {
+            const todayDateStr = todayDate.date.toLocaleDateString('en-CA');
+            for (const block of classBlocks) {
+                const reservation = getReservation(todayDateStr, block.id);
+                const teacherClass = getTeacherClass(todayDate.name, block.start);
+                if (!reservation && !teacherClass) {
+                    availableToday++;
+                    if (!nextFreeBlock && block.start >= currentTime) {
+                        nextFreeBlock = block;
+                    }
+                }
+            }
+        }
+
+        return { availableToday, myReservationsThisWeek, nextFreeBlock };
+    }, [isTeacherRole, weekDates, getReservation, user, overlaySchedule, currentTime]);
+
+    // --- Dashboard data for non-teacher roles ---
+    const weekDateStrings = useMemo(() => {
+        return new Set(weekDates.map(wd => wd.date.toLocaleDateString('en-CA')));
+    }, [weekDates]);
+
+    const teacherIdsWithReservation = useMemo(() => {
+        const ids = new Set();
+        for (const r of reservations) {
+            if (weekDateStrings.has(r.date)) {
+                ids.add(r.userId);
+            }
+        }
+        return ids;
+    }, [reservations, weekDateStrings]);
+
+    const teachersWithoutReservations = useMemo(() => {
+        return teachers.filter(t => !teacherIdsWithReservation.has(t.id));
+    }, [teachers, teacherIdsWithReservation]);
+
+    const weekStats = useMemo(() => {
+        const totalTeachers = teachers.length;
+        const withReservation = teacherIdsWithReservation.size;
+        const completionPct = totalTeachers > 0 ? Math.round((withReservation / totalTeachers) * 100) : 0;
+
+        const weekReservations = reservations.filter(r => weekDateStrings.has(r.date));
+        const totalReservations = weekReservations.length;
+
+        const reservationsByDay = weekDates.map(wd => {
+            const dateStr = wd.date.toLocaleDateString('en-CA');
+            const count = weekReservations.filter(r => r.date === dateStr).length;
+            return { dayName: wd.name, count };
+        });
+
+        const mostPopularDay = reservationsByDay.reduce((best, d) => d.count > best.count ? d : best, reservationsByDay[0]);
+
+        return { totalTeachers, withReservation, completionPct, totalReservations, reservationsByDay, mostPopularDay };
+    }, [teachers, teacherIdsWithReservation, reservations, weekDateStrings, weekDates]);
+
+    const upcomingToday = useMemo(() => {
+        const todayReservations = reservations
+            .filter(r => r.date === todayStr)
+            .map(r => {
+                const block = TIME_BLOCKS.find(b => b.id === r.blockId);
+                return { ...r, block };
+            })
+            .filter(r => r.block && r.block.start >= currentTime)
+            .sort((a, b) => a.block.start.localeCompare(b.block.start));
+        return todayReservations.slice(0, 3);
+    }, [reservations, todayStr, currentTime]);
+
+    // --- Dashboard collapse state ---
+    const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
+
+    // --- ConvivenciaDashboard component ---
+    const ConvivenciaDashboard = () => (
+        <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+        >
+            {/* Header */}
+            <button
+                onClick={() => setDashboardCollapsed(prev => !prev)}
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <BarChart3 className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-800">Resumen Semanal</h3>
+                    <span className="text-xs text-slate-400 font-medium">{weekRangeLabel}</span>
+                </div>
+                <motion.div animate={{ rotate: dashboardCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
+                    <ChevronDown className="w-5 h-5 text-slate-400" />
+                </motion.div>
+            </button>
+
+            <AnimatePresence initial={false}>
+                {!dashboardCollapsed && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-4 pb-4 space-y-4">
+                            {/* KPI Cards */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                {/* % Completado */}
+                                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Completado</span>
+                                    </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-2xl font-black text-emerald-700">{weekStats.completionPct}%</span>
+                                    </div>
+                                    <div className="mt-2 h-1.5 bg-emerald-200 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${weekStats.completionPct}%` }} />
+                                    </div>
+                                </div>
+
+                                {/* Con reserva */}
+                                <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <UsersIcon className="w-4 h-4 text-indigo-500" />
+                                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Con Reserva</span>
+                                    </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-2xl font-black text-indigo-700">{weekStats.withReservation}</span>
+                                        <span className="text-sm font-bold text-indigo-400 mb-0.5">/ {weekStats.totalTeachers}</span>
+                                    </div>
+                                </div>
+
+                                {/* Total bloques */}
+                                <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CalendarIcon className="w-4 h-4 text-amber-500" />
+                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Bloques</span>
+                                    </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-2xl font-black text-amber-700">{weekStats.totalReservations}</span>
+                                        <span className="text-xs font-bold text-amber-400 mb-0.5">reservados</span>
+                                    </div>
+                                </div>
+
+                                {/* Sin reserva */}
+                                <div className={cn(
+                                    "rounded-xl p-3 border",
+                                    teachersWithoutReservations.length > 0
+                                        ? "bg-red-50 border-red-100"
+                                        : "bg-slate-50 border-slate-100"
+                                )}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <UserX className={cn("w-4 h-4", teachersWithoutReservations.length > 0 ? "text-red-500" : "text-slate-400")} />
+                                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", teachersWithoutReservations.length > 0 ? "text-red-600" : "text-slate-500")}>Sin Reserva</span>
+                                    </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className={cn("text-2xl font-black", teachersWithoutReservations.length > 0 ? "text-red-700" : "text-slate-400")}>{teachersWithoutReservations.length}</span>
+                                        <span className={cn("text-xs font-bold mb-0.5", teachersWithoutReservations.length > 0 ? "text-red-400" : "text-slate-300")}>profesores</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Two columns: teachers without + mini calendar */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* Teachers without reservations */}
+                                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <UserX className="w-3.5 h-3.5 text-slate-400" />
+                                        Profesores sin reserva esta semana
+                                    </h4>
+                                    {teachersWithoutReservations.length === 0 ? (
+                                        <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium py-2">
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Todos los profesores tienen reserva
+                                        </div>
+                                    ) : (
+                                        <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                                            {teachersWithoutReservations.map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => setFilterTeacherId(t.id)}
+                                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left group"
+                                                >
+                                                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-[10px] font-bold text-red-600 shrink-0">
+                                                        {(t.name || '?').charAt(0)}
+                                                    </div>
+                                                    <span className="text-sm text-slate-700 font-medium truncate group-hover:text-amber-700 transition-colors">{t.name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Mini weekly calendar */}
+                                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
+                                        Reservas por dia
+                                    </h4>
+                                    <div className="flex items-end gap-2 h-24">
+                                        {weekStats.reservationsByDay.map(d => {
+                                            const maxCount = Math.max(...weekStats.reservationsByDay.map(x => x.count), 1);
+                                            const heightPct = (d.count / maxCount) * 100;
+                                            const isMax = d.dayName === weekStats.mostPopularDay?.dayName && d.count > 0;
+                                            return (
+                                                <div key={d.dayName} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                                                    <span className={cn("text-xs font-bold", isMax ? "text-amber-600" : "text-slate-500")}>{d.count}</span>
+                                                    <div
+                                                        className={cn(
+                                                            "w-full rounded-t-lg transition-all duration-300 min-h-[4px]",
+                                                            isMax ? "bg-amber-400" : "bg-slate-300"
+                                                        )}
+                                                        style={{ height: `${Math.max(heightPct, 5)}%` }}
+                                                    />
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{d.dayName.slice(0, 3)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {weekStats.mostPopularDay && weekStats.mostPopularDay.count > 0 && (
+                                        <div className="mt-2 text-xs text-slate-500 text-center">
+                                            Dia mas popular: <span className="font-bold text-amber-600">{weekStats.mostPopularDay.dayName}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Upcoming today banner */}
+                            {upcomingToday.length > 0 && (
+                                <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                                    <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5 text-amber-500" />
+                                        Proximas reservas hoy
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {upcomingToday.map(r => (
+                                            <div key={r.id} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-amber-100 text-sm">
+                                                <span className="font-bold text-amber-600">{r.block?.start}</span>
+                                                <span className="text-slate-600 font-medium truncate max-w-[150px]">{r.teacher}</span>
+                                                <span className="text-slate-400">-</span>
+                                                <span className="text-slate-500 truncate max-w-[150px]">{r.subject}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+
     // --- 2. Modal State ---
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [selectedTeacher, setSelectedTeacher] = useState('');
-    const [motivo, setMotivo] = useState('');
+    const [motivo, setMotivo] = useState('Reuniones bimensuales');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Mobile Day Navigation
-    const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+    // Mobile Day Navigation - default to today if it's a weekday in the current week
+    const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
+        const todayDay = new Date().getDay(); // 0=Sun, 1=Mon...
+        if (todayDay >= 1 && todayDay <= 5) return todayDay - 1;
+        return 0;
+    });
 
     const handlePrevDay = () => {
         if (selectedDayIndex > 0) {
@@ -97,8 +448,13 @@ export default function ConvivenciaReservation() {
         setSelectedSlot({ day: dayName, block, reservation, dateObj, dateStr });
 
         if (!reservation) {
-            setSelectedTeacher('');
-            setMotivo('');
+            // Auto-fill: teachers get their own name, admins get the filtered teacher
+            if (isTeacherRole) {
+                setSelectedTeacher(user?.name || '');
+            } else {
+                setSelectedTeacher(filterTeacher ? filterTeacher.name : '');
+            }
+            setMotivo('Reuniones bimensuales');
         }
         setIsModalOpen(true);
     };
@@ -122,6 +478,58 @@ export default function ConvivenciaReservation() {
     return (
         <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 pb-24">
             <div className="max-w-7xl mx-auto">
+                {/* Teacher Welcome Banner */}
+                {isTeacherRole && teacherStats && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 rounded-2xl border border-amber-200/60 p-5 md:p-6"
+                    >
+                        <div className="flex flex-col md:flex-row md:items-center gap-4">
+                            <div className="flex-1">
+                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-amber-500" />
+                                    Hola, {user?.name?.split(' ')[0]}
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Reserva un bloque en la oficina de Convivencia Escolar. Los bloques en <span className="text-indigo-500 font-semibold">azul</span> son tus horas de clase.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-amber-100 shadow-sm">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <span className="text-lg font-bold text-slate-800">{teacherStats.availableToday}</span>
+                                        <p className="text-[10px] text-slate-400 font-medium leading-tight">Libres hoy</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-amber-100 shadow-sm">
+                                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                                        <CalendarIcon className="w-4 h-4 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <span className="text-lg font-bold text-slate-800">{teacherStats.myReservationsThisWeek}</span>
+                                        <p className="text-[10px] text-slate-400 font-medium leading-tight">Mis reservas</p>
+                                    </div>
+                                </div>
+                                {teacherStats.nextFreeBlock && (
+                                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-emerald-200 shadow-sm">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                            <Clock className="w-4 h-4 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-bold text-emerald-700">{teacherStats.nextFreeBlock.start}</span>
+                                            <p className="text-[10px] text-slate-400 font-medium leading-tight">Proximo libre</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
                 <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
@@ -132,7 +540,7 @@ export default function ConvivenciaReservation() {
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm">
+                    <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm flex-wrap">
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-full bg-amber-400"></div>
                             <span className="text-slate-600 font-medium">Disponible</span>
@@ -145,8 +553,123 @@ export default function ConvivenciaReservation() {
                             <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                             <span className="text-slate-600 font-medium">Recreo/Almuerzo</span>
                         </div>
+                        {overlaySchedule.length > 0 && (
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
+                                <span className="text-slate-600 font-medium">En Clase</span>
+                            </div>
+                        )}
                     </div>
                 </div>
+
+                {/* Teacher selector for Convivencia/Admin (teachers already see their own schedule) */}
+                {!isTeacherRole && (
+                    <div className="mb-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-600 whitespace-nowrap">
+                            <User className="w-4 h-4 text-amber-500" />
+                            Ver disponibilidad de:
+                        </div>
+
+                        {/* Custom searchable teacher selector */}
+                        <div className="relative flex-1 w-full sm:w-auto" ref={teacherDropdownRef}>
+                            <button
+                                type="button"
+                                onClick={() => { setIsTeacherDropdownOpen(prev => !prev); setTeacherSearch(''); }}
+                                className={cn(
+                                    "w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl border-2 transition-all font-medium text-sm",
+                                    isTeacherDropdownOpen
+                                        ? "border-amber-500 bg-white shadow-sm"
+                                        : "border-slate-100 bg-slate-50/50 hover:border-slate-200",
+                                    filterTeacher ? "text-slate-800" : "text-slate-400"
+                                )}
+                            >
+                                <span className="truncate">
+                                    {filterTeacher ? filterTeacher.name : 'Seleccionar docente...'}
+                                </span>
+                                <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform", isTeacherDropdownOpen && "rotate-180")} />
+                            </button>
+
+                            <AnimatePresence>
+                                {isTeacherDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -4 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -4 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute z-30 top-full mt-2 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
+                                    >
+                                        {/* Search input */}
+                                        <div className="p-2 border-b border-slate-100">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                <input
+                                                    type="text"
+                                                    autoFocus
+                                                    value={teacherSearch}
+                                                    onChange={(e) => setTeacherSearch(e.target.value)}
+                                                    placeholder="Buscar docente..."
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:bg-white transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Options list */}
+                                        <div className="max-h-64 overflow-y-auto overscroll-contain">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFilterTeacherId(''); setIsTeacherDropdownOpen(false); }}
+                                                className={cn(
+                                                    "w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2",
+                                                    !filterTeacherId ? "bg-amber-50 text-amber-700" : "text-slate-500 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                <UsersIcon className="w-4 h-4 shrink-0" />
+                                                Todos los docentes
+                                            </button>
+                                            {filteredTeachersList.map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => { setFilterTeacherId(t.id); setIsTeacherDropdownOpen(false); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-3",
+                                                        filterTeacherId === t.id ? "bg-amber-50 text-amber-700" : "text-slate-700 hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
+                                                        filterTeacherId === t.id ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
+                                                    )}>
+                                                        {t.name?.charAt(0)}
+                                                    </div>
+                                                    <span className="truncate">{t.name}</span>
+                                                    {filterTeacherId === t.id && <Check className="w-4 h-4 ml-auto shrink-0 text-amber-500" />}
+                                                </button>
+                                            ))}
+                                            {filteredTeachersList.length === 0 && (
+                                                <div className="px-4 py-6 text-center text-sm text-slate-400">
+                                                    No se encontraron docentes
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {filterTeacher && (
+                            <button
+                                onClick={() => setFilterTeacherId('')}
+                                className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                            >
+                                Limpiar
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Dashboard for non-teacher roles */}
+                {!isTeacherRole && <ConvivenciaDashboard />}
 
                 {/* DESKTOP VIEW */}
                 <div className="hidden md:block bg-white rounded-3xl shadow-xl shadow-slate-200 overflow-hidden border border-slate-100">
@@ -182,12 +705,21 @@ export default function ConvivenciaReservation() {
                                 <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center flex items-center justify-center">
                                     Horario
                                 </div>
-                                {weekDates.map((d) => (
-                                    <div key={d.name} className="p-4 text-center border-l border-slate-200/50">
-                                        <div className="text-sm font-bold text-slate-800 uppercase tracking-wide">{d.name}</div>
-                                        <div className="text-xs text-amber-500 font-bold mt-0.5">{d.label}</div>
-                                    </div>
-                                ))}
+                                {weekDates.map((d) => {
+                                    const isTodayCol = isToday(d.date);
+                                    return (
+                                        <div key={d.name} className={cn(
+                                            "p-4 text-center border-l border-slate-200/50 relative",
+                                            isTodayCol && "bg-amber-50/60"
+                                        )}>
+                                            <div className={cn("text-sm font-bold uppercase tracking-wide", isTodayCol ? "text-amber-700" : "text-slate-800")}>{d.name}</div>
+                                            <div className={cn("text-xs font-bold mt-0.5", isTodayCol ? "text-amber-600" : "text-amber-500")}>{d.label}</div>
+                                            {isTodayCol && (
+                                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-amber-500 rounded-full" />
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Grid Body */}
@@ -217,9 +749,28 @@ export default function ConvivenciaReservation() {
                                                     const reservation = getReservation(dateStr, block.id);
                                                     const isMyReservation = reservation && user && reservation.userId === user.id;
                                                     const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                                                    const teacherClass = getTeacherClass(d.name, block.start);
+                                                    const isTodayCol = isToday(d.date);
 
                                                     return (
-                                                        <div key={d.name} className="p-1 border-l border-slate-100 h-[110px] relative">
+                                                        <div key={d.name} className={cn("p-1 border-l border-slate-100 h-[110px] relative", isTodayCol && "bg-amber-50/30")}>
+                                                            {teacherClass ? (
+                                                                // Teacher is in class during this block
+                                                                <button
+                                                                    onClick={() => handleSlotClick(d.name, block, d.date)}
+                                                                    className="w-full h-full rounded-lg bg-indigo-50/80 border border-indigo-100 border-l-4 border-l-indigo-400 flex flex-col p-3 text-left gap-0.5 relative overflow-hidden group hover:bg-indigo-100/80 transition-all cursor-pointer"
+                                                                >
+                                                                    {reservation && (
+                                                                        <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-400 ring-2 ring-white" title="Convivencia reservada" />
+                                                                    )}
+                                                                    <div className="flex items-center gap-1 mb-0.5">
+                                                                        <BookOpen className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">En Clase</span>
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700 line-clamp-1">{teacherClass.subject}</span>
+                                                                    <span className="text-[10px] text-slate-400 mt-auto">{teacherClass.course}</span>
+                                                                </button>
+                                                            ) : (
                                                             <button
                                                                 onClick={() => handleSlotClick(d.name, block, d.date)}
                                                                 className={cn(
@@ -265,6 +816,7 @@ export default function ConvivenciaReservation() {
                                                                     </>
                                                                 )}
                                                             </button>
+                                                            )}
                                                         </div>
                                                     );
                                                 })
@@ -290,8 +842,11 @@ export default function ConvivenciaReservation() {
                         </button>
 
                         <div className="text-center">
-                            <h2 className="text-lg font-bold text-slate-800 capitalize">
+                            <h2 className="text-lg font-bold text-slate-800 capitalize flex items-center gap-2 justify-center">
                                 {weekDates[selectedDayIndex].name} {weekDates[selectedDayIndex].date.getDate()}
+                                {isToday(weekDates[selectedDayIndex].date) && (
+                                    <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Hoy</span>
+                                )}
                             </h2>
                             <p className="text-xs text-amber-500 font-bold uppercase tracking-wide">
                                 {weekDates[selectedDayIndex].date.toLocaleDateString('es-CL', { month: 'long' })}
@@ -316,6 +871,7 @@ export default function ConvivenciaReservation() {
                             const reservation = getReservation(dateStr, block.id);
                             const isMyReservation = reservation && user && reservation.userId === user.id;
                             const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                            const teacherClass = getTeacherClass(currentDay.name, block.start);
 
                             if (isBreak) {
                                 return (
@@ -325,6 +881,34 @@ export default function ConvivenciaReservation() {
                                             {block.label === 'RECREO' ? 'Recreo' : 'Almuerzo'}
                                             <span className="text-slate-300">|</span>
                                             {block.start} - {block.end}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            if (teacherClass) {
+                                return (
+                                    <div
+                                        key={block.id}
+                                        onClick={() => handleSlotClick(currentDay.name, block, currentDay.date)}
+                                        className="bg-indigo-50/80 p-4 rounded-2xl shadow-sm border-l-4 border-l-indigo-400 border-t border-r border-b border-indigo-100 transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex flex-col min-w-[80px]">
+                                                <span className="text-lg font-bold text-slate-800">{block.start}</span>
+                                                <span className="text-xs text-slate-500 font-medium">{block.label}</span>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">En Clase</span>
+                                                    {reservation && (
+                                                        <div className="ml-auto w-2.5 h-2.5 rounded-full bg-red-400" title="Convivencia reservada" />
+                                                    )}
+                                                </div>
+                                                <h4 className="font-bold text-slate-700 text-sm">{teacherClass.subject}</h4>
+                                                <span className="text-xs text-slate-400">{teacherClass.course}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -426,7 +1010,7 @@ export default function ConvivenciaReservation() {
                                             </div>
                                         </div>
 
-                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director') ? (
+                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director' || user?.role === 'convivencia' || user?.role === 'super_admin') ? (
                                             <div className="pt-4 border-t border-slate-100">
                                                 <button
                                                     onClick={handleCancelReservation}
@@ -439,7 +1023,7 @@ export default function ConvivenciaReservation() {
                                         ) : (
                                             <div className="p-4 bg-slate-50 text-slate-500 text-sm rounded-xl flex gap-3 items-start border border-slate-100">
                                                 <Lock className="w-5 h-5 shrink-0 mt-0.5" />
-                                                <p>Este bloque esta reservado por otro usuario. Si necesitas el espacio, contacta a Direccion.</p>
+                                                <p>Este bloque esta reservado por otro usuario. Si necesitas el espacio, contacta a Convivencia Escolar.</p>
                                             </div>
                                         )}
                                     </div>
@@ -449,16 +1033,25 @@ export default function ConvivenciaReservation() {
                                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                                                 Profesor Jefe
                                             </label>
-                                            <select
-                                                value={selectedTeacher}
-                                                onChange={(e) => setSelectedTeacher(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                                            >
-                                                <option value="">Seleccionar Profesor...</option>
-                                                {teachers.map(t => (
-                                                    <option key={t.id} value={t.name}>{t.name}</option>
-                                                ))}
-                                            </select>
+                                            {isTeacherRole ? (
+                                                <div className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/80 font-medium text-slate-700 flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
+                                                        {user?.name?.charAt(0)}
+                                                    </div>
+                                                    {user?.name}
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    value={selectedTeacher}
+                                                    onChange={(e) => setSelectedTeacher(e.target.value)}
+                                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                                                >
+                                                    <option value="">Seleccionar Profesor...</option>
+                                                    {teachers.map(t => (
+                                                        <option key={t.id} value={t.name}>{t.name}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </div>
 
                                         <div>
@@ -471,8 +1064,17 @@ export default function ConvivenciaReservation() {
                                                 onChange={(e) => setMotivo(e.target.value)}
                                                 placeholder="Ej: Reunion apoderados, mediacion, entrevista..."
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                                                autoFocus
                                             />
                                         </div>
+
+                                        {/* Hint for teacher about schedule blocks */}
+                                        {isTeacherRole && getTeacherClass(selectedSlot.day, selectedSlot.block.start) && (
+                                            <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs text-indigo-700">
+                                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                                <span>Este bloque coincide con tu hora de clase. Puedes reservar igualmente si necesitas sacar a un alumno de clases.</span>
+                                            </div>
+                                        )}
 
                                         <button
                                             onClick={handleConfirmReservation}

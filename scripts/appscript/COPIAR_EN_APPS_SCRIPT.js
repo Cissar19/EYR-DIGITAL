@@ -28,9 +28,11 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Si tiene "actionType" es de dias admin, si tiene "employeeName" es de licencias
+    // Si tiene "actionType" es de dias admin, "employeeName" es licencias, "convivenciaAction" es convivencia
     if (data.actionType) {
       return handleAdminDays(data);
+    } else if (data.convivenciaAction) {
+      return handleConvivencia(data);
     } else if (data.employeeName) {
       return handleMedicalLeave(data);
     } else {
@@ -176,4 +178,239 @@ function handleMedicalLeave(data) {
   return ContentService.createTextOutput(
     JSON.stringify({ success: true })
   ).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ============================================================
+   CONFIGURACION - CONVIVENCIA ESCOLAR
+   ============================================================ */
+var CONVIVENCIA_CONFIG = {
+  reservation_created:  { subject: 'Nueva Reserva en Convivencia Escolar',  subtitle: 'NUEVA RESERVA',            title: 'Reserva de<br>Convivencia Escolar', statusText: 'Confirmada',                 accentColor: '#d97706', bannerColor: '#d97706', bannerTextColor: '#ffffff', bannerMsg: 'Se ha registrado una nueva reserva en Convivencia Escolar.' },
+  reservation_cancelled: { subject: 'Reserva Cancelada - Convivencia',      subtitle: 'RESERVA CANCELADA',         title: 'Reserva<br>Cancelada',              statusText: 'Cancelada',                  accentColor: '#dc2626', bannerColor: '#dc2626', bannerTextColor: '#ffffff', bannerMsg: 'La reserva de Convivencia Escolar ha sido cancelada.' },
+  reminder_1day:         { subject: 'Recordatorio: Reserva Ma\u00f1ana',     subtitle: 'RECORDATORIO',              title: 'Tu Reserva es<br>Ma\u00f1ana',      statusText: 'Confirmada \u2014 ma\u00f1ana',  accentColor: '#2563eb', bannerColor: '#2563eb', bannerTextColor: '#ffffff', bannerMsg: 'Recuerda que tienes una reserva en Convivencia Escolar ma\u00f1ana.' },
+  reminder_1hour:        { subject: 'Tu Reserva Comienza Pronto',            subtitle: 'COMIENZA PRONTO',           title: 'Tu Reserva<br>Comienza Pronto',     statusText: 'En menos de 1 hora',         accentColor: '#7c3aed', bannerColor: '#7c3aed', bannerTextColor: '#ffffff', bannerMsg: '\u00a1Tu reserva en Convivencia Escolar comienza pronto!' },
+};
+
+/* ============================================================
+   HANDLER - CONVIVENCIA ESCOLAR
+   ============================================================ */
+function handleConvivencia(data) {
+  var action        = data.convivenciaAction || 'reservation_created';
+  var teacherEmail  = data.teacherEmail || '';
+  var teacherName   = data.teacherName || '';
+  var convEmail     = data.convivenciaEmail || '';
+  var date          = data.date || '';
+  var blockLabel    = data.blockLabel || '';
+  var blockStart    = data.blockStart || '';
+  var blockEnd      = data.blockEnd || '';
+  var subject       = data.subject || '';
+
+  var cfg = CONVIVENCIA_CONFIG[action] || CONVIVENCIA_CONFIG.reservation_created;
+
+  var dateLabel = date;
+  try {
+    var parts = date.split('-');
+    var months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    dateLabel = parseInt(parts[2]) + ' de ' + months[parseInt(parts[1]) - 1] + ' de ' + parts[0];
+  } catch(ex) {}
+
+  var timeRange = blockStart && blockEnd ? blockStart + ' - ' + blockEnd : '';
+  var htmlBody = buildConvivenciaHtml(cfg, teacherName, dateLabel, blockLabel, timeRange, subject);
+
+  // Enviar al profesor
+  if (teacherEmail) {
+    try {
+      GmailApp.sendEmail(teacherEmail, cfg.subject + ' - ' + teacherName, '', {
+        htmlBody: htmlBody,
+        name: 'Convivencia Escolar EYR',
+      });
+    } catch (err) {
+      Logger.log('Error enviando email a profesor: ' + err);
+    }
+  }
+
+  // Enviar al admin de convivencia
+  if (convEmail) {
+    try {
+      GmailApp.sendEmail(convEmail, cfg.subject + ' - ' + teacherName, '', {
+        htmlBody: htmlBody,
+        name: 'Convivencia Escolar EYR',
+      });
+    } catch (err) {
+      Logger.log('Error enviando email a convivencia admin: ' + err);
+    }
+  }
+
+  logConvivenciaReservation(action, teacherName, teacherEmail, convEmail, date, blockLabel, blockStart, blockEnd, subject);
+
+  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ============================================================
+   HTML BUILDER - CONVIVENCIA ESCOLAR
+   ============================================================ */
+function buildConvivenciaHtml(cfg, teacherName, dateLabel, blockLabel, timeRange, subject) {
+  return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +
+    '<body style="margin:0;padding:0;background-color:#f2f4f8;font-family:Arial,sans-serif;">' +
+    '<table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f2f4f8;padding:36px 0;"><tr><td align="center">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dde3f0;box-shadow:0 6px 32px rgba(27,58,140,0.10);">' +
+    '<tr><td style="background-color:#F5D33A;height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+    '<tr><td align="center" style="background-color:#1B3A8C;padding:30px 40px 26px 40px;">' +
+    '<p style="margin:0 0 3px 0;color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:4px;text-transform:uppercase;">Centro Educacional</p>' +
+    '<h1 style="margin:0 0 4px 0;color:#F5D33A;font-size:24px;font-weight:900;letter-spacing:0.5px;">Ernesto Y\u00e1\u00f1ez Rivera</h1>' +
+    '<p style="margin:0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Huechuraba \u00b7 Santiago</p>' +
+    '</td></tr>' +
+    '<tr><td align="center" style="padding:42px 48px 10px 48px;">' +
+    '<p style="margin:0 0 12px 0;color:' + cfg.accentColor + ';font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">' + cfg.subtitle + '</p>' +
+    '<h2 style="margin:0;color:#1B3A8C;font-size:36px;font-weight:900;line-height:1.1;">' + cfg.title + '</h2>' +
+    '</td></tr>' +
+    '<tr><td style="padding:32px 52px 12px 52px;text-align:center;">' +
+    '<p style="margin:0;color:#222222;font-size:22px;line-height:1.6;">Profesor: <strong style="color:#1B3A8C;font-size:26px;">' + teacherName + '</strong></p>' +
+    '</td></tr>' +
+    '<tr><td style="padding:10px 52px 38px 52px;">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fd;border-radius:14px;border-left:5px solid ' + cfg.accentColor + ';">' +
+    '<tr><td style="padding:24px 28px;">' +
+    '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;"><strong>Fecha:</strong> ' + dateLabel + '</p>' +
+    '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;"><strong>Bloque:</strong> ' + blockLabel + (timeRange ? ' (' + timeRange + ')' : '') + '</p>' +
+    (subject ? '<p style="margin:0 0 12px 0;color:#333333;font-size:17px;line-height:2.0;"><strong>Motivo:</strong> ' + subject + '</p>' : '') +
+    '<p style="margin:0;color:#333333;font-size:17px;line-height:2.0;"><strong>Estado:</strong> <span style="color:' + cfg.accentColor + ';font-weight:700;">' + cfg.statusText + '</span></p>' +
+    '</td></tr></table></td></tr>' +
+    '<tr><td style="background-color:' + cfg.bannerColor + ';padding:20px 48px;text-align:center;">' +
+    '<p style="margin:0;color:' + cfg.bannerTextColor + ';font-size:18px;font-weight:800;line-height:1.6;">' + cfg.bannerMsg + '</p>' +
+    '</td></tr>' +
+    '<tr><td style="padding:0 48px;"><table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td style="border-top:1px solid #e5e8f0;font-size:0;">&nbsp;</td></tr></table></td></tr>' +
+    '<tr><td style="padding:20px 40px 22px 40px;text-align:center;">' +
+    '<p style="margin:0 0 3px 0;color:#1B3A8C;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Convivencia Escolar</p>' +
+    '<p style="margin:0;color:#aaaaaa;font-size:12px;">Centro Educacional Ernesto Y\u00e1\u00f1ez Rivera \u00b7 Huechuraba</p>' +
+    '</td></tr>' +
+    '<tr><td style="background:linear-gradient(to right,#1B3A8C 33%,#F5D33A 33%,#F5D33A 66%,#8C1B1B 66%);height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+    '</table></td></tr></table></body></html>';
+}
+
+/* ============================================================
+   LOG - CONVIVENCIA RESERVAS EN SHEET
+   ============================================================ */
+function logConvivenciaReservation(action, teacherName, teacherEmail, convEmail, date, blockLabel, blockStart, blockEnd, subject) {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName('ConvivenciaReservas');
+
+    if (!sheet) {
+      sheet = ss.insertSheet('ConvivenciaReservas');
+      sheet.appendRow(['Timestamp', 'Action', 'TeacherName', 'TeacherEmail', 'ConvivenciaEmail', 'Date', 'BlockLabel', 'BlockStart', 'BlockEnd', 'Subject', 'Reminder1Day', 'Reminder1Hour', 'Status']);
+    }
+
+    var timestamp = new Date();
+
+    if (action === 'reservation_created') {
+      sheet.appendRow([timestamp, action, teacherName, teacherEmail, convEmail, date, blockLabel, blockStart, blockEnd, subject, 'pending', 'pending', 'active']);
+    } else if (action === 'reservation_cancelled') {
+      // Buscar fila existente y marcar como cancelled
+      var data = sheet.getDataRange().getValues();
+      var found = false;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][2] === teacherName && data[i][5] === date && data[i][7] === blockStart && data[i][12] === 'active') {
+          sheet.getRange(i + 1, 11).setValue('cancelled'); // Reminder1Day
+          sheet.getRange(i + 1, 12).setValue('cancelled'); // Reminder1Hour
+          sheet.getRange(i + 1, 13).setValue('cancelled'); // Status
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        sheet.appendRow([timestamp, action, teacherName, teacherEmail, convEmail, date, blockLabel, blockStart, blockEnd, subject, 'cancelled', 'cancelled', 'cancelled']);
+      }
+    }
+  } catch (err) {
+    Logger.log('Error logging convivencia reservation: ' + err);
+  }
+}
+
+/* ============================================================
+   RECORDATORIOS - CONVIVENCIA (trigger cada 30 min)
+   ============================================================ */
+function checkConvivenciaReminders() {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName('ConvivenciaReservas');
+    if (!sheet) return;
+
+    var data = sheet.getDataRange().getValues();
+    var now = new Date();
+
+    for (var i = 1; i < data.length; i++) {
+      var status       = data[i][12]; // Status column
+      if (status !== 'active') continue;
+
+      var teacherName  = data[i][2];
+      var teacherEmail = data[i][3];
+      var convEmail    = data[i][4];
+      var dateStr      = data[i][5];
+      var blockLabel   = data[i][6];
+      var blockStart   = data[i][7];
+      var blockEnd     = data[i][8];
+      var subject      = data[i][9];
+      var reminder1Day = data[i][10];
+      var reminder1Hr  = data[i][11];
+
+      // Parsear fecha + hora de inicio del bloque
+      var parts = dateStr.split('-');
+      var timeParts = blockStart.split(':');
+      var blockDateTime = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(timeParts[0]), parseInt(timeParts[1]));
+
+      var diffMs = blockDateTime.getTime() - now.getTime();
+      var diffHrs = diffMs / (1000 * 60 * 60);
+
+      // Recordatorio 1 dia antes (20-28 horas antes)
+      if (reminder1Day === 'pending' && diffHrs >= 20 && diffHrs <= 28) {
+        var cfg1d = CONVIVENCIA_CONFIG.reminder_1day;
+        var dateLabel = formatDateLabel(dateStr);
+        var timeRange = blockStart + ' - ' + blockEnd;
+        var html = buildConvivenciaHtml(cfg1d, teacherName, dateLabel, blockLabel, timeRange, subject);
+
+        if (teacherEmail) {
+          try {
+            GmailApp.sendEmail(teacherEmail, cfg1d.subject + ' - ' + teacherName, '', { htmlBody: html, name: 'Convivencia Escolar EYR' });
+          } catch(e) { Logger.log('Reminder 1day teacher error: ' + e); }
+        }
+        if (convEmail) {
+          try {
+            GmailApp.sendEmail(convEmail, cfg1d.subject + ' - ' + teacherName, '', { htmlBody: html, name: 'Convivencia Escolar EYR' });
+          } catch(e) { Logger.log('Reminder 1day conv error: ' + e); }
+        }
+        sheet.getRange(i + 1, 11).setValue('sent');
+      }
+
+      // Recordatorio 1 hora antes (30-90 minutos antes)
+      if (reminder1Hr === 'pending' && diffHrs >= 0.5 && diffHrs <= 1.5) {
+        var cfg1h = CONVIVENCIA_CONFIG.reminder_1hour;
+        var dateLabel2 = formatDateLabel(dateStr);
+        var timeRange2 = blockStart + ' - ' + blockEnd;
+        var html2 = buildConvivenciaHtml(cfg1h, teacherName, dateLabel2, blockLabel, timeRange2, subject);
+
+        if (teacherEmail) {
+          try {
+            GmailApp.sendEmail(teacherEmail, cfg1h.subject + ' - ' + teacherName, '', { htmlBody: html2, name: 'Convivencia Escolar EYR' });
+          } catch(e) { Logger.log('Reminder 1hr teacher error: ' + e); }
+        }
+        if (convEmail) {
+          try {
+            GmailApp.sendEmail(convEmail, cfg1h.subject + ' - ' + teacherName, '', { htmlBody: html2, name: 'Convivencia Escolar EYR' });
+          } catch(e) { Logger.log('Reminder 1hr conv error: ' + e); }
+        }
+        sheet.getRange(i + 1, 12).setValue('sent');
+      }
+    }
+  } catch (err) {
+    Logger.log('checkConvivenciaReminders error: ' + err);
+  }
+}
+
+function formatDateLabel(dateStr) {
+  try {
+    var parts = dateStr.split('-');
+    var months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return parseInt(parts[2]) + ' de ' + months[parseInt(parts[1]) - 1] + ' de ' + parts[0];
+  } catch(ex) {
+    return dateStr;
+  }
 }

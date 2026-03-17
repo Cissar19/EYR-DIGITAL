@@ -42,3 +42,47 @@ export function sendAssignmentEmail({ toEmail, toName, actionType, date, reason,
         console.error('[EmailService] Error al enviar email:', error);
     });
 }
+
+/**
+ * Sends a convivencia reservation notification email via Google Apps Script.
+ * Fire-and-forget: does not block the UI.
+ */
+export function sendConvivenciaEmail({ convivenciaAction, teacherEmail, teacherName, convivenciaEmail, convivenciaName, date, blockLabel, blockStart, blockEnd, subject }) {
+    if (!APPS_SCRIPT_URL || !APPS_SCRIPT_SECRET) {
+        console.warn('[EmailService] VITE_APPS_SCRIPT_ADMIN_DAYS_URL o VITE_APPS_SCRIPT_SECRET no configurados. Email no enviado.');
+        return;
+    }
+
+    if (!teacherEmail) {
+        console.warn('[EmailService] No se proporcionó email del profesor. Email no enviado.');
+        return;
+    }
+
+    const payload = {
+        secret: APPS_SCRIPT_SECRET,
+        convivenciaAction,
+        teacherEmail,
+        teacherName,
+        convivenciaEmail: convivenciaEmail || '',
+        convivenciaName: convivenciaName || '',
+        date,
+        blockLabel,
+        blockStart,
+        blockEnd,
+        subject: subject || '',
+    };
+
+    console.log('[EmailService] Enviando email convivencia:', { convivenciaAction, teacherEmail, teacherName, date, blockLabel });
+
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+        redirect: 'follow',
+    })
+    .then((r) => r.text())
+    .then((t) => console.log('[EmailService] Respuesta convivencia:', t))
+    .catch((error) => {
+        console.error('[EmailService] Error al enviar email convivencia:', error);
+    });
+}

@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle, Heart } from 'lucide-react';
+import { usePermissions } from '../context/PermissionsContext';
+import { MODULE_REGISTRY } from '../data/moduleRegistry';
+import { resolvePermissions } from '../lib/permissionResolver';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle, Heart, ChevronDown, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminUsers() {
     const { user: currentUser, users: MOCK_USERS, addUser, updateUser, deleteUser } = useAuth();
+    const { roleDefaults } = usePermissions();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isEditAttributesOpen, setIsEditAttributesOpen] = useState(false);
@@ -13,6 +17,8 @@ export default function AdminUsers() {
     const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher' });
     const [attributesData, setAttributesData] = useState({ id: null, headTeacherOf: '', subjects: '' });
     const [editingUserId, setEditingUserId] = useState(null);
+    const [permOverrides, setPermOverrides] = useState({});
+    const [showPermissions, setShowPermissions] = useState(false);
     const [notification, setNotification] = useState(null);
 
     // Search & Pagination State
@@ -23,6 +29,8 @@ export default function AdminUsers() {
     const openCreateModal = () => {
         setEditingUserId(null);
         setFormData({ name: '', email: '', role: 'teacher' });
+        setPermOverrides({});
+        setShowPermissions(false);
         setIsModalOpen(true);
     };
 
@@ -33,6 +41,8 @@ export default function AdminUsers() {
             email: userToEdit.email,
             role: userToEdit.role
         });
+        setPermOverrides(userToEdit.permissionOverrides || {});
+        setShowPermissions(false);
         setIsModalOpen(true);
     };
 
@@ -51,7 +61,7 @@ export default function AdminUsers() {
 
         try {
             if (editingUserId) {
-                await updateUser(editingUserId, formData);
+                await updateUser(editingUserId, { ...formData, permissionOverrides: permOverrides });
                 setNotification('Usuario actualizado correctamente');
             } else {
                 await addUser(formData);
@@ -61,6 +71,7 @@ export default function AdminUsers() {
             setIsModalOpen(false);
             setEditingUserId(null);
             setFormData({ name: '', email: '', role: 'teacher' });
+            setPermOverrides({});
             setTimeout(() => setNotification(null), 3000);
         } catch (error) {
             const msg = error.code === 'auth/email-already-in-use'
@@ -484,7 +495,7 @@ export default function AdminUsers() {
                                     <div className="grid grid-cols-3 gap-2">
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'teacher' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'teacher' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'teacher'
                                                     ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
@@ -495,7 +506,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'staff' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'staff' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'staff'
                                                     ? 'bg-teal-600 border-teal-600 text-white shadow-lg shadow-teal-200'
@@ -506,7 +517,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'admin' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'admin' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'admin'
                                                     ? 'bg-amber-600 border-amber-600 text-white shadow-lg shadow-amber-200'
@@ -517,7 +528,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'director' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'director' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'director'
                                                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
@@ -528,7 +539,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'utp_head' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'utp_head' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'utp_head'
                                                     ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200'
@@ -539,7 +550,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'inspector' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'inspector' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'inspector'
                                                     ? 'bg-orange-600 border-orange-600 text-white shadow-lg shadow-orange-200'
@@ -550,7 +561,7 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: 'convivencia' })}
+                                            onClick={() => { setFormData({ ...formData, role: 'convivencia' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'convivencia'
                                                     ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-200'
@@ -561,6 +572,98 @@ export default function AdminUsers() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Collapsible Permissions Section (edit mode only) */}
+                                {editingUserId && (
+                                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPermissions(p => !p)}
+                                            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                        >
+                                            <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <Shield className="w-4 h-4 text-indigo-500" />
+                                                Permisos de Acceso
+                                                {Object.keys(permOverrides).length > 0 && (
+                                                    <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold">
+                                                        {Object.keys(permOverrides).length} override{Object.keys(permOverrides).length > 1 ? 's' : ''}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showPermissions ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showPermissions && (
+                                            <div className="px-4 py-3 space-y-2">
+                                                {(formData.role === 'admin' || formData.role === 'super_admin') ? (
+                                                    <div className="p-3 bg-emerald-50 rounded-lg text-xs text-emerald-700 flex items-center gap-2">
+                                                        <Shield className="w-4 h-4" />
+                                                        Este rol tiene acceso completo siempre.
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {Object.keys(permOverrides).length > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setPermOverrides({})}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors mb-2"
+                                                            >
+                                                                <RotateCcw className="w-3 h-3" />
+                                                                Restaurar Permisos del Rol
+                                                            </button>
+                                                        )}
+                                                        {MODULE_REGISTRY.map(mod => {
+                                                            // Compute resolved value using the form's current role + overrides
+                                                            const fakeUser = { role: formData.role, permissionOverrides: permOverrides };
+                                                            const resolved = resolvePermissions(fakeUser, roleDefaults);
+                                                            const value = resolved[mod.key];
+                                                            const isOverride = permOverrides[mod.key] !== undefined;
+
+                                                            // Compute role-level value (without user overrides)
+                                                            const roleValue = (() => {
+                                                                let v = mod.defaultRoles === null ? true : mod.defaultRoles.includes(formData.role);
+                                                                const ro = roleDefaults[formData.role]?.modules?.[mod.key];
+                                                                if (ro !== undefined) v = ro;
+                                                                return v;
+                                                            })();
+
+                                                            return (
+                                                                <div key={mod.key} className="flex items-center justify-between py-1.5">
+                                                                    <div className="flex items-center gap-2 text-sm">
+                                                                        <mod.icon className="w-3.5 h-3.5 text-slate-400" />
+                                                                        <span className={`font-medium ${isOverride ? 'text-indigo-700' : 'text-slate-600'}`}>{mod.name}</span>
+                                                                        {isOverride && (
+                                                                            <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1 py-0.5 rounded uppercase">override</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newOverrides = { ...permOverrides };
+                                                                            const newValue = !value;
+                                                                            if (newValue === roleValue) {
+                                                                                delete newOverrides[mod.key];
+                                                                            } else {
+                                                                                newOverrides[mod.key] = newValue;
+                                                                            }
+                                                                            setPermOverrides(newOverrides);
+                                                                        }}
+                                                                        className={`w-9 h-5 rounded-full transition-colors relative inline-flex items-center
+                                                                            ${value ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                                    >
+                                                                        <span className={`inline-block w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform
+                                                                            ${value ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}
+                                                                        />
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="pt-6 flex gap-3">
                                     <button

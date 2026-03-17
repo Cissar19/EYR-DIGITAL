@@ -3,6 +3,7 @@ import { useAuth, ROLES } from './AuthContext';
 import { toast } from 'sonner';
 import { subscribeToCollection, createDocument, removeDocument, fetchCollection } from '../lib/firestoreService';
 import { validateDate, validateRequiredString, validateEnum, sanitizeText } from '../lib/validation';
+import { sendConvivenciaEmail } from '../lib/emailService';
 
 const ConvivenciaContext = createContext();
 const ADMIN_ROLES = [ROLES.DIRECTOR, ROLES.ADMIN, ROLES.SUPER_ADMIN];
@@ -27,8 +28,18 @@ export const TIME_BLOCKS = [
 export const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 
 export function ConvivenciaProvider({ children }) {
-    const { user } = useAuth();
+    const { user, users } = useAuth();
     const [reservations, setReservations] = useState([]);
+
+    const resolveTeacherEmail = (teacherName) => {
+        const found = users.find(u => u.name === teacherName);
+        return found ? { email: found.email, name: found.name } : { email: '', name: teacherName };
+    };
+
+    const getConvivenciaAdmin = () => {
+        const admin = users.find(u => u.role === ROLES.CONVIVENCIA);
+        return admin ? { email: admin.email, name: admin.name } : null;
+    };
 
     useEffect(() => {
         const unsubscribe = subscribeToCollection('convivencia_reservations', (docs) => {
@@ -70,6 +81,23 @@ export function ConvivenciaProvider({ children }) {
 
             await createDocument('convivencia_reservations', newReservation);
             toast.success("Reserva confirmada.");
+
+            const block = TIME_BLOCKS.find(b => b.id === blockId);
+            const teacherInfo = resolveTeacherEmail(teacher);
+            const convAdmin = getConvivenciaAdmin();
+            sendConvivenciaEmail({
+                convivenciaAction: 'reservation_created',
+                teacherEmail: teacherInfo.email,
+                teacherName: teacherInfo.name,
+                convivenciaEmail: convAdmin?.email || '',
+                convivenciaName: convAdmin?.name || '',
+                date,
+                blockLabel: block?.label || blockId,
+                blockStart: block?.start || '',
+                blockEnd: block?.end || '',
+                subject,
+            });
+
             return true;
 
         } catch (error) {
@@ -98,8 +126,25 @@ export function ConvivenciaProvider({ children }) {
                 return;
             }
 
+            const block = TIME_BLOCKS.find(b => b.id === reservation.blockId);
+            const teacherInfo = resolveTeacherEmail(reservation.teacher);
+            const convAdmin = getConvivenciaAdmin();
+
             await removeDocument('convivencia_reservations', reservationId);
             toast.success("Reserva eliminada.");
+
+            sendConvivenciaEmail({
+                convivenciaAction: 'reservation_cancelled',
+                teacherEmail: teacherInfo.email,
+                teacherName: teacherInfo.name,
+                convivenciaEmail: convAdmin?.email || '',
+                convivenciaName: convAdmin?.name || '',
+                date: reservation.date,
+                blockLabel: block?.label || reservation.blockId,
+                blockStart: block?.start || '',
+                blockEnd: block?.end || '',
+                subject: reservation.subject,
+            });
 
         } catch (error) {
             console.error("Error removing convivencia reservation:", error);

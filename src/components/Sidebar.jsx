@@ -1,115 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, CalendarDays, CalendarClock, CalendarCheck, Monitor, LifeBuoy, Settings, Package, LogOut, Users, Printer, Box, X, PanelLeftClose, BarChart3, HeartPulse, Shuffle, Shield } from 'lucide-react';
+import { LogOut, X, PanelLeftClose } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
+import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import logoEyr from '../assets/logo_eyr.png';
-
-// ... (lines 7-111 skipped)
-
-<img
-    src={logoEyr}
-    alt="Centro Educacional Ernesto Yañez Rivera"
-    className="h-full w-auto object-contain max-w-[180px]"
-/>
-
-// ============================================
-// COMMON NAVIGATION (All Roles)
-// ============================================
-const COMMON_MENU_ITEMS = [
-    {
-        name: 'Inicio',
-        icon: LayoutDashboard,
-        path: '/'
-    },
-    {
-        name: 'Reservar Enlace',
-        icon: Monitor,
-        path: '/labs'
-    },
-    {
-        name: 'Tickets / Soporte',
-        icon: LifeBuoy,
-        path: '/tickets'
-    }
-];
-
-// ============================================
-// ROLE-SPECIFIC NAVIGATION
-// ============================================
-const ROLE_SPECIFIC_ITEMS = [
-    {
-        name: 'Equipo EYR',
-        icon: Users,
-        path: '/users',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR]
-    },
-    {
-        name: 'Gestionar Horarios',
-        icon: CalendarClock,
-        path: '/admin/schedules',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD]
-    },
-    {
-        name: 'Gestión Días Admin',
-        icon: CalendarCheck,
-        path: '/admin/days-tracking',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR]
-    },
-    {
-        name: 'Licencias Medicas',
-        icon: HeartPulse,
-        path: '/admin/medical-leaves',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR]
-    },
-    {
-        name: 'Registro Reemplazos',
-        icon: Shuffle,
-        path: '/admin/replacements',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.UTP_HEAD, ROLES.INSPECTOR]
-    },
-    {
-        name: 'Convivencia Escolar',
-        icon: Shield,
-        path: '/convivencia',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.CONVIVENCIA]
-    },
-    {
-        name: 'Estadísticas',
-        icon: BarChart3,
-        path: '/admin/stats',
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR]
-    },
-    {
-        name: 'Mi Horario',
-        icon: CalendarDays,
-        path: '/schedule',
-        roles: [ROLES.TEACHER]
-    },
-    {
-        name: 'Días Administrativos',
-        icon: Calendar,
-        path: '/administrative-days',
-        roles: [ROLES.TEACHER]
-    },
-    {
-        name: 'Solicitar Equipos',
-        icon: Box,
-        path: '/equipment',
-        roles: [ROLES.TEACHER]
-    },
-    /*
-    {
-        name: 'Inventario',
-        icon: Package,
-        path: '/inventory',
-        roles: [ROLES.DIRECTOR, ROLES.ADMIN, ROLES.SUPER_ADMIN]
-    }
-    */
-];
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
     const { user, logout } = useAuth();
+    const { canAccess } = usePermissions();
     const location = useLocation();
 
     // Close sidebar when route changes
@@ -119,10 +19,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         }
     }, [location.pathname]);
 
-    // Filter role-specific items based on current user's role
-    const roleSpecificItems = ROLE_SPECIFIC_ITEMS.filter(item =>
-        item.roles.includes(user?.role)
-    );
+    // Filter modules by permission, split by category
+    const commonItems = MODULE_REGISTRY
+        .filter(m => m.category === 'common' && canAccess(m.key));
+    const roleSpecificItems = MODULE_REGISTRY
+        .filter(m => m.category === 'role_specific' && canAccess(m.key));
+
+    // Teachers and Convivencia: hide "General" header, show single "Menu" header
+    const isMinimalRole = user?.role === ROLES.TEACHER || user?.role === ROLES.CONVIVENCIA;
 
     // Render a menu link
     const renderMenuItem = (item) => {
@@ -192,15 +96,23 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     </div>
 
                     <nav className="space-y-1">
-                        {/* Section Label */}
-                        <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">General</p>
-                        {COMMON_MENU_ITEMS.map(renderMenuItem)}
+                        {/* Common section — hidden for teacher/convivencia */}
+                        {!isMinimalRole && commonItems.length > 0 && (
+                            <>
+                                <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">General</p>
+                                {commonItems.map(renderMenuItem)}
+                            </>
+                        )}
 
                         {/* Role Specific Items */}
                         {roleSpecificItems.length > 0 && (
                             <>
-                                <div className="my-4 border-t border-slate-100" />
-                                <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Mi Área</p>
+                                {!isMinimalRole && commonItems.length > 0 && (
+                                    <div className="my-4 border-t border-slate-100" />
+                                )}
+                                <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                                    {isMinimalRole ? 'Menu' : 'Mi Area'}
+                                </p>
                                 {roleSpecificItems.map(renderMenuItem)}
                             </>
                         )}
@@ -226,7 +138,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         className="flex w-full items-center gap-3 px-4 py-2.5 text-slate-500 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors text-sm font-medium"
                     >
                         <LogOut className="w-4 h-4" />
-                        <span>Cerrar Sesión</span>
+                        <span>Cerrar Sesion</span>
                     </button>
                 </div>
             </div>
