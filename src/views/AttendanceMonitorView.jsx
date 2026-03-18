@@ -509,7 +509,7 @@ export default function AttendanceMonitorView() {
                                 </p>
                             </div>
                             <p className="text-[10px] text-slate-400 mt-2">
-                                {teacherHours.length} docentes con horario registrado en el sistema
+                                {teacherHours.length} funcionarios con horario registrado en el sistema
                             </p>
                         </div>
                     )}
@@ -574,7 +574,7 @@ export default function AttendanceMonitorView() {
                             <CalendarDays className="w-4 h-4" />
                             <span className="font-medium">Periodo: {results.dateRange.from} — {results.dateRange.to}</span>
                             <span className="text-slate-300">|</span>
-                            <span className="font-medium">{displaySummary.totalTeachers} docentes procesados</span>
+                            <span className="font-medium">{displaySummary.totalTeachers} funcionarios procesados</span>
                             {fileName && (
                                 <>
                                     <span className="text-slate-300">|</span>
@@ -641,7 +641,7 @@ export default function AttendanceMonitorView() {
                                         <AlertTriangle className="w-4 h-4 text-amber-500" />
                                         Ranking de Atrasos
                                         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
-                                            {ranked.length} docente{ranked.length !== 1 ? 's' : ''}
+                                            {ranked.length} funcionario{ranked.length !== 1 ? 's' : ''}
                                         </span>
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -724,7 +724,7 @@ export default function AttendanceMonitorView() {
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Buscar docente..."
+                                    placeholder="Buscar funcionario..."
                                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
                                 />
                             </div>
@@ -1165,7 +1165,7 @@ function ReportCard({ report, onView, onDelete, deleting }) {
 
             <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
                 <Users className="w-3 h-3" />
-                <span>{s.totalTeachers || 0} docentes · {s.totalDays || 0} días</span>
+                <span>{s.totalTeachers || 0} funcionarios · {s.totalDays || 0} días</span>
             </div>
 
             {report.uploadedByName && (

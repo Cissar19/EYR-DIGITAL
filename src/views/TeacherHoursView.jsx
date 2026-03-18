@@ -136,7 +136,7 @@ export default function TeacherHoursView() {
                         </div>
                         Horarios de Permanencia
                     </h1>
-                    <p className="text-slate-500 mt-1 text-lg">Horarios de entrada y salida del equipo docente</p>
+                    <p className="text-slate-500 mt-1 text-lg">Horarios de entrada y salida del personal</p>
                 </div>
             </div>
 
@@ -181,7 +181,7 @@ export default function TeacherHoursView() {
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar docente..."
+                        placeholder="Buscar funcionario..."
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
                     />
                 </div>
@@ -304,7 +304,7 @@ export default function TeacherHoursView() {
                     {filtered.length === 0 && (
                         <div className="text-center py-12 text-slate-400">
                             <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">No hay docentes que coincidan</p>
+                            <p className="text-sm font-medium">No hay funcionarios que coincidan</p>
                         </div>
                     )}
                 </div>
@@ -378,7 +378,7 @@ export default function TeacherHoursView() {
                     {filtered.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-400">
                             <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">No hay docentes que coincidan</p>
+                            <p className="text-sm font-medium">No hay funcionarios que coincidan</p>
                         </div>
                     )}
                 </div>
