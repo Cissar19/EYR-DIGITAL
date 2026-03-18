@@ -200,8 +200,8 @@ export default function AdminUsers() {
         user.role !== ROLES.PRINTER
     );
 
-    // Security Check: Only Admin can manage users
-    const canManageUsers = currentUser && (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.DIRECTOR || currentUser.role === ROLES.SUPER_ADMIN);
+    // Security Check: Only Admin/Super Admin can manage users
+    const canManageUsers = currentUser && (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.SUPER_ADMIN);
 
     // Sort users alphabetically by name for better readability
     const sortedUsers = [...allUsers].sort((a, b) => {
