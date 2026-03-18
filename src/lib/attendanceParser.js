@@ -180,21 +180,36 @@ export function parseAttendanceExcel(arrayBuffer) {
  * teacher_hours.name is like "Daniela Paz Alvarado Vera"
  * We try to extract last two words as paternalLastName + maternalLastName.
  */
+const SURNAME_PARTICLES = new Set(['de', 'del', 'de la', 'los', 'las', 'lo', 'la']);
+
 function buildTeacherKeys(teacher) {
     const parts = teacher.name.trim().split(/\s+/);
     const keys = [];
 
     if (parts.length >= 3) {
-        // Assume last 2 words are paternal + maternal last names
-        const paternal = normalize(parts[parts.length - 2]);
+        let paternal = normalize(parts[parts.length - 2]);
         const maternal = normalize(parts[parts.length - 1]);
+        const firstName = normalize(parts[0]);
+
+        // Check if word before paternal is a particle (e.g. "De Nordenflycht")
+        if (parts.length >= 4) {
+            const maybeParticle = normalize(parts[parts.length - 3]);
+            if (SURNAME_PARTICLES.has(maybeParticle)) {
+                const compoundPaternal = `${maybeParticle} ${paternal}`;
+                keys.push(`${firstName}|${compoundPaternal}|${maternal}`);
+                keys.push(`${compoundPaternal}|${maternal}`);
+            }
+        }
+
+        // Most specific: firstName + paternal + maternal
+        keys.push(`${firstName}|${paternal}|${maternal}`);
+
+        // Fallback: paternal + maternal (may collide for same-surname families)
         keys.push(`${paternal}|${maternal}`);
 
         // Fallback: first name + paternal
-        const firstName = normalize(parts[0]);
         keys.push(`${firstName}|${paternal}`);
     } else if (parts.length === 2) {
-        // first + last
         keys.push(`${normalize(parts[0])}|${normalize(parts[1])}`);
     }
 
@@ -207,6 +222,7 @@ function buildMarkPersonKey(mark) {
     const firstName = normalize(mark.firstName);
 
     return {
+        exact: `${firstName}|${paternal}|${maternal}`,
         primary: `${paternal}|${maternal}`,
         fallback: `${firstName}|${paternal}`,
     };
@@ -221,16 +237,26 @@ function buildMarkPersonKey(mark) {
  * @returns {{ summary, dailyRecords, unmatchedPeople, dateRange }}
  */
 export function processAttendance(marks, teacherHours) {
-    // Build teacher lookup by normalized key
+    // Build teacher lookup by normalized key, tracking ambiguous keys
     const teacherByKey = new Map();
+    const ambiguousKeys = new Set();
     for (const teacher of teacherHours) {
         if (!teacher.name || !teacher.schedule) continue;
         const keys = buildTeacherKeys(teacher);
         for (const key of keys) {
-            if (!teacherByKey.has(key)) {
+            if (teacherByKey.has(key)) {
+                // Different teacher sharing the same key → ambiguous (e.g. siblings)
+                if (teacherByKey.get(key).name !== teacher.name) {
+                    ambiguousKeys.add(key);
+                }
+            } else {
                 teacherByKey.set(key, teacher);
             }
         }
+    }
+    // Remove ambiguous keys to prevent siblings' marks from collapsing into one person
+    for (const key of ambiguousKeys) {
+        teacherByKey.delete(key);
     }
 
     // Group marks by person+date
@@ -239,8 +265,8 @@ export function processAttendance(marks, teacherHours) {
     const matchedPersons = new Set();
 
     for (const mark of marks) {
-        const { primary, fallback } = buildMarkPersonKey(mark);
-        const teacher = teacherByKey.get(primary) || teacherByKey.get(fallback);
+        const { exact, primary, fallback } = buildMarkPersonKey(mark);
+        const teacher = teacherByKey.get(exact) || teacherByKey.get(primary) || teacherByKey.get(fallback);
         const fullName = [mark.firstName, mark.paternalLastName, mark.maternalLastName].filter(Boolean).join(' ');
 
         // Track all people for unmatched report
