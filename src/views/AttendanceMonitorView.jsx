@@ -4,7 +4,7 @@ import {
     Clock, Upload, Search, AlertTriangle, ChevronDown, ChevronUp,
     FileSpreadsheet, Users, CalendarDays, LogIn, LogOut, UserX,
     Filter, ArrowUpDown, X, CheckCircle2, Save, Trash2, Eye, Pencil, Check,
-    History, ChevronLeft,
+    History, ChevronLeft, Download,
 } from 'lucide-react';
 import { subscribeToCollection, createDocument, removeDocument, updateDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import { parseAttendanceExcel, processAttendance } from '../lib/attendanceParser
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { exportAttendancePDF } from '../lib/pdfExport';
 
 const PAGE_SIZE = 25;
 
@@ -433,6 +434,18 @@ export default function AttendanceMonitorView() {
                                 {saving ? 'Guardando...' : 'Guardar en sistema'}
                             </button>
                         )}
+                        <button
+                            onClick={() => exportAttendancePDF({
+                                dateRange: results.dateRange,
+                                summary: displaySummary,
+                                records: filteredRecords,
+                                fileName,
+                            })}
+                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-bold text-white transition-colors flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            Exportar PDF
+                        </button>
                         <button
                             onClick={handleReset}
                             className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-600 transition-colors flex items-center gap-2"
