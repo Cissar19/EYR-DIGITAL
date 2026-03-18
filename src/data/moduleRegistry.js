@@ -1,6 +1,6 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
-    CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon
+    CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock
 } from 'lucide-react';
 
 /**
@@ -52,6 +52,7 @@ export const MODULE_REGISTRY = [
         icon: Users,
         path: '/users',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'director'],
     },
     {
@@ -60,6 +61,7 @@ export const MODULE_REGISTRY = [
         icon: CalendarClock,
         path: '/admin/schedules',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'utp_head'],
     },
     {
@@ -68,6 +70,7 @@ export const MODULE_REGISTRY = [
         icon: CalendarCheck,
         path: '/admin/days-tracking',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'utp_head', 'inspector'],
     },
     {
@@ -76,6 +79,7 @@ export const MODULE_REGISTRY = [
         icon: HeartPulse,
         path: '/admin/medical-leaves',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
     },
     {
@@ -84,6 +88,7 @@ export const MODULE_REGISTRY = [
         icon: Shuffle,
         path: '/admin/replacements',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'utp_head', 'inspector'],
     },
     {
@@ -93,6 +98,24 @@ export const MODULE_REGISTRY = [
         path: '/convivencia',
         category: 'role_specific',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia', 'teacher'],
+    },
+    {
+        key: 'teacher_hours',
+        name: 'Horarios Permanencia',
+        icon: Clock,
+        path: '/admin/teacher-hours',
+        category: 'role_specific',
+        group: 'administracion',
+        defaultRoles: [...MANAGEMENT, 'convivencia'],
+    },
+    {
+        key: 'attendance_monitor',
+        name: 'Atrasos',
+        icon: Clock,
+        path: '/admin/attendance',
+        category: 'role_specific',
+        group: 'administracion',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
     },
     {
         key: 'stats',
@@ -108,6 +131,7 @@ export const MODULE_REGISTRY = [
         icon: SettingsIcon,
         path: '/admin/permissions',
         category: 'role_specific',
+        group: 'administracion',
         defaultRoles: ['super_admin', 'admin'],
     },
 ];

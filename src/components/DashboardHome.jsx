@@ -28,6 +28,7 @@ import {
     BarChart3,
     Shuffle,
     FileDown,
+    HeartPulse,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -1216,40 +1217,6 @@ const AdminDashboardView = () => {
             {/* Replacement Suggestions (synced with selected day) */}
             <ReplacementsCard externalDate={absenceSelectedDay} />
 
-            {/* 2. Solicitudes y Tickets (Urgent Action - Pixel Perfect) */}
-            <BentoCard
-                delay={0.1}
-                onClick={() => navigate('/tickets')}
-                className="bg-white border-l-4 border-l-amber-400 relative flex flex-col justify-between"
-            >
-                {/* Badge: PRIORIDAD ALTA */}
-                <div className="absolute top-6 right-6 bg-amber-100 text-amber-800 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                    PRIORIDAD ALTA
-                </div>
-
-                <div>
-                    <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 w-fit mb-6">
-                        <AlertCircle className="w-8 h-8" />
-                    </div>
-
-                    <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-5xl font-black text-slate-800 tracking-tighter">
-                            {pendingTickets}
-                        </span>
-                        <span className="text-xl text-slate-400 font-medium">Pendientes</span>
-                    </div>
-                </div>
-
-                <div className="mt-4">
-                    <h3 className="font-bold text-slate-800 text-lg mb-1">Solicitudes y Tickets</h3>
-                    <p className="text-slate-500 text-sm mb-4">Profesores esperando aprobación.</p>
-
-                    <div className="flex items-center text-amber-600 font-bold text-sm group-hover:gap-2 transition-all">
-                        Revisar ahora <ChevronRight className="w-4 h-4 ml-1" />
-                    </div>
-                </div>
-            </BentoCard>
-
             {/* 3. Equipo EYR (Staff Management) */}
             <BentoCard
                 delay={0.2}
@@ -1345,7 +1312,59 @@ const AdminDashboardView = () => {
                 </div>
             </BentoCard>
 
-            {/* 6. Estadísticas */}
+            {/* 6. Licencias Médicas */}
+            <BentoCard
+                delay={0.5}
+                onClick={() => navigate('/admin/medical-leaves')}
+                className="bg-white group"
+            >
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="p-3 bg-rose-50 rounded-2xl text-rose-600 w-fit mb-4 group-hover:scale-110 transition-transform duration-300">
+                            <HeartPulse className="w-8 h-8" />
+                        </div>
+
+                        <h3 className="font-bold text-slate-700 text-xl mb-1">Licencias Médicas</h3>
+                    </div>
+
+                    <div className="mt-2">
+                        <p className="text-slate-500 text-sm mb-4">
+                            Seguimiento de licencias médicas del personal.
+                        </p>
+                        <div className="flex items-center text-rose-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Ver Licencias <ChevronRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                </div>
+            </BentoCard>
+
+            {/* 7. Atrasos */}
+            <BentoCard
+                delay={0.6}
+                onClick={() => navigate('/admin/attendance')}
+                className="bg-white group"
+            >
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="p-3 bg-orange-50 rounded-2xl text-orange-600 w-fit mb-4 group-hover:scale-110 transition-transform duration-300">
+                            <Clock className="w-8 h-8" />
+                        </div>
+
+                        <h3 className="font-bold text-slate-700 text-xl mb-1">Atrasos</h3>
+                    </div>
+
+                    <div className="mt-2">
+                        <p className="text-slate-500 text-sm mb-4">
+                            Monitor de asistencia y atrasos del personal.
+                        </p>
+                        <div className="flex items-center text-orange-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                            Ver Atrasos <ChevronRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                </div>
+            </BentoCard>
+
+            {/* 8. Estadísticas */}
             <BentoCard
                 delay={0.5}
                 onClick={() => navigate('/admin/stats')}

@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Clock, Upload, Search, AlertTriangle, ChevronDown, ChevronUp,
     FileSpreadsheet, Users, CalendarDays, LogIn, LogOut, UserX,
-    Filter, ArrowUpDown, X, CheckCircle2, Save, Trash2, Eye,
+    Filter, ArrowUpDown, X, CheckCircle2, Save, Trash2, Eye, Pencil, Check,
     History, ChevronLeft,
 } from 'lucide-react';
-import { subscribeToCollection, createDocument, removeDocument } from '../lib/firestoreService';
+import { subscribeToCollection, createDocument, removeDocument, updateDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
 import { parseAttendanceExcel, processAttendance } from '../lib/attendanceParser';
 import { useAuth } from '../context/AuthContext';
@@ -15,8 +15,67 @@ import { cn } from '../lib/utils';
 
 const PAGE_SIZE = 25;
 
+const MONTH_OPTIONS = [
+    { value: '01', label: 'Ene' }, { value: '02', label: 'Feb' }, { value: '03', label: 'Mar' },
+    { value: '04', label: 'Abr' }, { value: '05', label: 'May' }, { value: '06', label: 'Jun' },
+    { value: '07', label: 'Jul' }, { value: '08', label: 'Ago' }, { value: '09', label: 'Sep' },
+    { value: '10', label: 'Oct' }, { value: '11', label: 'Nov' }, { value: '12', label: 'Dic' },
+];
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
+
+/** Parse "HH:MM" to total minutes */
+function timeToMinutes(t) {
+    if (!t || t === '-') return null;
+    const parts = t.toString().trim().split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+    return parts[0] * 60 + parts[1];
+}
+
+/** Recalculate summary KPIs from dailyRecords, respecting justified/edited fields */
+function recalculateSummary(dailyRecords, originalSummary) {
+    const teacherStats = new Map();
+    for (const rec of dailyRecords) {
+        if (!teacherStats.has(rec.teacherName)) {
+            teacherStats.set(rec.teacherName, {
+                name: rec.teacherName,
+                lateCount: 0, lateMinutes: 0,
+                earlyExitCount: 0, earlyExitMinutes: 0,
+                absences: 0,
+            });
+        }
+        const stats = teacherStats.get(rec.teacherName);
+        if (rec.justified) continue;
+        if (rec.absent) { stats.absences++; continue; }
+
+        const effectiveEntry = rec.editedEntry || rec.actualEntry;
+        const effectiveExit = rec.editedExit || rec.actualExit;
+
+        const entryMin = timeToMinutes(effectiveEntry);
+        const expectedEntryMin = timeToMinutes(rec.expectedEntry);
+        const tardiness = (entryMin != null && expectedEntryMin != null && entryMin > expectedEntryMin)
+            ? entryMin - expectedEntryMin : 0;
+        if (tardiness > 0) { stats.lateCount++; stats.lateMinutes += tardiness; }
+
+        const exitMin = timeToMinutes(effectiveExit);
+        const expectedExitMin = timeToMinutes(rec.expectedExit);
+        const earlyDep = (exitMin != null && expectedExitMin != null && exitMin < expectedExitMin)
+            ? expectedExitMin - exitMin : 0;
+        if (earlyDep > 0) { stats.earlyExitCount++; stats.earlyExitMinutes += earlyDep; }
+    }
+
+    const byTeacher = [...teacherStats.values()].sort((a, b) => b.lateMinutes - a.lateMinutes);
+    return {
+        totalDays: originalSummary.totalDays,
+        totalTeachers: teacherStats.size,
+        totalLateEntries: byTeacher.reduce((s, t) => s + t.lateCount, 0),
+        totalEarlyExits: byTeacher.reduce((s, t) => s + t.earlyExitCount, 0),
+        totalAbsences: byTeacher.reduce((s, t) => s + t.absences, 0),
+        byTeacher,
+    };
+}
 
 export default function AttendanceMonitorView() {
     const { user } = useAuth();
@@ -45,12 +104,22 @@ export default function AttendanceMonitorView() {
     // Filters
     const [search, setSearch] = useState('');
     const [filterDay, setFilterDay] = useState('');
+    const [filterFromDay, setFilterFromDay] = useState('');
+    const [filterFromMonth, setFilterFromMonth] = useState('');
+    const [filterToDay, setFilterToDay] = useState('');
+    const [filterToMonth, setFilterToMonth] = useState('');
     const [onlyIssues, setOnlyIssues] = useState(false);
     const [page, setPage] = useState(1);
 
     // Collapsible sections
     const [showDashboard, setShowDashboard] = useState(true);
     const [showUnmatched, setShowUnmatched] = useState(false);
+    const [showAllRanking, setShowAllRanking] = useState(false);
+
+    // Inline editing
+    const [editingIndex, setEditingIndex] = useState(null);
+    const [editForm, setEditForm] = useState({ entry: '', exit: '', justified: false, justification: '' });
+    const [savingEdit, setSavingEdit] = useState(false);
 
     // Subscribe to teacher_hours
     useEffect(() => {
@@ -119,8 +188,12 @@ export default function AttendanceMonitorView() {
         setFileName('');
         setSearch('');
         setFilterDay('');
+        setFilterFromDay(''); setFilterFromMonth('');
+        setFilterToDay(''); setFilterToMonth('');
         setOnlyIssues(false);
         setPage(1);
+        setEditingIndex(null);
+        setEditForm({ entry: '', exit: '', justified: false, justification: '' });
     };
 
     // Save report to Firestore
@@ -182,13 +255,102 @@ export default function AttendanceMonitorView() {
         setPage(1);
         setSearch('');
         setFilterDay('');
+        setFilterFromDay(''); setFilterFromMonth('');
+        setFilterToDay(''); setFilterToMonth('');
         setOnlyIssues(false);
+        setEditingIndex(null);
+        setEditForm({ entry: '', exit: '', justified: false, justification: '' });
+    };
+
+    // ── Inline editing handlers ──
+
+    const handleStartEdit = (originalIndex) => {
+        const rec = results.dailyRecords[originalIndex];
+        setEditingIndex(originalIndex);
+        setEditForm({
+            entry: rec.editedEntry || (rec.actualEntry !== '-' ? rec.actualEntry : ''),
+            exit: rec.editedExit || (rec.actualExit !== '-' ? rec.actualExit : ''),
+            justified: rec.justified || false,
+            justification: rec.justification || '',
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingIndex(null);
+        setEditForm({ entry: '', exit: '', justified: false, justification: '' });
+    };
+
+    const handleSaveEdit = async () => {
+        if (editingIndex == null || !results?._reportId || savingEdit) return;
+        setSavingEdit(true);
+        try {
+            const updatedRecords = [...results.dailyRecords];
+            const rec = { ...updatedRecords[editingIndex] };
+
+            // Store edited values only if different from original
+            if (editForm.entry && editForm.entry !== rec.actualEntry) {
+                rec.editedEntry = editForm.entry;
+            } else {
+                delete rec.editedEntry;
+            }
+            if (editForm.exit && editForm.exit !== rec.actualExit) {
+                rec.editedExit = editForm.exit;
+            } else {
+                delete rec.editedExit;
+            }
+
+            rec.justified = editForm.justified || false;
+            rec.justification = editForm.justified ? (editForm.justification || '') : '';
+
+            // Recalculate tardiness/early departure from effective values
+            if (!rec.absent) {
+                const effectiveEntry = rec.editedEntry || rec.actualEntry;
+                const effectiveExit = rec.editedExit || rec.actualExit;
+
+                const entryMin = timeToMinutes(effectiveEntry);
+                const expectedEntryMin = timeToMinutes(rec.expectedEntry);
+                rec.tardinessMinutes = (entryMin != null && expectedEntryMin != null && entryMin > expectedEntryMin)
+                    ? entryMin - expectedEntryMin : 0;
+
+                const exitMin = timeToMinutes(effectiveExit);
+                const expectedExitMin = timeToMinutes(rec.expectedExit);
+                rec.earlyDepartureMinutes = (exitMin != null && expectedExitMin != null && exitMin < expectedExitMin)
+                    ? expectedExitMin - exitMin : 0;
+            }
+
+            // Track who edited
+            if (rec.editedEntry || rec.editedExit || rec.justified) {
+                rec.editedBy = user?.name || user?.displayName || 'Desconocido';
+                rec.editedAt = new Date().toISOString();
+            } else {
+                delete rec.editedBy;
+                delete rec.editedAt;
+            }
+
+            updatedRecords[editingIndex] = rec;
+            const newSummary = recalculateSummary(updatedRecords, results.summary);
+
+            await updateDocument('attendance_reports', results._reportId, {
+                dailyRecords: updatedRecords,
+                summary: newSummary,
+            });
+
+            setResults(prev => ({ ...prev, dailyRecords: updatedRecords, summary: newSummary }));
+            setEditingIndex(null);
+            setEditForm({ entry: '', exit: '', justified: false, justification: '' });
+            toast.success('Registro actualizado');
+        } catch (err) {
+            console.error('Error updating record:', err);
+            toast.error('Error al actualizar el registro');
+        } finally {
+            setSavingEdit(false);
+        }
     };
 
     // Filtered records
     const filteredRecords = useMemo(() => {
         if (!results) return [];
-        let list = [...results.dailyRecords];
+        let list = results.dailyRecords.map((r, i) => ({ ...r, _originalIndex: i }));
 
         if (search.trim()) {
             const norm = normalizeSearch(search);
@@ -197,18 +359,42 @@ export default function AttendanceMonitorView() {
         if (filterDay) {
             list = list.filter(r => r.dayOfWeek === filterDay);
         }
+        if (filterFromDay && filterFromMonth) {
+            const year = results.dateRange?.from?.split('/')[2] || new Date().getFullYear();
+            const fromVal = new Date(year, filterFromMonth - 1, filterFromDay);
+            list = list.filter(r => {
+                const [d, m, y] = r.dateFormatted.split('/');
+                return new Date(y, m - 1, d) >= fromVal;
+            });
+        }
+        if (filterToDay && filterToMonth) {
+            const year = results.dateRange?.from?.split('/')[2] || new Date().getFullYear();
+            const toVal = new Date(year, filterToMonth - 1, filterToDay);
+            list = list.filter(r => {
+                const [d, m, y] = r.dateFormatted.split('/');
+                return new Date(y, m - 1, d) <= toVal;
+            });
+        }
         if (onlyIssues) {
-            list = list.filter(r => r.tardinessMinutes > 0 || r.earlyDepartureMinutes > 0 || r.absent);
+            list = list.filter(r => !r.justified && (r.tardinessMinutes > 0 || r.earlyDepartureMinutes > 0 || r.absent));
         }
 
         return list;
-    }, [results, search, filterDay, onlyIssues]);
+    }, [results, search, filterDay, filterFromDay, filterFromMonth, filterToDay, filterToMonth, onlyIssues]);
+
+    // Summary derived from filtered records so dashboard reacts to filters
+    const displaySummary = useMemo(() => {
+        if (!results) return null;
+        const hasFilters = search || filterDay || (filterFromDay && filterFromMonth) || (filterToDay && filterToMonth) || onlyIssues;
+        if (!hasFilters) return results.summary;
+        return recalculateSummary(filteredRecords, results.summary);
+    }, [results, filteredRecords, search, filterDay, filterFromDay, filterFromMonth, filterToDay, filterToMonth, onlyIssues]);
 
     const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
     const paginatedRecords = filteredRecords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     // Reset page when filters change
-    useEffect(() => { setPage(1); }, [search, filterDay, onlyIssues]);
+    useEffect(() => { setPage(1); }, [search, filterDay, filterFromDay, filterFromMonth, filterToDay, filterToMonth, onlyIssues]);
 
     if (loadingHours || loadingReports) {
         return (
@@ -388,7 +574,7 @@ export default function AttendanceMonitorView() {
                             <CalendarDays className="w-4 h-4" />
                             <span className="font-medium">Periodo: {results.dateRange.from} — {results.dateRange.to}</span>
                             <span className="text-slate-300">|</span>
-                            <span className="font-medium">{results.summary.totalTeachers} docentes procesados</span>
+                            <span className="font-medium">{displaySummary.totalTeachers} docentes procesados</span>
                             {fileName && (
                                 <>
                                     <span className="text-slate-300">|</span>
@@ -418,25 +604,25 @@ export default function AttendanceMonitorView() {
                                             <KPICard
                                                 icon={CalendarDays}
                                                 label="Días Analizados"
-                                                value={results.summary.totalDays}
+                                                value={displaySummary.totalDays}
                                                 color="indigo"
                                             />
                                             <KPICard
                                                 icon={LogIn}
                                                 label="Total Atrasos"
-                                                value={results.summary.totalLateEntries}
+                                                value={displaySummary.totalLateEntries}
                                                 color="red"
                                             />
                                             <KPICard
                                                 icon={LogOut}
                                                 label="Salidas Anticipadas"
-                                                value={results.summary.totalEarlyExits}
+                                                value={displaySummary.totalEarlyExits}
                                                 color="amber"
                                             />
                                             <KPICard
                                                 icon={UserX}
                                                 label="Ausencias"
-                                                value={results.summary.totalAbsences}
+                                                value={displaySummary.totalAbsences}
                                                 color="purple"
                                             />
                                         </div>
@@ -446,17 +632,20 @@ export default function AttendanceMonitorView() {
                         </div>
 
                         {/* Ranking de Atrasos */}
-                        {results.summary.byTeacher.filter(t => t.lateCount > 0).length > 0 && (
-                            <div>
-                                <h2 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                    Ranking de Atrasos
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {results.summary.byTeacher
-                                        .filter(t => t.lateCount > 0)
-                                        .slice(0, 9)
-                                        .map((teacher, i) => {
+                        {displaySummary.byTeacher.filter(t => t.lateCount > 0).length > 0 && (() => {
+                            const ranked = displaySummary.byTeacher.filter(t => t.lateCount > 0);
+                            const visible = showAllRanking ? ranked : ranked.slice(0, 9);
+                            return (
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                        Ranking de Atrasos
+                                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                                            {ranked.length} docente{ranked.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {visible.map((teacher, i) => {
                                             const severity = teacher.lateMinutes > 120
                                                 ? 'red'
                                                 : teacher.lateMinutes > 60
@@ -468,8 +657,9 @@ export default function AttendanceMonitorView() {
                                                     initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ delay: i * 0.05 }}
+                                                    onClick={() => setSearch(teacher.name)}
                                                     className={cn(
-                                                        "bg-white rounded-xl border-l-4 p-4 shadow-sm",
+                                                        "bg-white rounded-xl border-l-4 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow",
                                                         severity === 'red' && "border-l-red-500",
                                                         severity === 'amber' && "border-l-amber-500",
                                                         severity === 'yellow' && "border-l-yellow-400",
@@ -477,7 +667,7 @@ export default function AttendanceMonitorView() {
                                                 >
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-bold text-slate-800 truncate">{teacher.name}</p>
+                                                            <p className="text-sm font-bold text-slate-800 truncate hover:text-indigo-700 transition-colors">{teacher.name}</p>
                                                             <div className="flex items-center gap-3 mt-1.5">
                                                                 <span className="text-xs text-slate-500">
                                                                     <span className="font-bold text-red-600">{teacher.lateCount}</span> atrasos
@@ -509,9 +699,22 @@ export default function AttendanceMonitorView() {
                                                 </motion.div>
                                             );
                                         })}
+                                    </div>
+                                    {ranked.length > 9 && (
+                                        <button
+                                            onClick={() => setShowAllRanking(v => !v)}
+                                            className="mt-3 w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600 transition-colors flex items-center justify-center gap-1.5"
+                                        >
+                                            {showAllRanking ? (
+                                                <><ChevronUp className="w-3.5 h-3.5" /> Mostrar menos</>
+                                            ) : (
+                                                <><ChevronDown className="w-3.5 h-3.5" /> Ver todos ({ranked.length})</>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Filters */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
@@ -526,6 +729,45 @@ export default function AttendanceMonitorView() {
                                 />
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5">
+                                    <select value={filterFromDay} onChange={(e) => setFilterFromDay(e.target.value)} className="px-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:outline-none focus:border-indigo-400">
+                                        <option value="">Día</option>
+                                        {DAY_OPTIONS.map(d => <option key={d} value={d}>{parseInt(d)}</option>)}
+                                    </select>
+                                    <select value={filterFromMonth} onChange={(e) => setFilterFromMonth(e.target.value)} className="px-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:outline-none focus:border-indigo-400">
+                                        <option value="">Mes</option>
+                                        {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                    <span className="text-xs text-slate-400 font-bold">—</span>
+                                    <select value={filterToDay} onChange={(e) => setFilterToDay(e.target.value)} className="px-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:outline-none focus:border-indigo-400">
+                                        <option value="">Día</option>
+                                        {DAY_OPTIONS.map(d => <option key={d} value={d}>{parseInt(d)}</option>)}
+                                    </select>
+                                    <select value={filterToMonth} onChange={(e) => setFilterToMonth(e.target.value)} className="px-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:outline-none focus:border-indigo-400">
+                                        <option value="">Mes</option>
+                                        {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={() => { const d = new Date(); setFilterToDay(String(d.getDate()).padStart(2,'0')); setFilterToMonth(String(d.getMonth()+1).padStart(2,'0')); }}
+                                        className={cn(
+                                            "px-2.5 py-2 rounded-xl border text-xs font-bold transition-colors whitespace-nowrap",
+                                            filterToDay && filterToMonth && filterToDay === String(new Date().getDate()).padStart(2,'0') && filterToMonth === String(new Date().getMonth()+1).padStart(2,'0')
+                                                ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                                                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300"
+                                        )}
+                                    >
+                                        Hasta hoy
+                                    </button>
+                                    {(filterFromDay || filterFromMonth || filterToDay || filterToMonth) && (
+                                        <button
+                                            onClick={() => { setFilterFromDay(''); setFilterFromMonth(''); setFilterToDay(''); setFilterToMonth(''); }}
+                                            className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                            title="Limpiar fechas"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
                                 <select
                                     value={filterDay}
                                     onChange={(e) => setFilterDay(e.target.value)}
@@ -571,79 +813,199 @@ export default function AttendanceMonitorView() {
                                             <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Sal. Esperada</th>
                                             <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Sal. Real</th>
                                             <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[70px]">Sal. Ant.</th>
+                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[70px]">Deuda</th>
+                                            {viewState === 'viewing' && (
+                                                <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[80px]">Estado</th>
+                                            )}
+                                            {viewState === 'viewing' && (
+                                                <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[50px]"></th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {paginatedRecords.map((rec, idx) => (
-                                            <tr
-                                                key={`${rec.teacherName}-${rec.dateFormatted}-${idx}`}
-                                                className={cn(
-                                                    "border-b border-slate-100 transition-colors",
-                                                    rec.absent
-                                                        ? "bg-purple-50/60"
-                                                        : rec.tardinessMinutes > 15
-                                                            ? "bg-red-50/60"
-                                                            : rec.tardinessMinutes > 0
-                                                                ? "bg-amber-50/40"
-                                                                : rec.earlyDepartureMinutes > 0
-                                                                    ? "bg-amber-50/30"
-                                                                    : idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                                                )}
-                                            >
-                                                <td className="py-2.5 px-4">
-                                                    <span className="font-bold text-slate-800 text-xs">{rec.teacherName}</span>
-                                                </td>
-                                                <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-600">{rec.dateFormatted}</td>
-                                                <td className="py-2.5 px-3 text-center text-xs text-slate-600">{rec.dayOfWeek}</td>
-                                                <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-500">{rec.expectedEntry}</td>
-                                                <td className="py-2.5 px-3 text-center">
-                                                    {rec.absent ? (
-                                                        <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">AUSENTE</span>
-                                                    ) : (
-                                                        <span className={cn(
-                                                            "text-xs font-mono font-bold",
-                                                            rec.tardinessMinutes > 0 ? "text-red-600" : "text-emerald-600"
-                                                        )}>
-                                                            {rec.actualEntry}
-                                                        </span>
+                                        {paginatedRecords.map((rec, idx) => {
+                                            const isEditing = viewState === 'viewing' && editingIndex === rec._originalIndex;
+                                            return (
+                                                <React.Fragment key={`${rec.teacherName}-${rec.dateFormatted}-${idx}`}>
+                                                    <tr className={cn(
+                                                        "border-b border-slate-100 transition-colors",
+                                                        rec.justified
+                                                            ? "bg-emerald-50/60"
+                                                            : rec.absent
+                                                                ? "bg-purple-50/60"
+                                                                : rec.tardinessMinutes > 15
+                                                                    ? "bg-red-50/60"
+                                                                    : rec.tardinessMinutes > 0
+                                                                        ? "bg-amber-50/40"
+                                                                        : rec.earlyDepartureMinutes > 0
+                                                                            ? "bg-amber-50/30"
+                                                                            : idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                                                    )}>
+                                                        <td className="py-2.5 px-4">
+                                                            <span className="font-bold text-slate-800 text-xs">{rec.teacherName}</span>
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-600">{rec.dateFormatted}</td>
+                                                        <td className="py-2.5 px-3 text-center text-xs text-slate-600">{rec.dayOfWeek}</td>
+                                                        <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-500">{rec.expectedEntry}</td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            {isEditing && !rec.absent ? (
+                                                                <input
+                                                                    type="time"
+                                                                    value={editForm.entry}
+                                                                    onChange={(e) => setEditForm(f => ({ ...f, entry: e.target.value }))}
+                                                                    className="w-24 px-2 py-1 rounded-lg border border-indigo-300 text-xs font-mono text-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                                />
+                                                            ) : rec.absent ? (
+                                                                <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">AUSENTE</span>
+                                                            ) : (
+                                                                <span className={cn(
+                                                                    "text-xs font-mono font-bold",
+                                                                    rec.tardinessMinutes > 0 && !rec.justified ? "text-red-600" : "text-emerald-600"
+                                                                )}>
+                                                                    {rec.editedEntry || rec.actualEntry}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            {rec.tardinessMinutes > 0 && !rec.justified ? (
+                                                                <span className={cn(
+                                                                    "text-xs font-bold px-2 py-0.5 rounded-full",
+                                                                    rec.tardinessMinutes > 15
+                                                                        ? "bg-red-100 text-red-700"
+                                                                        : "bg-amber-100 text-amber-700"
+                                                                )}>
+                                                                    +{rec.tardinessMinutes} min
+                                                                </span>
+                                                            ) : !rec.absent ? (
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
+                                                            ) : null}
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-500">{rec.expectedExit}</td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            {isEditing && !rec.absent ? (
+                                                                <input
+                                                                    type="time"
+                                                                    value={editForm.exit}
+                                                                    onChange={(e) => setEditForm(f => ({ ...f, exit: e.target.value }))}
+                                                                    className="w-24 px-2 py-1 rounded-lg border border-indigo-300 text-xs font-mono text-center focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                                />
+                                                            ) : !rec.absent ? (
+                                                                <span className={cn(
+                                                                    "text-xs font-mono font-bold",
+                                                                    rec.earlyDepartureMinutes > 0 && !rec.justified ? "text-amber-600" : "text-emerald-600"
+                                                                )}>
+                                                                    {rec.editedExit || rec.actualExit}
+                                                                </span>
+                                                            ) : null}
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            {rec.earlyDepartureMinutes > 0 && !rec.justified ? (
+                                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                                                    -{rec.earlyDepartureMinutes} min
+                                                                </span>
+                                                            ) : !rec.absent ? (
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
+                                                            ) : null}
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            {(() => {
+                                                                if (rec.absent || rec.justified) return null;
+                                                                const effectiveExit = rec.editedExit || rec.actualExit;
+                                                                const exitMin = timeToMinutes(effectiveExit);
+                                                                const expectedExitMin = timeToMinutes(rec.expectedExit);
+                                                                const overtime = (exitMin != null && expectedExitMin != null && exitMin > expectedExitMin)
+                                                                    ? exitMin - expectedExitMin : 0;
+                                                                const debt = (rec.tardinessMinutes || 0) + (rec.earlyDepartureMinutes || 0) - overtime;
+                                                                if (debt > 0) return (
+                                                                    <span className={cn(
+                                                                        "text-xs font-black px-2 py-0.5 rounded-full",
+                                                                        debt > 30 ? "bg-red-100 text-red-700" : debt > 10 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                                                                    )}>
+                                                                        {debt} min
+                                                                    </span>
+                                                                );
+                                                                if (debt < 0) return (
+                                                                    <span className="text-xs font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                                                        +{Math.abs(debt)} min
+                                                                    </span>
+                                                                );
+                                                                return <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />;
+                                                            })()}
+                                                        </td>
+                                                        {viewState === 'viewing' && (
+                                                            <td className="py-2.5 px-3 text-center">
+                                                                {rec.justified ? (
+                                                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full whitespace-nowrap" title={rec.justification || ''}>
+                                                                        Justificado
+                                                                    </span>
+                                                                ) : (rec.editedEntry || rec.editedExit) ? (
+                                                                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                                        Editado
+                                                                    </span>
+                                                                ) : null}
+                                                            </td>
+                                                        )}
+                                                        {viewState === 'viewing' && (
+                                                            <td className="py-2.5 px-3 text-center">
+                                                                {isEditing ? (
+                                                                    <div className="flex items-center justify-center gap-1">
+                                                                        <button
+                                                                            onClick={handleSaveEdit}
+                                                                            disabled={savingEdit}
+                                                                            className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors disabled:opacity-50"
+                                                                            title="Guardar"
+                                                                        >
+                                                                            <Check className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={handleCancelEdit}
+                                                                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                                                                            title="Cancelar"
+                                                                        >
+                                                                            <X className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleStartEdit(rec._originalIndex)}
+                                                                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                                                        title="Editar registro"
+                                                                    >
+                                                                        <Pencil className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                    {isEditing && (
+                                                        <tr className="bg-indigo-50/50 border-b border-slate-200">
+                                                            <td colSpan={12} className="py-3 px-4">
+                                                                <div className="flex items-center gap-4 flex-wrap">
+                                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={editForm.justified}
+                                                                            onChange={(e) => setEditForm(f => ({ ...f, justified: e.target.checked }))}
+                                                                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                                        />
+                                                                        <span className="text-xs font-bold text-slate-700">Justificado</span>
+                                                                    </label>
+                                                                    {editForm.justified && (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editForm.justification}
+                                                                            onChange={(e) => setEditForm(f => ({ ...f, justification: e.target.value }))}
+                                                                            placeholder="Motivo de justificación..."
+                                                                            className="flex-1 min-w-[200px] px-3 py-1.5 rounded-lg border border-slate-300 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
                                                     )}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-center">
-                                                    {rec.tardinessMinutes > 0 ? (
-                                                        <span className={cn(
-                                                            "text-xs font-bold px-2 py-0.5 rounded-full",
-                                                            rec.tardinessMinutes > 15
-                                                                ? "bg-red-100 text-red-700"
-                                                                : "bg-amber-100 text-amber-700"
-                                                        )}>
-                                                            +{rec.tardinessMinutes} min
-                                                        </span>
-                                                    ) : !rec.absent ? (
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
-                                                    ) : null}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-500">{rec.expectedExit}</td>
-                                                <td className="py-2.5 px-3 text-center">
-                                                    {!rec.absent && (
-                                                        <span className={cn(
-                                                            "text-xs font-mono font-bold",
-                                                            rec.earlyDepartureMinutes > 0 ? "text-amber-600" : "text-emerald-600"
-                                                        )}>
-                                                            {rec.actualExit}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="py-2.5 px-3 text-center">
-                                                    {rec.earlyDepartureMinutes > 0 ? (
-                                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                                            -{rec.earlyDepartureMinutes} min
-                                                        </span>
-                                                    ) : !rec.absent ? (
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
-                                                    ) : null}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                </React.Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

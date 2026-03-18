@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, X, PanelLeftClose } from 'lucide-react';
+import { LogOut, X, PanelLeftClose, ChevronDown, FolderOpen, Folder } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
@@ -24,6 +24,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         .filter(m => m.category === 'common' && canAccess(m.key));
     const roleSpecificItems = MODULE_REGISTRY
         .filter(m => m.category === 'role_specific' && canAccess(m.key));
+
+    // Split role-specific into ungrouped and grouped
+    const ungroupedItems = roleSpecificItems.filter(m => !m.group);
+    const groupedItems = roleSpecificItems.filter(m => m.group === 'administracion');
+
+    // Track which groups are expanded (auto-expand if any child is active)
+    const hasActiveChild = groupedItems.some(m => location.pathname === m.path);
+    const [adminOpen, setAdminOpen] = React.useState(hasActiveChild);
+    React.useEffect(() => { if (hasActiveChild) setAdminOpen(true); }, [hasActiveChild]);
 
     // Teachers and Convivencia: hide "General" header, show single "Menu" header
     const isMinimalRole = user?.role === ROLES.TEACHER || user?.role === ROLES.CONVIVENCIA;
@@ -113,7 +122,39 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                                     {isMinimalRole ? 'Menu' : 'Mi Area'}
                                 </p>
-                                {roleSpecificItems.map(renderMenuItem)}
+
+                                {/* Ungrouped items */}
+                                {ungroupedItems.map(renderMenuItem)}
+
+                                {/* Administración folder */}
+                                {groupedItems.length > 0 && (
+                                    <div className="mt-1">
+                                        <button
+                                            onClick={() => setAdminOpen(v => !v)}
+                                            className={cn(
+                                                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left group",
+                                                hasActiveChild && !adminOpen
+                                                    ? "bg-indigo-50 text-indigo-700"
+                                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                            )}
+                                        >
+                                            {adminOpen
+                                                ? <FolderOpen className="w-5 h-5 text-indigo-500" />
+                                                : <Folder className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
+                                            }
+                                            <span className="font-medium flex-1">Administración</span>
+                                            <ChevronDown className={cn(
+                                                "w-4 h-4 text-slate-400 transition-transform duration-200",
+                                                adminOpen ? "rotate-0" : "-rotate-90"
+                                            )} />
+                                        </button>
+                                        {adminOpen && (
+                                            <div className="ml-3 pl-3 border-l-2 border-slate-100 space-y-0.5 mt-0.5">
+                                                {groupedItems.map(renderMenuItem)}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
                     </nav>

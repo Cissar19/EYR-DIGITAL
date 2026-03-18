@@ -1,14 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useConvivencia, TIME_BLOCKS, DAYS } from '../context/ConvivenciaContext';
 import { useAuth } from '../context/AuthContext';
-import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon, BookOpen, User, Clock, CheckCircle2, AlertCircle, Sparkles, BarChart3, TrendingUp, UserX, ChevronDown, Users as UsersIcon, Search } from 'lucide-react';
+import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon, BookOpen, User, Clock, CheckCircle2, AlertCircle, Sparkles, BarChart3, TrendingUp, UserX, ChevronDown, Users as UsersIcon, Search, AlertTriangle } from 'lucide-react';
 import { useSchedule } from '../context/ScheduleContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import IncidentsView from './convivencia/IncidentsView';
 
 export default function ConvivenciaReservation() {
 
     const { user, getUsersByRole } = useAuth();
+
+    // ── Tabs: only convivencia/admin/super_admin see Incidencias tab ──
+    const showTabs = user && ['convivencia', 'admin', 'super_admin'].includes(user.role);
+    const [activeTab, setActiveTab] = useState('reservas');
     const { reservations, getReservation, addReservation, removeReservation } = useConvivencia();
     const { getSchedule } = useSchedule();
 
@@ -475,6 +480,46 @@ export default function ConvivenciaReservation() {
         }
     };
 
+    // ── Incidencias tab content ──
+    if (showTabs && activeTab === 'incidencias') {
+        return (
+            <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 pb-24">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                                <Shield className="w-8 h-8 text-amber-500" />
+                                Convivencia Escolar
+                            </h1>
+                            <p className="text-slate-500 mt-1 text-lg">Gestion de Incidencias y Alumnos</p>
+                        </div>
+                    </div>
+
+                    {/* Tab bar */}
+                    <div className="flex bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+                        <button
+                            onClick={() => setActiveTab('reservas')}
+                            className={cn(
+                                "flex items-center gap-2 px-5 py-3 text-sm font-bold transition-colors border-b-2 -mb-px",
+                                "border-transparent text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <CalendarIcon className="w-4 h-4" /> Reservas
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('incidencias')}
+                            className="flex items-center gap-2 px-5 py-3 text-sm font-bold transition-colors border-b-2 -mb-px border-amber-500 text-amber-700"
+                        >
+                            <AlertTriangle className="w-4 h-4" /> Incidencias
+                        </button>
+                    </div>
+
+                    <IncidentsView />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 pb-24">
             <div className="max-w-7xl mx-auto">
@@ -561,6 +606,27 @@ export default function ConvivenciaReservation() {
                         )}
                     </div>
                 </div>
+
+                {/* Tabs for convivencia/admin/super_admin */}
+                {showTabs && (
+                    <div className="flex bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+                        <button
+                            onClick={() => setActiveTab('reservas')}
+                            className="flex items-center gap-2 px-5 py-3 text-sm font-bold transition-colors border-b-2 -mb-px border-amber-500 text-amber-700"
+                        >
+                            <CalendarIcon className="w-4 h-4" /> Reservas
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('incidencias')}
+                            className={cn(
+                                "flex items-center gap-2 px-5 py-3 text-sm font-bold transition-colors border-b-2 -mb-px",
+                                "border-transparent text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <AlertTriangle className="w-4 h-4" /> Incidencias
+                        </button>
+                    </div>
+                )}
 
                 {/* Teacher selector for Convivencia/Admin (teachers already see their own schedule) */}
                 {!isTeacherRole && (

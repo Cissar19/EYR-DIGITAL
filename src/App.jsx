@@ -28,6 +28,8 @@ import MedicalLeavesView from './views/MedicalLeavesView';
 import ReplacementLogsView from './views/ReplacementLogsView';
 import ConvivenciaReservation from './components/ConvivenciaReservation';
 import PermissionsManager from './views/PermissionsManager';
+import TeacherHoursView from './views/TeacherHoursView';
+import AttendanceMonitorView from './views/AttendanceMonitorView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -221,6 +223,8 @@ export default function App() {
           <Route path="/admin/stats" element={<PermissionGate moduleKey="stats"><StatsView /></PermissionGate>} />
           <Route path="/admin/medical-leaves" element={<PermissionGate moduleKey="medical_leaves"><MedicalLeavesView /></PermissionGate>} />
           <Route path="/admin/replacements" element={<PermissionGate moduleKey="replacements"><ReplacementLogsView /></PermissionGate>} />
+          <Route path="/admin/teacher-hours" element={<PermissionGate moduleKey="teacher_hours"><TeacherHoursView /></PermissionGate>} />
+          <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
           <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
           <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
 

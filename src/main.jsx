@@ -15,6 +15,8 @@ import { ScheduleProvider } from './context/ScheduleContext.jsx'
 import { MedicalLeavesProvider } from './context/MedicalLeavesContext.jsx'
 import { ReplacementLogsProvider } from './context/ReplacementLogsContext.jsx'
 import { ConvivenciaProvider } from './context/ConvivenciaContext.jsx'
+import { StudentsProvider } from './context/StudentsContext.jsx'
+import { IncidentsProvider } from './context/IncidentsContext.jsx'
 import { PermissionsProvider } from './context/PermissionsContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
@@ -38,7 +40,11 @@ const DataProviders = ({ children }) => {
                   <MedicalLeavesProvider>
                     <ReplacementLogsProvider>
                       <ConvivenciaProvider>
-                        {children}
+                        <StudentsProvider>
+                          <IncidentsProvider>
+                            {children}
+                          </IncidentsProvider>
+                        </StudentsProvider>
                       </ConvivenciaProvider>
                     </ReplacementLogsProvider>
                   </MedicalLeavesProvider>
