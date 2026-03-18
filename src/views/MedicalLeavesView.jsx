@@ -4,7 +4,7 @@ import {
     HeartPulse, Search, ChevronLeft, ChevronRight, X, Plus, Check, Trash2, Calendar, CalendarCheck, Eye
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
+import { useAuth, ROLES, getRoleLabel, canEdit as canEditHelper } from '../context/AuthContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import UserDetailPanel from '../components/UserDetailPanel';
 
@@ -53,7 +53,8 @@ const getReturnDate = (endDate) => {
 };
 
 export default function MedicalLeavesView() {
-    const { users: allUsers } = useAuth();
+    const { user, users: allUsers } = useAuth();
+    const userCanEdit = canEditHelper(user);
     const { getAllLeaves, addLeave, deleteLeave } = useMedicalLeaves();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -267,13 +268,15 @@ export default function MedicalLeavesView() {
                         />
                     </div>
 
-                    <button
-                        onClick={handleOpenModal}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-medium text-sm shadow-md shadow-rose-300/40 hover:shadow-lg hover:shadow-rose-400/40 transition-all hover:scale-105 active:scale-[0.98] w-full md:w-auto"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Registrar Licencia
-                    </button>
+                    {userCanEdit && (
+                        <button
+                            onClick={handleOpenModal}
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-medium text-sm shadow-md shadow-rose-300/40 hover:shadow-lg hover:shadow-rose-400/40 transition-all hover:scale-105 active:scale-[0.98] w-full md:w-auto"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Registrar Licencia
+                        </button>
+                    )}
                 </div>
 
                 {/* Leaves List */}
@@ -319,7 +322,7 @@ export default function MedicalLeavesView() {
                                         Ver Detalle
                                     </button>
 
-                                    {deleteConfirmId === leave.id ? (
+                                    {userCanEdit && (deleteConfirmId === leave.id ? (
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(leave.id); }}
@@ -341,7 +344,7 @@ export default function MedicalLeavesView() {
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
 

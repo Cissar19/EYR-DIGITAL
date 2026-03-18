@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shuffle, Search, Trash2, ChevronLeft, ChevronRight, CheckCircle, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,6 +32,8 @@ const formatDateDisplay = (dateStr) => {
 };
 
 export default function ReplacementLogsView() {
+    const { user } = useAuth();
+    const userCanEdit = canEditHelper(user);
     const { logs, deleteLog } = useReplacementLogs();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -188,7 +191,7 @@ export default function ReplacementLogsView() {
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Bloque</th>
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Reemplazante</th>
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Asignado por</th>
-                                        <th className="text-right px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider"></th>
+                                        {userCanEdit && <th className="text-right px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider"></th>}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -215,6 +218,7 @@ export default function ReplacementLogsView() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-500">{log.assignedByName}</td>
+                                                {userCanEdit && (
                                                 <td className="px-4 py-3 text-right">
                                                     {confirmDelete === log.id ? (
                                                         <div className="flex items-center gap-1 justify-end">
@@ -241,6 +245,7 @@ export default function ReplacementLogsView() {
                                                         </button>
                                                     )}
                                                 </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
@@ -271,7 +276,7 @@ export default function ReplacementLogsView() {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] text-slate-400">por {log.assignedByName}</span>
-                                            {confirmDelete === log.id ? (
+                                            {userCanEdit && (confirmDelete === log.id ? (
                                                 <div className="flex items-center gap-1">
                                                     <button onClick={() => handleDelete(log.id)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-600 text-white">Confirmar</button>
                                                     <button onClick={() => setConfirmDelete(null)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600">Cancelar</button>
@@ -280,7 +285,7 @@ export default function ReplacementLogsView() {
                                                 <button onClick={() => setConfirmDelete(log.id)} className="p-1 text-slate-400 hover:text-red-500">
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
-                                            )}
+                                            ))}
                                         </div>
                                     </div>
                                 );

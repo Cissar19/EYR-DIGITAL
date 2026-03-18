@@ -9,7 +9,7 @@ import {
 import { subscribeToCollection, createDocument, removeDocument, updateDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
 import { parseAttendanceExcel, processAttendance } from '../lib/attendanceParser';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { exportAttendancePDF } from '../lib/pdfExport';
@@ -80,6 +80,7 @@ function recalculateSummary(dailyRecords, originalSummary) {
 
 export default function AttendanceMonitorView() {
     const { user } = useAuth();
+    const userCanEdit = canEditHelper(user);
 
     // Teacher hours from Firestore
     const [teacherHours, setTeacherHours] = useState([]);
@@ -424,7 +425,7 @@ export default function AttendanceMonitorView() {
                 </div>
                 {showingResults && (
                     <div className="flex items-center gap-2">
-                        {viewState === 'preview' && (
+                        {viewState === 'preview' && userCanEdit && (
                             <button
                                 onClick={handleSaveReport}
                                 disabled={saving}
@@ -555,7 +556,7 @@ export default function AttendanceMonitorView() {
                                     key={report.id}
                                     report={report}
                                     onView={() => handleViewReport(report)}
-                                    onDelete={() => handleDeleteReport(report.id)}
+                                    onDelete={userCanEdit ? () => handleDeleteReport(report.id) : null}
                                     deleting={deletingId === report.id}
                                 />
                             ))}
@@ -830,14 +831,14 @@ export default function AttendanceMonitorView() {
                                             {viewState === 'viewing' && (
                                                 <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[80px]">Estado</th>
                                             )}
-                                            {viewState === 'viewing' && (
+                                            {viewState === 'viewing' && userCanEdit && (
                                                 <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[50px]"></th>
                                             )}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {paginatedRecords.map((rec, idx) => {
-                                            const isEditing = viewState === 'viewing' && editingIndex === rec._originalIndex;
+                                            const isEditing = viewState === 'viewing' && userCanEdit && editingIndex === rec._originalIndex;
                                             return (
                                                 <React.Fragment key={`${rec.teacherName}-${rec.dateFormatted}-${idx}`}>
                                                     <tr className={cn(
@@ -958,7 +959,7 @@ export default function AttendanceMonitorView() {
                                                                 ) : null}
                                                             </td>
                                                         )}
-                                                        {viewState === 'viewing' && (
+                                                        {viewState === 'viewing' && userCanEdit && (
                                                             <td className="py-2.5 px-3 text-center">
                                                                 {isEditing ? (
                                                                     <div className="flex items-center justify-center gap-1">
@@ -1195,13 +1196,15 @@ function ReportCard({ report, onView, onDelete, deleting }) {
                     <Eye className="w-3.5 h-3.5" />
                     Ver reporte
                 </button>
-                <button
-                    onClick={onDelete}
-                    disabled={deleting}
-                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                >
-                    <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {onDelete && (
+                    <button
+                        onClick={onDelete}
+                        disabled={deleting}
+                        className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
             </div>
         </div>
     );
