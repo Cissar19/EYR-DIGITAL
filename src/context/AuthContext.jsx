@@ -4,7 +4,11 @@ import {
     signInWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
-    createUserWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    updatePassword,
+    reauthenticateWithCredential,
+    EmailAuthProvider
 } from 'firebase/auth';
 import {
     collection,
@@ -19,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { sendPasswordResetNotification } from '../lib/emailService';
 
 const AuthContext = createContext();
 
@@ -85,7 +90,7 @@ export const isTeacher = (user) => hasRole(user, ROLES.TEACHER);
 export const isStaff = (user) => hasRole(user, ROLES.STAFF);
 export const isPrinter = (user) => hasRole(user, ROLES.PRINTER);
 export const isSuperAdmin = (user) => hasRole(user, ROLES.SUPER_ADMIN);
-export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN]);
+export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN]) || user?.accessLevel === 'edit';
 
 // ============================================
 // AUTH PROVIDER
@@ -221,6 +226,7 @@ export const AuthProvider = ({ children }) => {
                 name: newUserData.name?.trim().slice(0, 100) || '',
                 email: newUserData.email,
                 role: newUserData.role,
+                accessLevel: newUserData.accessLevel || 'view',
                 avatar: null,
                 hoursUsed: 0,
                 createdAt: new Date().toISOString()
@@ -335,6 +341,28 @@ export const AuthProvider = ({ children }) => {
         return user ? getRoleLabel(user.role) : '';
     }, [user]);
 
+    /**
+     * Send password reset email.
+     * Tries branded email via Apps Script first, falls back to Firebase built-in.
+     */
+    const resetPassword = React.useCallback(async (email, userName) => {
+        const sent = await sendPasswordResetNotification({ toEmail: email, toName: userName || '' });
+        if (!sent) {
+            await sendPasswordResetEmail(auth, email);
+        }
+    }, []);
+
+    /**
+     * Change password for current user (requires re-authentication)
+     */
+    const changePassword = React.useCallback(async (currentPassword, newPassword) => {
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser) throw new Error('No hay sesion activa');
+        const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+        await reauthenticateWithCredential(firebaseUser, credential);
+        await updatePassword(firebaseUser, newPassword);
+    }, []);
+
     const value = React.useMemo(() => ({
         user,
         login,
@@ -349,6 +377,8 @@ export const AuthProvider = ({ children }) => {
         getUsersByRole,
         getUserRoleLabel,
         fetchUsers,
+        resetPassword,
+        changePassword,
         // Permission helpers bound to current user
         hasRole: (role) => hasRole(user, role),
         hasAnyRole: (roles) => hasAnyRole(user, roles),
@@ -363,7 +393,7 @@ export const AuthProvider = ({ children }) => {
         isConvivencia: () => isConvivencia(user),
         isManagement: () => isManagement(user),
         canEdit: () => canEdit(user)
-    }), [user, loading, users, addUser, updateUser, deleteUser, getAllUsers, getUsersByRole, getUserRoleLabel, fetchUsers, login, logout]);
+    }), [user, loading, users, addUser, updateUser, deleteUser, getAllUsers, getUsersByRole, getUserRoleLabel, fetchUsers, resetPassword, changePassword, login, logout]);
 
     return (
         <AuthContext.Provider value={value}>

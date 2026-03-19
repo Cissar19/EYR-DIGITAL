@@ -7,11 +7,14 @@ import { User, School, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import logoEyr from '../assets/logo_eyr.png';
 
 export default function Login() {
-    const { login, user, loading } = useAuth();
+    const { login, resetPassword, user, loading } = useAuth();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [isResetting, setIsResetting] = useState(false);
 
     // If already authenticated, redirect to dashboard
     if (user && !loading) return <Navigate to="/" replace />;
@@ -37,6 +40,31 @@ export default function Login() {
         }
     };
 
+
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        if (!resetEmail.trim()) {
+            toast.error('Ingresa tu correo electrónico');
+            return;
+        }
+        setIsResetting(true);
+        try {
+            await resetPassword(resetEmail.trim());
+            toast.success('Se envió un enlace de recuperación a tu correo');
+            setShowForgotPassword(false);
+            setResetEmail('');
+        } catch (error) {
+            const msg = error.code === 'auth/invalid-email'
+                ? 'Correo electrónico inválido'
+                : error.code === 'auth/too-many-requests'
+                    ? 'Demasiados intentos. Intenta más tarde'
+                    : 'Si el correo existe, recibirás un enlace de recuperación';
+            toast.info(msg);
+            setShowForgotPassword(false);
+        } finally {
+            setIsResetting(false);
+        }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-900">
@@ -66,7 +94,8 @@ export default function Login() {
                             />
                         </div>
                         <h2 className="text-2xl font-bold text-white tracking-tight">Bienvenido</h2>
-                        <p className="text-indigo-200 text-sm">Sistema de Gestion Administrativa</p>
+                        <p className="text-indigo-200 text-sm">Escuela Ernesto Yañez Rivera Digital</p>
+                        <p className="text-indigo-200 text-sm">Primera escuela digital</p>
                     </div>
 
                     {/* Form */}
@@ -123,8 +152,78 @@ export default function Login() {
                         </button>
                     </form>
 
+                    {/* Forgot Password Link */}
+                    <div className="mt-4 text-center">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setResetEmail(email);
+                                setShowForgotPassword(true);
+                            }}
+                            className="text-sm text-indigo-200/70 hover:text-white transition-colors underline underline-offset-2"
+                        >
+                            ¿Olvidaste tu contraseña?
+                        </button>
+                    </div>
 
                 </div>
+
+                {/* Forgot Password Modal */}
+                {showForgotPassword && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute inset-0 z-20 flex items-center justify-center p-6"
+                    >
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowForgotPassword(false)} />
+                        <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl w-full max-w-md">
+                            <h3 className="text-xl font-bold text-white mb-2">Recuperar Contraseña</h3>
+                            <p className="text-indigo-200/70 text-sm mb-6">
+                                Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.
+                            </p>
+                            <form onSubmit={handleForgotPassword} className="space-y-4">
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-indigo-200" />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        value={resetEmail}
+                                        onChange={(e) => setResetEmail(e.target.value)}
+                                        className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-indigo-200/50 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-indigo-500 transition-all sm:text-sm"
+                                        placeholder="Correo Electrónico"
+                                        required
+                                        disabled={isResetting}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForgotPassword(false)}
+                                        className="flex-1 py-3 px-4 border border-white/10 rounded-xl text-sm font-bold text-indigo-200 hover:bg-white/5 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isResetting}
+                                        className="flex-1 py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 transition-all disabled:opacity-70"
+                                    >
+                                        {isResetting ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Enviando...
+                                            </span>
+                                        ) : (
+                                            'Enviar Enlace'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </motion.div>
+                )}
             </motion.div>
         </div>
     );

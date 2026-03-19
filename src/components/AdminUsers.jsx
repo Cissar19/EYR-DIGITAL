@@ -3,23 +3,30 @@ import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle, Heart, ChevronDown, RotateCcw } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function AdminUsers() {
-    const { user: currentUser, users: MOCK_USERS, addUser, updateUser, deleteUser } = useAuth();
+    const { user: currentUser, users: MOCK_USERS, addUser, updateUser, deleteUser, resetPassword } = useAuth();
     const { roleDefaults } = usePermissions();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isEditAttributesOpen, setIsEditAttributesOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
-    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher' });
+    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
     const [attributesData, setAttributesData] = useState({ id: null, headTeacherOf: '', subjects: '' });
     const [editingUserId, setEditingUserId] = useState(null);
     const [permOverrides, setPermOverrides] = useState({});
     const [showPermissions, setShowPermissions] = useState(false);
     const [notification, setNotification] = useState(null);
+    // Temp password modal state
+    const [tempPasswordData, setTempPasswordData] = useState(null);
+    const [copiedPassword, setCopiedPassword] = useState(false);
+    // Admin reset password modal state
+    const [resetTargetUser, setResetTargetUser] = useState(null);
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
 
     // Search & Pagination State
     const [searchTerm, setSearchTerm] = useState("");
@@ -28,7 +35,7 @@ export default function AdminUsers() {
 
     const openCreateModal = () => {
         setEditingUserId(null);
-        setFormData({ name: '', email: '', role: 'teacher' });
+        setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
         setPermOverrides({});
         setShowPermissions(false);
         setIsModalOpen(true);
@@ -39,7 +46,8 @@ export default function AdminUsers() {
         setFormData({
             name: userToEdit.name,
             email: userToEdit.email,
-            role: userToEdit.role
+            role: userToEdit.role,
+            accessLevel: userToEdit.accessLevel || 'view'
         });
         setPermOverrides(userToEdit.permissionOverrides || {});
         setShowPermissions(false);
@@ -60,17 +68,24 @@ export default function AdminUsers() {
         if (!formData.name || !formData.email) return;
 
         try {
+            const submitData = { ...formData };
+            // Admin/super_admin always have edit access
+            if (submitData.role === 'admin' || submitData.role === 'super_admin') {
+                submitData.accessLevel = 'edit';
+            }
+
             if (editingUserId) {
-                await updateUser(editingUserId, { ...formData, permissionOverrides: permOverrides });
+                await updateUser(editingUserId, { ...submitData, permissionOverrides: permOverrides });
                 setNotification('Usuario actualizado correctamente');
             } else {
-                await addUser(formData);
-                setNotification('Usuario creado correctamente');
+                const result = await addUser(submitData);
+                setTempPasswordData({ name: formData.name, email: formData.email, tempPassword: result.tempPassword });
+                setCopiedPassword(false);
             }
 
             setIsModalOpen(false);
             setEditingUserId(null);
-            setFormData({ name: '', email: '', role: 'teacher' });
+            setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
             setPermOverrides({});
             setTimeout(() => setNotification(null), 3000);
         } catch (error) {
@@ -341,6 +356,13 @@ export default function AdminUsers() {
                                             <Pencil className="w-5 h-5 md:w-4 md:h-4 text-gray-400 group-hover/btn:text-blue-600 transition-colors" />
                                         </button>
                                         <button
+                                            onClick={() => setResetTargetUser(u)}
+                                            className="flex-1 md:flex-none flex justify-center items-center p-2 hover:bg-amber-50 rounded-lg transition-colors group/btn"
+                                            title="Resetear Contraseña"
+                                        >
+                                            <KeyRound className="w-5 h-5 md:w-4 md:h-4 text-gray-400 group-hover/btn:text-amber-600 transition-colors" />
+                                        </button>
+                                        <button
                                             onClick={() => handleDelete(u.id)}
                                             className="flex-1 md:flex-none flex justify-center items-center p-2 hover:bg-red-50 rounded-lg transition-colors group/btn"
                                             title="Eliminar Usuario"
@@ -572,6 +594,38 @@ export default function AdminUsers() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Access Level Toggle - hidden for admin/super_admin (they always edit) */}
+                                {formData.role !== 'admin' && formData.role !== 'super_admin' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Nivel de Acceso</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, accessLevel: 'view' })}
+                                                className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                    ${formData.accessLevel === 'view'
+                                                        ? 'bg-slate-600 border-slate-600 text-white shadow-lg shadow-slate-200'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                                Puede Ver
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, accessLevel: 'edit' })}
+                                                className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                    ${formData.accessLevel === 'edit'
+                                                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                                Puede Editar
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1.5 ml-1">Puede Editar permite crear, modificar y eliminar registros.</p>
+                                    </div>
+                                )}
 
                                 {/* Collapsible Permissions Section (edit mode only) */}
                                 {editingUserId && (
@@ -852,6 +906,146 @@ export default function AdminUsers() {
                                         className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
                                     >
                                         Sí, Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Temp Password Modal */}
+            <AnimatePresence>
+                {tempPasswordData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-4 md:p-6 border-b border-emerald-100 flex justify-between items-center bg-emerald-50">
+                                <h3 className="text-lg font-bold text-emerald-800 flex items-center gap-2">
+                                    <div className="bg-emerald-100 p-1.5 rounded-full">
+                                        <KeyRound className="w-4 h-4 text-emerald-600" />
+                                    </div>
+                                    Usuario Creado
+                                </h3>
+                                <button onClick={() => setTempPasswordData(null)} className="p-2 hover:bg-emerald-100 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-emerald-400" />
+                                </button>
+                            </div>
+
+                            <div className="p-4 md:p-6 space-y-4">
+                                <div className="text-sm text-slate-600">
+                                    <p className="font-medium">Se creó el usuario <span className="font-bold text-slate-800">{tempPasswordData.name}</span> con el correo:</p>
+                                    <p className="text-indigo-600 font-mono text-sm mt-1">{tempPasswordData.email}</p>
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contraseña Temporal</label>
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-3 font-mono text-lg text-slate-800 tracking-wider select-all">
+                                            {tempPasswordData.tempPassword}
+                                        </code>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await navigator.clipboard.writeText(tempPasswordData.tempPassword);
+                                                    setCopiedPassword(true);
+                                                    setTimeout(() => setCopiedPassword(false), 2000);
+                                                } catch {
+                                                    toast.error('No se pudo copiar. Selecciona y copia manualmente.');
+                                                }
+                                            }}
+                                            className={`p-3 rounded-lg transition-all ${copiedPassword ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                            title="Copiar contraseña"
+                                        >
+                                            {copiedPassword ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                                    <p className="text-xs text-amber-700 font-medium">
+                                        Esta contraseña solo se muestra una vez. Cópiala ahora y entrégala al usuario.
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => setTempPasswordData(null)}
+                                    className="w-full px-4 py-3.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all"
+                                >
+                                    Entendido
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Admin Reset Password Modal */}
+            <AnimatePresence>
+                {resetTargetUser && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm"
+                        onClick={() => !isResettingPassword && setResetTargetUser(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full overflow-hidden"
+                        >
+                            <div className="p-4 md:p-6 space-y-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="bg-amber-50 p-4 rounded-full shrink-0">
+                                        <KeyRound className="w-6 h-6 text-amber-600" />
+                                    </div>
+                                    <div className="flex-1 pt-1">
+                                        <h3 className="text-lg font-bold text-slate-800 mb-1">
+                                            Resetear Contraseña
+                                        </h3>
+                                        <p className="text-sm text-gray-500 leading-relaxed">
+                                            Se enviará un correo a <span className="font-semibold text-slate-700">{resetTargetUser.email}</span> para que <span className="font-semibold text-slate-700">{resetTargetUser.name}</span> cree una nueva contraseña.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={() => setResetTargetUser(null)}
+                                        disabled={isResettingPassword}
+                                        className="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            setIsResettingPassword(true);
+                                            try {
+                                                await resetPassword(resetTargetUser.email, resetTargetUser.name);
+                                                toast.success(`Correo de recuperación enviado a ${resetTargetUser.email}`);
+                                                setResetTargetUser(null);
+                                            } catch (error) {
+                                                toast.error('Error al enviar correo: ' + error.message);
+                                            } finally {
+                                                setIsResettingPassword(false);
+                                            }
+                                        }}
+                                        disabled={isResettingPassword}
+                                        className="flex-1 px-4 py-3 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors shadow-lg shadow-amber-200 disabled:opacity-70 flex items-center justify-center gap-2"
+                                    >
+                                        {isResettingPassword ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            'Enviar Correo'
+                                        )}
                                     </button>
                                 </div>
                             </div>

@@ -7,6 +7,16 @@
  *   3. Deploy → Web app → Execute as: Me, Who has access: Anyone.
  *   4. Copiar la URL del deploy a VITE_APPS_SCRIPT_ADMIN_DAYS_URL
  *   5. Usar el mismo secret que VITE_APPS_SCRIPT_SECRET
+ *
+ * Para emails de reset de contraseña con branding:
+ *   6. Vincular el proyecto Apps Script al GCP project "eyr-digital":
+ *      Apps Script Editor → Project Settings → Google Cloud Platform (GCP) Project
+ *      → Change project → Ingresar project number del proyecto eyr-digital
+ *   7. Habilitar "Identity Toolkit API" en GCP Console:
+ *      https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=eyr-digital
+ *   8. En appsscript.json, agregar el scope:
+ *      "https://www.googleapis.com/auth/identitytoolkit"
+ *   9. Re-deploy el web app para que pida los nuevos permisos.
  */
 
 var SHEET_ID = '1YjDgy4qCOvyf9KPwNaLLh2Pc099apjQAxhyAU0QRIKY';
@@ -21,7 +31,104 @@ var ACTION_CONFIG = {
   hours:     { subject: 'Horas Administrativas Registradas',                      title: 'Horas Administrativas<br>Registradas',                   subtitle: 'REGISTRO DE HORAS',     statusText: 'Registrado',                                       accentColor: '#d97706', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se han registrado horas administrativas en tu cuenta.' },
   discount:  { subject: 'D\u00eda de Descuento Registrado',                      title: 'D\u00eda de Descuento<br>Registrado',                    subtitle: 'REGISTRO DE DESCUENTO', statusText: 'Registrado como descuento',                         accentColor: '#dc2626', bannerColor: '#dc2626', bannerTextColor: '#ffffff', bannerMsg: 'Se ha registrado un d\u00eda de descuento en tu cuenta.' },
   special:   { subject: 'Permiso Especial Registrado',                            title: 'Permiso Especial<br>Registrado',                         subtitle: 'PERMISO ESPECIAL',      statusText: 'Sin descuento de saldo',                           accentColor: '#7c3aed', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se ha registrado un permiso especial. No afecta tu saldo de d\u00edas.' },
+  passwordReset: { subject: 'Restablecer Contrase\u00f1a',                       title: 'Restablecer<br>Contrase\u00f1a',                         subtitle: 'SEGURIDAD DE CUENTA',   accentColor: '#7c3aed', bannerColor: '#1B3A8C', bannerTextColor: '#ffffff', bannerMsg: 'Si no solicitaste este cambio, puedes ignorar este correo.' },
 };
+
+/**
+ * Genera un enlace de restablecimiento de contraseña via Firebase Identity Toolkit API.
+ * Requiere: GCP project vinculado + Identity Toolkit API habilitada + scope identitytoolkit.
+ */
+function generatePasswordResetLink_(email) {
+  var token = ScriptApp.getOAuthToken();
+  var url = 'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode';
+
+  var response = UrlFetchApp.fetch(url, {
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + token },
+    payload: JSON.stringify({
+      requestType: 'PASSWORD_RESET',
+      email: email,
+      returnOobLink: true
+    }),
+    muteHttpExceptions: true
+  });
+
+  var result = JSON.parse(response.getContentText());
+  if (result.oobLink) return result.oobLink;
+
+  Logger.log('generatePasswordResetLink_ error: ' + response.getContentText());
+  throw new Error('No se pudo generar el enlace de reset');
+}
+
+/**
+ * Construye el HTML del email de restablecimiento de contraseña
+ * con el mismo branding que los demás emails del sistema.
+ */
+function buildPasswordResetEmail_(toName, resetLink, cfg) {
+  var greeting = toName ? 'Hola, <strong style="color:#1B3A8C;font-size:26px;">' + toName + '</strong>' : 'Hola';
+
+  return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +
+    '<body style="margin:0;padding:0;background-color:#f2f4f8;font-family:Arial,sans-serif;">' +
+    '<table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f2f4f8;padding:36px 0;"><tr><td align="center">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dde3f0;box-shadow:0 6px 32px rgba(27,58,140,0.10);">' +
+
+    // Barra top amarilla
+    '<tr><td style="background-color:#F5D33A;height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+
+    // Header azul
+    '<tr><td align="center" style="background-color:#1B3A8C;padding:30px 40px 26px 40px;">' +
+    '<p style="margin:0 0 3px 0;color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:4px;text-transform:uppercase;">Centro Educacional</p>' +
+    '<h1 style="margin:0 0 4px 0;color:#F5D33A;font-size:24px;font-weight:900;letter-spacing:0.5px;">Ernesto Y\u00e1\u00f1ez Rivera</h1>' +
+    '<p style="margin:0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Huechuraba \u00b7 Santiago</p>' +
+    '</td></tr>' +
+
+    // T\u00edtulo
+    '<tr><td align="center" style="padding:42px 48px 10px 48px;">' +
+    '<p style="margin:0 0 12px 0;color:' + cfg.accentColor + ';font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">' + cfg.subtitle + '</p>' +
+    '<h2 style="margin:0;color:#1B3A8C;font-size:36px;font-weight:900;line-height:1.1;">' + cfg.title + '</h2>' +
+    '</td></tr>' +
+
+    // Saludo
+    '<tr><td style="padding:32px 52px 12px 52px;text-align:center;">' +
+    '<p style="margin:0;color:#222222;font-size:22px;line-height:1.6;">' + greeting + '</p>' +
+    '</td></tr>' +
+
+    // Caja con mensaje + bot\u00f3n
+    '<tr><td style="padding:10px 52px 38px 52px;">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fd;border-radius:14px;border-left:5px solid ' + cfg.accentColor + ';">' +
+    '<tr><td style="padding:24px 28px;">' +
+    '<p style="margin:0 0 16px 0;color:#333333;font-size:17px;line-height:1.8;">Recibimos una solicitud para restablecer la contrase\u00f1a de tu cuenta en el Sistema de Gesti\u00f3n Administrativa.</p>' +
+    '<p style="margin:0 0 24px 0;color:#333333;font-size:17px;line-height:1.8;">Haz clic en el siguiente bot\u00f3n para crear una nueva contrase\u00f1a:</p>' +
+
+    // Bot\u00f3n
+    '<table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">' +
+    '<a href="' + resetLink + '" target="_blank" style="display:inline-block;background-color:#1B3A8C;color:#ffffff;font-size:18px;font-weight:800;text-decoration:none;padding:16px 48px;border-radius:12px;letter-spacing:0.5px;">Restablecer Contrase\u00f1a</a>' +
+    '</td></tr></table>' +
+
+    '<p style="margin:20px 0 0 0;color:#888888;font-size:13px;line-height:1.6;text-align:center;">Este enlace expira en 1 hora. Si no funciona el bot\u00f3n, copia y pega esta URL en tu navegador:</p>' +
+    '<p style="margin:6px 0 0 0;color:#1B3A8C;font-size:12px;word-break:break-all;text-align:center;">' + resetLink + '</p>' +
+    '</td></tr></table>' +
+    '</td></tr>' +
+
+    // Franja de cierre
+    '<tr><td style="background-color:' + cfg.bannerColor + ';padding:20px 48px;text-align:center;">' +
+    '<p style="margin:0;color:' + cfg.bannerTextColor + ';font-size:18px;font-weight:800;line-height:1.6;">' + cfg.bannerMsg + '</p>' +
+    '</td></tr>' +
+
+    // Separador
+    '<tr><td style="padding:0 48px;"><table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td style="border-top:1px solid #e5e8f0;font-size:0;">&nbsp;</td></tr></table></td></tr>' +
+
+    // Footer
+    '<tr><td style="padding:20px 40px 22px 40px;text-align:center;">' +
+    '<p style="margin:0 0 3px 0;color:#1B3A8C;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Sistema EYR</p>' +
+    '<p style="margin:0;color:#aaaaaa;font-size:12px;">Centro Educacional Ernesto Y\u00e1\u00f1ez Rivera \u00b7 Huechuraba</p>' +
+    '</td></tr>' +
+
+    // Barra tricolor bottom
+    '<tr><td style="background:linear-gradient(to right,#1B3A8C 33%,#F5D33A 33%,#F5D33A 66%,#8C1B1B 66%);height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+    '</table></td></tr></table></body></html>';
+}
 
 function doPost(e) {
   try {
@@ -41,6 +148,42 @@ function doPost(e) {
     var details   = data.details || '';
 
     var cfg = ACTION_CONFIG[action] || ACTION_CONFIG.day;
+    var status = 'Enviado';
+
+    // ── Password Reset: flujo especial con enlace de Firebase ──
+    if (action === 'passwordReset') {
+      try {
+        var resetLink = generatePasswordResetLink_(toEmail);
+        var htmlBody = buildPasswordResetEmail_(toName, resetLink, cfg);
+
+        GmailApp.sendEmail(toEmail, cfg.subject + ' - EYR', '', {
+          htmlBody: htmlBody,
+          name: 'Sistema EYR',
+          bcc: ADMIN_BCC,
+        });
+      } catch (mailErr) {
+        status = 'Error: ' + mailErr;
+        Logger.log('Error enviando email de reset: ' + mailErr);
+      }
+
+      // Log
+      try {
+        var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(LOG_SHEET);
+        if (!sheet) {
+          sheet = SpreadsheetApp.openById(SHEET_ID).insertSheet(LOG_SHEET);
+          sheet.appendRow(['Fecha', 'Funcionario', 'Email', 'Acci\u00f3n', 'Fecha D\u00eda', 'Motivo', 'Estado']);
+        }
+        sheet.appendRow([new Date(), toName, toEmail, 'Password Reset', '', '', status]);
+      } catch (sheetErr) {
+        Logger.log('Error logging to sheet: ' + sheetErr);
+      }
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ success: status === 'Enviado' })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ── Flujo normal: d\u00edas administrativos ──
 
     // Format date nicely
     var dateLabel = date;
@@ -49,8 +192,6 @@ function doPost(e) {
       var months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       dateLabel = parseInt(parts[2]) + ' de ' + months[parseInt(parts[1]) - 1] + ' de ' + parts[0];
     } catch(ex) {}
-
-    var status = 'Enviado';
 
     try {
       var htmlBody = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +

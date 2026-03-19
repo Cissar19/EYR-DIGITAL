@@ -13,6 +13,7 @@ var ACTION_CONFIG = {
   hours:     { subject: 'Horas Administrativas Registradas',            title: 'Horas Administrativas<br>Registradas',         subtitle: 'REGISTRO DE HORAS',     statusText: 'Registrado',                              accentColor: '#d97706', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se han registrado horas administrativas en tu cuenta.' },
   discount:  { subject: 'Dia de Descuento Registrado',                  title: 'D\u00eda de Descuento<br>Registrado',               subtitle: 'REGISTRO DE DESCUENTO', statusText: 'Registrado como descuento',                accentColor: '#dc2626', bannerColor: '#dc2626', bannerTextColor: '#ffffff', bannerMsg: 'Se ha registrado un d\u00eda de descuento en tu cuenta.' },
   special:   { subject: 'Permiso Especial Registrado',                  title: 'Permiso Especial<br>Registrado',               subtitle: 'PERMISO ESPECIAL',      statusText: 'Sin descuento de saldo',                  accentColor: '#7c3aed', bannerColor: '#F5D33A', bannerTextColor: '#1B3A8C', bannerMsg: 'Se ha registrado un permiso especial. No afecta tu saldo de d\u00edas.' },
+  passwordReset: { subject: 'Restablecer Contrase\u00f1a', title: 'Restablecer<br>Contrase\u00f1a', subtitle: 'SEGURIDAD DE CUENTA', accentColor: '#7c3aed', bannerColor: '#1B3A8C', bannerTextColor: '#ffffff', bannerMsg: 'Si no solicitaste este cambio, puedes ignorar este correo.' },
 };
 
 /* ============================================================
@@ -59,6 +60,11 @@ function handleAdminDays(data) {
   var reason  = data.reason || '';
   var details = data.details || '';
   var cfg = ACTION_CONFIG[action] || ACTION_CONFIG.day;
+
+  // Password reset tiene su propio flujo
+  if (action === 'passwordReset') {
+    return handlePasswordReset(toEmail, toName, cfg);
+  }
 
   var dateLabel = date;
   try {
@@ -413,4 +419,125 @@ function formatDateLabel(dateStr) {
   } catch(ex) {
     return dateStr;
   }
+}
+
+/* ============================================================
+   HANDLER - PASSWORD RESET
+   Genera enlace de Firebase y envia email branded.
+   Requiere: GCP project vinculado + Identity Toolkit API habilitada
+   + scope "https://www.googleapis.com/auth/identitytoolkit"
+   ============================================================ */
+function handlePasswordReset(toEmail, toName, cfg) {
+  var status = 'Enviado';
+
+  try {
+    var resetLink = generatePasswordResetLink_(toEmail);
+    var htmlBody = buildPasswordResetEmail_(toName, resetLink, cfg);
+
+    GmailApp.sendEmail(toEmail, cfg.subject + ' - EYR', '', {
+      htmlBody: htmlBody,
+      name: 'Sistema EYR',
+      bcc: ADMIN_BCC,
+    });
+  } catch (err) {
+    status = 'Error: ' + err;
+    Logger.log('Error en password reset: ' + err);
+  }
+
+  // Log
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName('NotifDiasAdmin');
+    if (sheet) {
+      sheet.appendRow([new Date(), toName, toEmail, 'Password Reset', '', '', status]);
+    }
+  } catch (sheetErr) {
+    Logger.log('Error logging password reset: ' + sheetErr);
+  }
+
+  return ContentService.createTextOutput(
+    JSON.stringify({ success: status === 'Enviado' })
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Genera un enlace de restablecimiento via Firebase Identity Toolkit API.
+ */
+function generatePasswordResetLink_(email) {
+  var token = ScriptApp.getOAuthToken();
+  var url = 'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode';
+
+  var response = UrlFetchApp.fetch(url, {
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + token },
+    payload: JSON.stringify({
+      requestType: 'PASSWORD_RESET',
+      email: email,
+      returnOobLink: true
+    }),
+    muteHttpExceptions: true
+  });
+
+  var result = JSON.parse(response.getContentText());
+  if (result.oobLink) return result.oobLink;
+
+  Logger.log('generatePasswordResetLink_ error: ' + response.getContentText());
+  throw new Error('No se pudo generar el enlace de reset');
+}
+
+/**
+ * HTML branded para email de password reset con boton.
+ */
+function buildPasswordResetEmail_(toName, resetLink, cfg) {
+  var greeting = toName ? 'Hola, <strong style="color:#1B3A8C;font-size:26px;">' + toName + '</strong>' : 'Hola';
+
+  return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>' +
+    '<body style="margin:0;padding:0;background-color:#f2f4f8;font-family:Arial,sans-serif;">' +
+    '<table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f2f4f8;padding:36px 0;"><tr><td align="center">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dde3f0;box-shadow:0 6px 32px rgba(27,58,140,0.10);">' +
+
+    '<tr><td style="background-color:#F5D33A;height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+
+    '<tr><td align="center" style="background-color:#1B3A8C;padding:30px 40px 26px 40px;">' +
+    '<p style="margin:0 0 3px 0;color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:4px;text-transform:uppercase;">Centro Educacional</p>' +
+    '<h1 style="margin:0 0 4px 0;color:#F5D33A;font-size:24px;font-weight:900;letter-spacing:0.5px;">Ernesto Y\u00e1\u00f1ez Rivera</h1>' +
+    '<p style="margin:0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Huechuraba \u00b7 Santiago</p>' +
+    '</td></tr>' +
+
+    '<tr><td align="center" style="padding:42px 48px 10px 48px;">' +
+    '<p style="margin:0 0 12px 0;color:' + cfg.accentColor + ';font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">' + cfg.subtitle + '</p>' +
+    '<h2 style="margin:0;color:#1B3A8C;font-size:36px;font-weight:900;line-height:1.1;">' + cfg.title + '</h2>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:32px 52px 12px 52px;text-align:center;">' +
+    '<p style="margin:0;color:#222222;font-size:22px;line-height:1.6;">' + greeting + '</p>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:10px 52px 38px 52px;">' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fd;border-radius:14px;border-left:5px solid ' + cfg.accentColor + ';">' +
+    '<tr><td style="padding:24px 28px;">' +
+    '<p style="margin:0 0 16px 0;color:#333333;font-size:17px;line-height:1.8;">Recibimos una solicitud para restablecer la contrase\u00f1a de tu cuenta en el Sistema de Gesti\u00f3n Administrativa.</p>' +
+    '<p style="margin:0 0 24px 0;color:#333333;font-size:17px;line-height:1.8;">Haz clic en el siguiente bot\u00f3n para crear una nueva contrase\u00f1a:</p>' +
+    '<table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">' +
+    '<a href="' + resetLink + '" target="_blank" style="display:inline-block;background-color:#1B3A8C;color:#ffffff;font-size:18px;font-weight:800;text-decoration:none;padding:16px 48px;border-radius:12px;letter-spacing:0.5px;">Restablecer Contrase\u00f1a</a>' +
+    '</td></tr></table>' +
+    '<p style="margin:20px 0 0 0;color:#888888;font-size:13px;line-height:1.6;text-align:center;">Este enlace expira en 1 hora. Si no funciona el bot\u00f3n, copia y pega esta URL en tu navegador:</p>' +
+    '<p style="margin:6px 0 0 0;color:#1B3A8C;font-size:12px;word-break:break-all;text-align:center;">' + resetLink + '</p>' +
+    '</td></tr></table>' +
+    '</td></tr>' +
+
+    '<tr><td style="background-color:' + cfg.bannerColor + ';padding:20px 48px;text-align:center;">' +
+    '<p style="margin:0;color:' + cfg.bannerTextColor + ';font-size:18px;font-weight:800;line-height:1.6;">' + cfg.bannerMsg + '</p>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:0 48px;"><table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td style="border-top:1px solid #e5e8f0;font-size:0;">&nbsp;</td></tr></table></td></tr>' +
+
+    '<tr><td style="padding:20px 40px 22px 40px;text-align:center;">' +
+    '<p style="margin:0 0 3px 0;color:#1B3A8C;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Sistema EYR</p>' +
+    '<p style="margin:0;color:#aaaaaa;font-size:12px;">Centro Educacional Ernesto Y\u00e1\u00f1ez Rivera \u00b7 Huechuraba</p>' +
+    '</td></tr>' +
+
+    '<tr><td style="background:linear-gradient(to right,#1B3A8C 33%,#F5D33A 33%,#F5D33A 66%,#8C1B1B 66%);height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
+    '</table></td></tr></table></body></html>';
 }

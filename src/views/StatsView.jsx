@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BarChart3, Users, CalendarCheck, Wrench, Table2,
     TrendingUp, TrendingDown, AlertCircle, Clock, Printer,
     Monitor, LifeBuoy, Package, Search, ChevronRight,
-    Circle, Info, AlertTriangle, CheckCircle, HeartPulse, ChevronDown
+    Circle, Info, AlertTriangle, CheckCircle, HeartPulse, ChevronDown,
+    Layers
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -19,111 +20,33 @@ import { usePrint } from '../context/PrintContext';
 import { useEquipment } from '../context/EquipmentContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { subscribeToCollection } from '../lib/firestoreService';
+import { orderBy } from 'firebase/firestore';
+import {
+    DAY_NAMES, getAbsenceTypeLabel,
+    computeAdminDaysImpact, computeMedicalLeavesImpact,
+    computeAttendanceImpact, computeGlobalImpact,
+} from '../lib/impactCalculations';
+import {
+    KpiCard, ChartCard, InsightCard, CustomTooltip,
+    CHART_COLORS, PIE_COLORS_BALANCE, PIE_COLORS_STATUS,
+} from '../components/StatsShared';
+import ImpactoGlobalTab from '../components/ImpactoGlobalTab';
 
 // ============================================
-// SHARED UI COMPONENTS
+// CONSTANTS
 // ============================================
 
 const TABS = [
-    { id: 'resumen', label: 'Resumen', icon: BarChart3 },
+    { id: 'impacto', label: 'Impacto Global', icon: Layers },
     { id: 'dias', label: 'Dias Administrativos', icon: CalendarCheck },
+    { id: 'licencias', label: 'Licencias Medicas', icon: HeartPulse },
     { id: 'operaciones', label: 'Operaciones', icon: Wrench },
     { id: 'detalle', label: 'Detalle', icon: Table2 },
-    { id: 'licencias', label: 'Licencias Medicas', icon: HeartPulse },
 ];
 
-const CHART_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#64748b'];
-const PIE_COLORS_BALANCE = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
-const PIE_COLORS_STATUS = ['#3b82f6', '#f59e0b', '#10b981'];
-
-const KpiCard = ({ icon: Icon, label, value, sublabel, color = 'indigo' }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60"
-    >
-        <div className="flex items-center gap-3 mb-3">
-            <div className={cn("p-2.5 rounded-xl", `bg-${color}-50 text-${color}-600`)}>
-                <Icon className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</span>
-        </div>
-        <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-800 tracking-tight">{value}</span>
-            {sublabel && <span className="text-sm text-slate-400 font-medium">{sublabel}</span>}
-        </div>
-    </motion.div>
-);
-
-const ChartCard = ({ title, children, className }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={cn("bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200/60", className)}
-    >
-        <h4 className="text-sm font-bold text-slate-700 mb-4">{title}</h4>
-        {children}
-    </motion.div>
-);
-
-const InsightCard = ({ icon: Icon, color, title, value }) => (
-    <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={cn(
-            "flex items-start gap-3 p-4 rounded-xl border",
-            `bg-${color}-50 border-${color}-100`
-        )}
-    >
-        <div className={cn("p-2 rounded-lg shrink-0", `bg-${color}-100 text-${color}-600`)}>
-            <Icon className="w-4 h-4" />
-        </div>
-        <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</p>
-            <p className={cn("text-sm font-semibold mt-0.5", `text-${color}-700`)}>{value}</p>
-        </div>
-    </motion.div>
-);
-
-const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-slate-200 text-xs">
-            <p className="font-bold text-slate-700 mb-1">{label}</p>
-            {payload.map((p, i) => (
-                <p key={i} style={{ color: p.color }} className="font-medium">
-                    {p.name}: {p.value}
-                </p>
-            ))}
-        </div>
-    );
-};
-
 // ============================================
-// TAB 1: RESUMEN
-// ============================================
-
-const ResumenTab = ({ stats }) => {
-    const kpis = [
-        { icon: Users, label: 'Total Personal', value: stats.totalUsers, color: 'blue' },
-        { icon: CalendarCheck, label: 'Promedio Dias Restantes', value: stats.avgBalance.toFixed(1), color: 'emerald' },
-        { icon: LifeBuoy, label: 'Tickets Abiertos', value: stats.openTickets, color: 'amber' },
-        { icon: Monitor, label: 'Reservas Lab (mes)', value: stats.labReservationsMonth, color: 'indigo' },
-        { icon: Printer, label: 'Impresiones (mes)', value: stats.printRequestsMonth, color: 'purple' },
-        { icon: Package, label: 'Items Stock Bajo', value: stats.lowStockCount, color: 'red' },
-    ];
-
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {kpis.map((kpi, i) => (
-                <KpiCard key={i} {...kpi} />
-            ))}
-        </div>
-    );
-};
-
-// ============================================
-// TAB 2: DIAS ADMINISTRATIVOS
+// TAB: DIAS ADMINISTRATIVOS
 // ============================================
 
 const DiasAdminTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDays, schedules }) => {
@@ -202,68 +125,7 @@ const DiasAdminTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDa
     }, [users, getBalance, hoursBalance]);
 
     // Impact on student classes
-    const adminImpact = useMemo(() => {
-        let totalClasses = 0;
-        const byCourse = {};
-        const bySubject = {};
-        const byRequest = [];
-        const coursesSet = new Set();
-
-        const absenceRequests = requests.filter(r =>
-            r.status === 'approved' && r.type !== 'hour_return'
-        );
-
-        for (const req of absenceRequests) {
-            if (!req.date || !req.userId) continue;
-
-            const userBlocks = schedules[req.userId];
-            if (!userBlocks || userBlocks.length === 0) {
-                byRequest.push({ ...req, classesLost: 0, coursesAffected: [], blocksDetail: [], absenceType: getAbsenceTypeLabel(req) });
-                continue;
-            }
-
-            const date = new Date(req.date + 'T00:00:00');
-            const dow = date.getDay();
-            if (dow === 0 || dow === 6) {
-                byRequest.push({ ...req, classesLost: 0, coursesAffected: [], blocksDetail: [], absenceType: getAbsenceTypeLabel(req) });
-                continue;
-            }
-
-            const dayName = DAY_NAMES[dow];
-            const dayBlocks = userBlocks.filter(b => b.day === dayName && b.startTime !== '08:00');
-
-            let affectedBlocks;
-            if (req.type === 'hour_permission') {
-                const match = req.reason?.match(/^\[Horas\] (\d{2}:\d{2}) - (\d{2}:\d{2})/);
-                if (match) {
-                    affectedBlocks = dayBlocks.filter(b => b.startTime >= match[1] && b.startTime < match[2]);
-                } else {
-                    const estBlocks = Math.ceil((req.minutesUsed || 0) / 45);
-                    affectedBlocks = dayBlocks.slice(0, estBlocks);
-                }
-            } else {
-                affectedBlocks = dayBlocks;
-            }
-
-            const reqCourses = new Set();
-            affectedBlocks.forEach(b => {
-                if (b.course) { byCourse[b.course] = (byCourse[b.course] || 0) + 1; reqCourses.add(b.course); coursesSet.add(b.course); }
-                if (b.subject) { bySubject[b.subject] = (bySubject[b.subject] || 0) + 1; }
-            });
-
-            totalClasses += affectedBlocks.length;
-            byRequest.push({
-                ...req, classesLost: affectedBlocks.length, coursesAffected: [...reqCourses], absenceType: getAbsenceTypeLabel(req),
-                blocksDetail: affectedBlocks.map(b => ({ startTime: b.startTime, subject: b.subject || '', course: b.course || '' })),
-            });
-        }
-
-        const courseData = Object.entries(byCourse).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-        const subjectData = Object.entries(bySubject).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-        byRequest.sort((a, b) => b.classesLost - a.classesLost);
-
-        return { totalAbsences: absenceRequests.length, totalClasses, coursesAffected: coursesSet.size, courseData, subjectData, byRequest };
-    }, [requests, schedules]);
+    const adminImpact = useMemo(() => computeAdminDaysImpact(requests, schedules), [requests, schedules]);
 
     const impTopCourse = adminImpact.courseData[0];
     const impTopSubject = adminImpact.subjectData[0];
@@ -721,108 +583,9 @@ const DetalleTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDays
 // TAB 5: LICENCIAS MEDICAS
 // ============================================
 
-const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-
-function getAbsenceTypeLabel(req) {
-    if (req.type === 'hour_permission') return 'Horas';
-    if (req.type === 'discount') return 'Descuento';
-    if (req.reason?.startsWith('[Excepcion]')) return 'Excepcion';
-    if (req.isHalfDay) return req.isHalfDay === 'am' ? '½ AM' : req.isHalfDay === 'pm' ? '½ PM' : '½ Dia Admin';
-    return 'Dia Admin';
-}
-
-function computeImpact(leaves, schedules) {
-    let totalClasses = 0;
-    const byCourse = {};
-    const bySubject = {};
-    const byLeave = [];
-    const coursesSet = new Set();
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let activeCount = 0;
-
-    for (const leave of leaves) {
-        if (!leave.startDate || !leave.endDate) continue;
-
-        const end = new Date(leave.endDate + 'T00:00:00');
-        if (end >= today) activeCount++;
-
-        const userBlocks = schedules[leave.userId];
-        if (!userBlocks || userBlocks.length === 0) {
-            byLeave.push({
-                ...leave,
-                classesLost: 0,
-                coursesAffected: [],
-                blocksDetail: [],
-            });
-            continue;
-        }
-
-        let leaveClasses = 0;
-        const leaveCourses = new Set();
-        const blocksDetail = [];
-
-        const start = new Date(leave.startDate + 'T00:00:00');
-        const endDate = new Date(leave.endDate + 'T00:00:00');
-
-        for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
-            const dow = d.getDay();
-            if (dow === 0 || dow === 6) continue; // skip weekends
-
-            const dayName = DAY_NAMES[dow];
-            const dateStr = d.toISOString().split('T')[0];
-            const dayBlocks = userBlocks.filter(b =>
-                b.day === dayName && b.startTime !== '08:00'
-            );
-
-            leaveClasses += dayBlocks.length;
-            dayBlocks.forEach(b => {
-                blocksDetail.push({ date: dateStr, dayName, startTime: b.startTime, subject: b.subject || '', course: b.course || '' });
-                if (b.course) {
-                    byCourse[b.course] = (byCourse[b.course] || 0) + 1;
-                    leaveCourses.add(b.course);
-                    coursesSet.add(b.course);
-                }
-                if (b.subject) {
-                    bySubject[b.subject] = (bySubject[b.subject] || 0) + 1;
-                }
-            });
-        }
-
-        totalClasses += leaveClasses;
-        byLeave.push({
-            ...leave,
-            classesLost: leaveClasses,
-            coursesAffected: [...leaveCourses],
-            blocksDetail,
-        });
-    }
-
-    const courseData = Object.entries(byCourse)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-
-    const subjectData = Object.entries(bySubject)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-
-    byLeave.sort((a, b) => b.classesLost - a.classesLost);
-
-    return {
-        activeCount,
-        totalClasses,
-        totalHours: totalClasses,
-        coursesAffected: coursesSet.size,
-        courseData,
-        subjectData,
-        byLeave,
-    };
-}
-
 const LicenciasTab = ({ leaves, schedules }) => {
     const [expandedLeaveRow, setExpandedLeaveRow] = useState(null);
-    const impact = useMemo(() => computeImpact(leaves, schedules), [leaves, schedules]);
+    const impact = useMemo(() => computeMedicalLeavesImpact(leaves, schedules), [leaves, schedules]);
 
     const kpis = [
         { icon: HeartPulse, label: 'Licencias Activas', value: impact.activeCount, color: 'red' },
@@ -986,12 +749,13 @@ const LicenciasTab = ({ leaves, schedules }) => {
     );
 };
 
+
 // ============================================
 // MAIN VIEW
 // ============================================
 
 export default function StatsView() {
-    const [activeTab, setActiveTab] = useState('resumen');
+    const [activeTab, setActiveTab] = useState('impacto');
     const { users } = useAuth();
     const { requests, getBalance, getHoursUsed, getDiscountDays } = useAdministrativeDays();
     const { tickets } = useTickets();
@@ -1001,34 +765,35 @@ export default function StatsView() {
     const { leaves } = useMedicalLeaves();
     const { getAllSchedules } = useSchedule();
 
-    // Compute global stats for Resumen
-    const stats = useMemo(() => {
-        const teacherStaff = users.filter(u => ['teacher', 'staff'].includes(u.role));
-        const totalBalance = teacherStaff.reduce((sum, u) => sum + getBalance(u.id), 0);
-        const avgBalance = teacherStaff.length > 0 ? totalBalance / teacherStaff.length : 0;
+    // Attendance data for Impacto Global tab
+    const [attendanceReports, setAttendanceReports] = useState([]);
+    const [teacherHours, setTeacherHours] = useState([]);
 
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    useEffect(() => {
+        const unsub = subscribeToCollection('attendance_reports', (docs) => {
+            setAttendanceReports(docs);
+        }, orderBy('createdAt', 'desc'));
+        return () => unsub();
+    }, []);
 
-        const labReservationsMonth = reservations.filter(r => r.date >= monthStart && r.date <= monthEnd).length;
-        const printRequestsMonth = printRequests.filter(r => {
-            const d = r.createdAt?.split?.('T')?.[0] || '';
-            return d >= monthStart && d <= monthEnd;
-        }).length;
-
-        return {
-            totalUsers: users.length,
-            avgBalance,
-            openTickets: tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length,
-            labReservationsMonth,
-            printRequestsMonth,
-            lowStockCount: getLowStockItems(3).length,
-        };
-    }, [users, getBalance, tickets, reservations, printRequests, getLowStockItems]);
+    useEffect(() => {
+        const unsub = subscribeToCollection('teacher_hours', (docs) => {
+            setTeacherHours(docs);
+        });
+        return () => unsub();
+    }, []);
 
     const lowStockItems = useMemo(() => getLowStockItems(3), [getLowStockItems]);
     const allSchedules = useMemo(() => getAllSchedules(), [getAllSchedules]);
+
+    // Compute impact data for Impacto Global
+    const { globalData, adminImpactGlobal, medicalImpactGlobal, attendanceImpactGlobal } = useMemo(() => {
+        const admin = computeAdminDaysImpact(requests, allSchedules);
+        const medical = computeMedicalLeavesImpact(leaves, allSchedules);
+        const attendance = computeAttendanceImpact(attendanceReports, users, allSchedules);
+        const global = computeGlobalImpact(admin, medical, attendance, users);
+        return { globalData: global, adminImpactGlobal: admin, medicalImpactGlobal: medical, attendanceImpactGlobal: attendance };
+    }, [requests, leaves, attendanceReports, users, allSchedules]);
 
     return (
         <div className="space-y-6">
@@ -1081,7 +846,6 @@ export default function StatsView() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
                 >
-                    {activeTab === 'resumen' && <ResumenTab stats={stats} />}
                     {activeTab === 'dias' && (
                         <DiasAdminTab
                             users={users}
@@ -1113,6 +877,16 @@ export default function StatsView() {
                         <LicenciasTab
                             leaves={leaves}
                             schedules={allSchedules}
+                        />
+                    )}
+                    {activeTab === 'impacto' && (
+                        <ImpactoGlobalTab
+                            adminImpact={adminImpactGlobal}
+                            medicalImpact={medicalImpactGlobal}
+                            attendanceImpact={attendanceImpactGlobal}
+                            globalData={globalData}
+                            schedules={allSchedules}
+                            users={users}
                         />
                     )}
                 </motion.div>

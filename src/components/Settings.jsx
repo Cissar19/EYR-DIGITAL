@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, getRoleLabel } from '../context/AuthContext';
-import { User, Save, Shield, Lock, Sparkles, Camera, Trash2 } from 'lucide-react';
+import { User, Save, Shield, Lock, Sparkles, Camera, Trash2, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { readFileAsDataUrl } from '../lib/cropImage';
@@ -9,11 +9,19 @@ import { db } from '../lib/firebase';
 import AvatarCropModal from './AvatarCropModal';
 
 export default function Settings() {
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, changePassword } = useAuth();
     const [name, setName] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [cropImageSrc, setCropImageSrc] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Change password state
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -71,6 +79,37 @@ export default function Settings() {
             toast.success('Foto de perfil eliminada');
         } catch (error) {
             toast.error('Error al eliminar la foto: ' + error.message);
+        }
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        if (newPassword.length < 6) {
+            toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error('Las contraseñas no coinciden');
+            return;
+        }
+        setIsChangingPassword(true);
+        try {
+            await changePassword(currentPassword, newPassword);
+            toast.success('Contraseña actualizada correctamente');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            const msg = error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential'
+                ? 'La contraseña actual es incorrecta'
+                : error.code === 'auth/weak-password'
+                    ? 'La nueva contraseña es demasiado débil'
+                    : error.code === 'auth/too-many-requests'
+                        ? 'Demasiados intentos. Intenta más tarde'
+                        : 'Error al cambiar contraseña: ' + error.message;
+            toast.error(msg);
+        } finally {
+            setIsChangingPassword(false);
         }
     };
 
@@ -211,6 +250,118 @@ export default function Settings() {
                                     <Save className="w-4 h-4" /> Guardar Cambios
                                 </motion.button>
                             )}
+                        </form>
+                    </div>
+                </motion.div>
+
+                {/* Change Password Card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="bg-white/80 backdrop-blur-xl rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-white/50 relative overflow-hidden"
+                >
+                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <KeyRound className="w-32 h-32 text-slate-900" />
+                    </div>
+
+                    <div className="relative z-10">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-indigo-500" />
+                            Cambiar Contraseña
+                        </h2>
+
+                        <form onSubmit={handleChangePassword} className="max-w-md space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+                                    Contraseña Actual
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showCurrentPassword ? 'text' : 'password'}
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-4 pr-12 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                        placeholder="Ingresa tu contraseña actual"
+                                        required
+                                        disabled={isChangingPassword}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+                                    Nueva Contraseña
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showNewPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-4 pr-12 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                        placeholder="Mínimo 6 caracteres"
+                                        required
+                                        minLength={6}
+                                        disabled={isChangingPassword}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+                                    Confirmar Nueva Contraseña
+                                </label>
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className={`w-full bg-slate-50/50 border rounded-xl px-4 py-4 font-medium focus:outline-none focus:ring-2 transition-all ${
+                                        confirmPassword && confirmPassword !== newPassword
+                                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
+                                            : 'border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500'
+                                    }`}
+                                    placeholder="Repite la nueva contraseña"
+                                    required
+                                    disabled={isChangingPassword}
+                                />
+                                {confirmPassword && confirmPassword !== newPassword && (
+                                    <p className="text-xs text-red-500 font-medium ml-1">Las contraseñas no coinciden</p>
+                                )}
+                            </div>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                type="submit"
+                                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                                className="bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold shadow-lg shadow-slate-300 hover:shadow-xl hover:bg-slate-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isChangingPassword ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Cambiando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Lock className="w-4 h-4" />
+                                        Cambiar Contraseña
+                                    </>
+                                )}
+                            </motion.button>
                         </form>
                     </div>
                 </motion.div>
