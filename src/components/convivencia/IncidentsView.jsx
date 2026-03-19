@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useIncidents, CATEGORIES, SEVERITIES, STATUSES } from '../../context/IncidentsContext';
 import { useStudents } from '../../context/StudentsContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, canEdit as canEditHelper } from '../../context/AuthContext';
 import {
     AlertTriangle, Plus, Search, X, Check, ChevronDown, ChevronLeft, ChevronRight,
     Clock, Calendar as CalendarIcon, FileText, Users, BarChart3, MessageSquare,
@@ -47,6 +47,7 @@ export default function IncidentsView() {
     const { incidents, createIncident, addFollowUpNote, changeStatus, deleteIncident } = useIncidents();
     const { students } = useStudents();
     const { user, users } = useAuth();
+    const userCanEdit = canEditHelper(user);
 
     // ── State ──
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -256,6 +257,7 @@ export default function IncidentsView() {
                             <Users className="w-4 h-4" />
                             <span className="hidden sm:inline">Alumnos</span>
                         </button>
+                        {userCanEdit && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="px-4 py-2.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors text-sm flex items-center gap-1.5 shadow-sm"
@@ -263,6 +265,7 @@ export default function IncidentsView() {
                             <Plus className="w-4 h-4" />
                             Nueva Incidencia
                         </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -360,6 +363,7 @@ export default function IncidentsView() {
                         onChangeStatus={changeStatus}
                         onDelete={deleteIncident}
                         canDelete={user && ['admin', 'super_admin'].includes(user.role)}
+                        canEditData={userCanEdit}
                     />
                 )}
             </AnimatePresence>
@@ -689,7 +693,7 @@ function CreateIncidentModal({ onClose, students, users, onCreate }) {
 // INCIDENT DETAIL MODAL
 // ════════════════════════════════════════
 
-function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onDelete, canDelete }) {
+function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onDelete, canDelete, canEditData }) {
     const [noteText, setNoteText] = useState('');
     const [sendingNote, setSendingNote] = useState(false);
 
@@ -783,6 +787,7 @@ function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onD
                     </div>
 
                     {/* Status buttons */}
+                    {canEditData && (
                     <div>
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cambiar Estado</h4>
                         <div className="flex gap-2 flex-wrap">
@@ -803,6 +808,7 @@ function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onD
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Notes Timeline */}
                     <div>
@@ -835,6 +841,7 @@ function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onD
                         )}
 
                         {/* Add note form */}
+                        {canEditData && (
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -852,6 +859,7 @@ function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onD
                                 <Send className="w-4 h-4" />
                             </button>
                         </div>
+                        )}
                     </div>
 
                     {/* Delete */}

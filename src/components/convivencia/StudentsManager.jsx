@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useStudents } from '../../context/StudentsContext';
 import { Upload, Plus, Search, X, Edit3, Trash2, Check, AlertTriangle, FileText, Users, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth, canEdit as canEditHelper } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 import { formatRut } from '../../lib/csvParser';
 import { parseCSV } from '../../lib/csvParser';
@@ -21,6 +22,8 @@ const emptyForm = {
 
 export default function StudentsManager({ onClose }) {
     const { students, addStudent, updateStudent, deleteStudent, importStudentsFromCSV } = useStudents();
+    const { user } = useAuth();
+    const userCanEdit = canEditHelper(user);
 
     // ── Tabs: list / import / add ──
     const [tab, setTab] = useState('list');
@@ -154,7 +157,7 @@ export default function StudentsManager({ onClose }) {
                         { key: 'list', label: 'Lista', icon: Users },
                         { key: 'import', label: 'Importar CSV', icon: Upload },
                         { key: 'add', label: editingId ? 'Editar' : 'Agregar', icon: Plus },
-                    ].map(t => (
+                    ].filter(t => t.key === 'list' || userCanEdit).map(t => (
                         <button
                             key={t.key}
                             onClick={() => { setTab(t.key); if (t.key !== 'add') { setEditingId(null); setForm(emptyForm); } }}
@@ -209,6 +212,7 @@ export default function StudentsManager({ onClose }) {
                                                 </div>
                                                 <span className="text-xs text-slate-400 font-mono">{s.rut}</span>
                                             </div>
+                                            {userCanEdit && (
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleEdit(s)}
@@ -240,6 +244,7 @@ export default function StudentsManager({ onClose }) {
                                                     </button>
                                                 )}
                                             </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
