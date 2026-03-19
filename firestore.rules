@@ -185,6 +185,14 @@ service cloud.firestore {
     }
 
     // ============================================
+    // JUSTIFICATIVES (Inspectoría)
+    // ============================================
+    match /justificatives/{docId} {
+      allow read: if isAuthenticated() && isManagement();
+      allow write: if isAuthenticated() && isManagement();
+    }
+
+    // ============================================
     // PERMISSIONS & REPLACEMENT LOGS
     // ============================================
     match /permissions_role_defaults/{docId} {

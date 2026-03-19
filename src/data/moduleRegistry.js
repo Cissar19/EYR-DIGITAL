@@ -1,6 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
-    CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock
+    CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
+    FileCheck
 } from 'lucide-react';
 
 /**
@@ -115,6 +116,15 @@ export const MODULE_REGISTRY = [
         path: '/admin/attendance',
         category: 'role_specific',
         group: 'administracion',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
+    },
+    {
+        key: 'justificatives',
+        name: 'Justificativos',
+        icon: FileCheck,
+        path: '/inspectoria/justificativos',
+        category: 'role_specific',
+        group: 'inspectoria',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
     },
     {

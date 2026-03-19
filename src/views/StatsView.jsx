@@ -5,7 +5,7 @@ import {
     TrendingUp, TrendingDown, AlertCircle, Clock, Printer,
     Monitor, LifeBuoy, Package, Search, ChevronRight,
     Circle, Info, AlertTriangle, CheckCircle, HeartPulse, ChevronDown,
-    Layers
+    Layers, FileCheck
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -20,6 +20,8 @@ import { usePrint } from '../context/PrintContext';
 import { useEquipment } from '../context/EquipmentContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { useJustificatives } from '../context/JustificativesContext';
+import { useStudents } from '../context/StudentsContext';
 import { subscribeToCollection } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
 import {
@@ -41,6 +43,7 @@ const TABS = [
     { id: 'impacto', label: 'Impacto Global', icon: Layers },
     { id: 'dias', label: 'Dias Administrativos', icon: CalendarCheck },
     { id: 'licencias', label: 'Licencias Medicas', icon: HeartPulse },
+    { id: 'justificativos', label: 'Justificativos', icon: FileCheck },
     { id: 'operaciones', label: 'Operaciones', icon: Wrench },
     { id: 'detalle', label: 'Detalle', icon: Table2 },
 ];
@@ -751,6 +754,185 @@ const LicenciasTab = ({ leaves, schedules }) => {
 
 
 // ============================================
+// TAB: JUSTIFICATIVOS ALUMNOS
+// ============================================
+
+const JUST_TYPES = [
+    { value: 'medico', label: 'Medico', color: '#ef4444' },
+    { value: 'otro', label: 'Otro', color: '#64748b' },
+];
+
+const MONTH_NAMES_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+const JustificativosTab = ({ justificatives, students }) => {
+    const [expandedCurso, setExpandedCurso] = useState(null);
+
+    // KPIs
+    const kpis = useMemo(() => {
+        const now = new Date();
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const thisMonth = justificatives.filter(j => j.date?.startsWith(monthPrefix));
+        const medicos = justificatives.filter(j => j.type === 'medico').length;
+        const uniqueStudents = new Set(justificatives.map(j => j.studentId)).size;
+        return { total: justificatives.length, thisMonth: thisMonth.length, medicos, uniqueStudents };
+    }, [justificatives]);
+
+    // By type (pie)
+    const byType = useMemo(() => {
+        const counts = {};
+        JUST_TYPES.forEach(t => { counts[t.value] = 0; });
+        justificatives.forEach(j => { counts[j.type] = (counts[j.type] || 0) + 1; });
+        return JUST_TYPES.map(t => ({ name: t.label, value: counts[t.value], color: t.color })).filter(d => d.value > 0);
+    }, [justificatives]);
+
+    // By month (bar chart - last 6 months)
+    const byMonth = useMemo(() => {
+        const now = new Date();
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const count = justificatives.filter(j => j.date?.startsWith(prefix)).length;
+            months.push({ name: MONTH_NAMES_SHORT[d.getMonth()], total: count });
+        }
+        return months;
+    }, [justificatives]);
+
+    // By curso (table)
+    const byCurso = useMemo(() => {
+        const map = {};
+        justificatives.forEach(j => {
+            const curso = j.studentCurso || 'Sin curso';
+            if (!map[curso]) map[curso] = { curso, total: 0, medico: 0, otro: 0, students: new Set() };
+            map[curso].total++;
+            if (j.type === 'medico') map[curso].medico++;
+            else map[curso].otro++;
+            map[curso].students.add(j.studentId);
+        });
+        return Object.values(map)
+            .map(c => ({ ...c, uniqueStudents: c.students.size }))
+            .sort((a, b) => b.total - a.total);
+    }, [justificatives]);
+
+    // Top students (most justificatives)
+    const topStudents = useMemo(() => {
+        const map = {};
+        justificatives.forEach(j => {
+            if (!map[j.studentId]) map[j.studentId] = { id: j.studentId, name: j.studentName, curso: j.studentCurso, total: 0, medico: 0 };
+            map[j.studentId].total++;
+            if (j.type === 'medico') map[j.studentId].medico++;
+        });
+        return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
+    }, [justificatives]);
+
+    return (
+        <div className="space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <KpiCard icon={FileCheck} label="Total" value={kpis.total} color="indigo" />
+                <KpiCard icon={CalendarCheck} label="Este Mes" value={kpis.thisMonth} color="blue" />
+                <KpiCard icon={HeartPulse} label="Medicos" value={kpis.medicos} color="red" />
+                <KpiCard icon={Users} label="Alumnos" value={kpis.uniqueStudents} sublabel="con justificativos" color="emerald" />
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <ChartCard title="Por Tipo">
+                    {byType.length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center py-8">Sin datos</p>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie data={byType} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={3} strokeWidth={0}>
+                                    {byType.map((d, i) => <Cell key={i} fill={d.color} />)}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
+                </ChartCard>
+
+                <ChartCard title="Ultimos 6 Meses">
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={byMonth} barSize={28}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Bar dataKey="total" name="Justificativos" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </ChartCard>
+            </div>
+
+            {/* By Curso table */}
+            <ChartCard title="Por Curso">
+                {byCurso.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-8">Sin datos</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-100">
+                                    <th className="text-left py-2 px-2 text-xs font-bold text-slate-400 uppercase">Curso</th>
+                                    <th className="text-center py-2 px-2 text-xs font-bold text-slate-400 uppercase">Total</th>
+                                    <th className="text-center py-2 px-2 text-xs font-bold text-slate-400 uppercase">Medico</th>
+                                    <th className="text-center py-2 px-2 text-xs font-bold text-slate-400 uppercase">Otro</th>
+                                    <th className="text-center py-2 px-2 text-xs font-bold text-slate-400 uppercase">Alumnos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {byCurso.map(c => (
+                                    <tr key={c.curso} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                        <td className="py-2.5 px-2 font-semibold text-slate-700">{c.curso}</td>
+                                        <td className="py-2.5 px-2 text-center">
+                                            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold">{c.total}</span>
+                                        </td>
+                                        <td className="py-2.5 px-2 text-center">
+                                            <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold">{c.medico}</span>
+                                        </td>
+                                        <td className="py-2.5 px-2 text-center">
+                                            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-bold">{c.otro}</span>
+                                        </td>
+                                        <td className="py-2.5 px-2 text-center text-slate-500">{c.uniqueStudents}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </ChartCard>
+
+            {/* Top students */}
+            <ChartCard title="Alumnos con Mas Justificativos">
+                {topStudents.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-8">Sin datos</p>
+                ) : (
+                    <div className="space-y-2">
+                        {topStudents.map((s, i) => (
+                            <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 shrink-0">
+                                    {i + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-semibold text-slate-700 truncate block">{s.name}</span>
+                                    {s.curso && <span className="text-[10px] text-slate-400">{s.curso}</span>}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {s.medico > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{s.medico} med</span>}
+                                    <span className="bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{s.total}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </ChartCard>
+        </div>
+    );
+};
+
+// ============================================
 // MAIN VIEW
 // ============================================
 
@@ -764,6 +946,8 @@ export default function StatsView() {
     const { getLowStockItems } = useEquipment();
     const { leaves } = useMedicalLeaves();
     const { getAllSchedules } = useSchedule();
+    const { justificatives } = useJustificatives();
+    const { students } = useStudents();
 
     // Attendance data for Impacto Global tab
     const [attendanceReports, setAttendanceReports] = useState([]);
@@ -878,6 +1062,9 @@ export default function StatsView() {
                             leaves={leaves}
                             schedules={allSchedules}
                         />
+                    )}
+                    {activeTab === 'justificativos' && (
+                        <JustificativosTab justificatives={justificatives} students={students} />
                     )}
                     {activeTab === 'impacto' && (
                         <ImpactoGlobalTab

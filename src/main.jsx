@@ -18,6 +18,7 @@ import { ConvivenciaProvider } from './context/ConvivenciaContext.jsx'
 import { StudentsProvider } from './context/StudentsContext.jsx'
 import { IncidentsProvider } from './context/IncidentsContext.jsx'
 import { PermissionsProvider } from './context/PermissionsContext.jsx'
+import { JustificativesProvider } from './context/JustificativesContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -42,7 +43,9 @@ const DataProviders = ({ children }) => {
                       <ConvivenciaProvider>
                         <StudentsProvider>
                           <IncidentsProvider>
-                            {children}
+                            <JustificativesProvider>
+                              {children}
+                            </JustificativesProvider>
                           </IncidentsProvider>
                         </StudentsProvider>
                       </ConvivenciaProvider>
