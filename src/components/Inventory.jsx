@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useInventory } from '../context/InventoryContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 import { Package, Monitor, Speaker, Zap, Key, Plus, Trash2, Edit2, X, AlertTriangle, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -24,7 +24,7 @@ export default function Inventory() {
         ? items
         : items.filter(item => item.category === activeTab);
 
-    const isAdmin = user?.role === 'admin' || user?.role === 'director';
+    const isAdmin = canEditHelper(user);
 
     // --- HANDLERS ---
 

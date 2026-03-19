@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { usePrint } from '../context/PrintContext';
 import { useData } from '../context/DataContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Printer, FileText, CheckCircle, Clock, AlertTriangle, Search, Trash2, Award, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -12,7 +12,7 @@ export default function PrintCenter() {
     const { user } = useAuth();
     const { users } = useData();
     const { requests, addRequest, updateRequestStatus, deleteRequest } = usePrint();
-    const isAdmin = user?.role === 'admin' || user?.role === 'director';
+    const isAdmin = canEditHelper(user);
 
     // Filter requests based on role
     const myRequests = requests.filter(r => r.userId === user.id);

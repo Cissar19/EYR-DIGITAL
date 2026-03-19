@@ -6,8 +6,11 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useEquipment, getIconComponent, ICON_MAP } from '../context/EquipmentContext';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 
 export default function InventoryView() {
+    const { user } = useAuth();
+    const userCanEdit = canEditHelper(user);
     const {
         folders,
         addFolder,
@@ -221,15 +224,17 @@ export default function InventoryView() {
                     </div>
                 </div>
 
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleOpenNewFolderModal}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-600 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-700 shadow-2xl shadow-purple-300 transition-all"
-                >
-                    <FolderPlus className="w-5 h-5" />
-                    Nueva Carpeta
-                </motion.button>
+                {userCanEdit && (
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleOpenNewFolderModal}
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-600 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-700 shadow-2xl shadow-purple-300 transition-all"
+                    >
+                        <FolderPlus className="w-5 h-5" />
+                        Nueva Carpeta
+                    </motion.button>
+                )}
             </div>
 
             {/* KPI Dashboard */}
@@ -327,22 +332,24 @@ export default function InventoryView() {
                                 </div>
 
                                 {/* Hover Action Buttons - Top Right */}
-                                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                    <button
-                                        onClick={(e) => handleOpenEditFolderModal(folder, e)}
-                                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors group/btn"
-                                        title="Renombrar Carpeta"
-                                    >
-                                        <Pencil className="w-4 h-4 text-gray-400 group-hover/btn:text-blue-600 transition-colors" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleOpenDeleteModal(folder, e)}
-                                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group/btn"
-                                        title="Eliminar Carpeta"
-                                    >
-                                        <Trash2 className="w-4 h-4 text-gray-400 group-hover/btn:text-red-600 transition-colors" />
-                                    </button>
-                                </div>
+                                {userCanEdit && (
+                                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                        <button
+                                            onClick={(e) => handleOpenEditFolderModal(folder, e)}
+                                            className="p-2 hover:bg-blue-50 rounded-lg transition-colors group/btn"
+                                            title="Renombrar Carpeta"
+                                        >
+                                            <Pencil className="w-4 h-4 text-gray-400 group-hover/btn:text-blue-600 transition-colors" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleOpenDeleteModal(folder, e)}
+                                            className="p-2 hover:bg-red-50 rounded-lg transition-colors group/btn"
+                                            title="Eliminar Carpeta"
+                                        >
+                                            <Trash2 className="w-4 h-4 text-gray-400 group-hover/btn:text-red-600 transition-colors" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Click Indicator */}
@@ -413,15 +420,17 @@ export default function InventoryView() {
                         </div>
                     </div>
 
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleAddNewItem}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-600 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-700 shadow-2xl shadow-purple-300 transition-all"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Nuevo Artículo
-                    </motion.button>
+                    {userCanEdit && (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleAddNewItem}
+                            className="flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-600 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-700 shadow-2xl shadow-purple-300 transition-all"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Nuevo Artículo
+                        </motion.button>
+                    )}
                 </div>
 
                 {/* Item Grid */}
@@ -504,62 +513,72 @@ export default function InventoryView() {
                                     </div>
 
                                     {/* Quick Stock Adjustment */}
-                                    <div className="flex items-center justify-between bg-slate-50 rounded-xl p-2 mb-4" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (item.stock > 0) {
-                                                    updateItem(item.id, { stock: item.stock - 1 });
-                                                }
-                                            }}
-                                            disabled={item.stock <= 0}
-                                            className="w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </button>
+                                    {userCanEdit ? (
+                                        <div className="flex items-center justify-between bg-slate-50 rounded-xl p-2 mb-4" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (item.stock > 0) {
+                                                        updateItem(item.id, { stock: item.stock - 1 });
+                                                    }
+                                                }}
+                                                disabled={item.stock <= 0}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                            </button>
 
-                                        <span className="font-semibold text-slate-700 w-12 text-center text-sm">
-                                            {item.stock}
-                                        </span>
+                                            <span className="font-semibold text-slate-700 w-12 text-center text-sm">
+                                                {item.stock}
+                                            </span>
 
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                updateItem(item.id, { stock: item.stock + 1 });
-                                            }}
-                                            className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateItem(item.id, { stock: item.stock + 1 });
+                                                }}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center bg-slate-50 rounded-xl p-2 mb-4">
+                                            <span className="font-semibold text-slate-700 text-sm">
+                                                Stock: {item.stock}
+                                            </span>
+                                        </div>
+                                    )}
 
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => toggleStatus(item.id)}
-                                            className={cn(
-                                                "flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all",
-                                                isMaintenance
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-300"
-                                                    : "bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-300"
-                                            )}
-                                        >
-                                            {isMaintenance ? 'Activar' : 'Mantención'}
-                                        </button>
+                                    {userCanEdit && (
+                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => toggleStatus(item.id)}
+                                                className={cn(
+                                                    "flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                                                    isMaintenance
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-300"
+                                                        : "bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-300"
+                                                )}
+                                            >
+                                                {isMaintenance ? 'Activar' : 'Mantención'}
+                                            </button>
 
-                                        <button
-                                            onClick={() => handleEditItem(item)}
-                                            className="px-3 py-2 rounded-xl text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300 transition-all"
-                                        >
-                                            <Edit3 className="w-4 h-4" />
-                                        </button>
+                                            <button
+                                                onClick={() => handleEditItem(item)}
+                                                className="px-3 py-2 rounded-xl text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300 transition-all"
+                                            >
+                                                <Edit3 className="w-4 h-4" />
+                                            </button>
 
-                                        <button
-                                            onClick={() => handleOpenDeleteItemModal(item)}
-                                            className="px-3 py-2 rounded-xl text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 transition-all"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                            <button
+                                                onClick={() => handleOpenDeleteItemModal(item)}
+                                                className="px-3 py-2 rounded-xl text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 transition-all"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         );
@@ -578,12 +597,14 @@ export default function InventoryView() {
                         <p className="text-slate-400 text-sm mb-4">
                             Agrega tu primer artículo para comenzar
                         </p>
-                        <button
-                            onClick={handleAddNewItem}
-                            className="px-6 py-3 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg transition-all"
-                        >
-                            + Agregar Artículo
-                        </button>
+                        {userCanEdit && (
+                            <button
+                                onClick={handleAddNewItem}
+                                className="px-6 py-3 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg transition-all"
+                            >
+                                + Agregar Artículo
+                            </button>
+                        )}
                     </div>
                 )}
             </>
