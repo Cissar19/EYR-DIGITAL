@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePermissions } from './context/PermissionsContext';
@@ -31,6 +31,7 @@ import PermissionsManager from './views/PermissionsManager';
 import TeacherHoursView from './views/TeacherHoursView';
 import AttendanceMonitorView from './views/AttendanceMonitorView';
 import JustificativesView from './views/JustificativesView';
+import EntrevistasView from './views/EntrevistasView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -148,19 +149,9 @@ const ProtectedLayout = () => {
         </div>
       </div>
 
-      {/* Desktop toggle button when sidebar is collapsed */}
-      {isSidebarCollapsed && (
-        <button
-          onClick={() => setIsSidebarCollapsed(false)}
-          className="hidden md:flex fixed top-1/2 -translate-y-1/2 left-0 z-[60] p-2 py-4 bg-white border border-l-0 border-slate-200 rounded-r-xl shadow-md hover:shadow-lg hover:bg-slate-50 text-slate-500 hover:text-indigo-600 transition-all"
-        >
-          <PanelLeftOpen className="w-5 h-5" />
-        </button>
-      )}
-
       <div className={cn(
         "flex-1 flex flex-col transition-all duration-300 relative",
-        isSidebarCollapsed ? "md:ml-0" : "md:ml-72"
+        isSidebarCollapsed ? "md:ml-[72px]" : "md:ml-72"
       )}>
         <div className="hidden md:block">
           <Topbar />
@@ -229,6 +220,7 @@ export default function App() {
           <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
           <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
           <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
+          <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

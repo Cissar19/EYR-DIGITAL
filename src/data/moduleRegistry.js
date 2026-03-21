@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck
+    FileCheck, MessageSquare
 } from 'lucide-react';
 
 /**
@@ -123,6 +123,15 @@ export const MODULE_REGISTRY = [
         name: 'Justificativos',
         icon: FileCheck,
         path: '/inspectoria/justificativos',
+        category: 'role_specific',
+        group: 'inspectoria',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
+    },
+    {
+        key: 'entrevistas',
+        name: 'Entrevistas',
+        icon: MessageSquare,
+        path: '/inspectoria/entrevistas',
         category: 'role_specific',
         group: 'inspectoria',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],

@@ -28,8 +28,9 @@ export default function AdminUsers() {
     const [resetTargetUser, setResetTargetUser] = useState(null);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
 
-    // Search & Pagination State
+    // Search, Filter & Pagination State
     const [searchTerm, setSearchTerm] = useState("");
+    const [roleFilter, setRoleFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 6;
 
@@ -224,11 +225,30 @@ export default function AdminUsers() {
     });
 
 
-    // Filter Logic with accent-insensitive search
-    const filteredUsers = sortedUsers.filter(u =>
-        normalizeText(u.name).includes(normalizeText(searchTerm)) ||
-        normalizeText(u.email).includes(normalizeText(searchTerm))
+    // Available roles for filter (derived from actual users)
+    const ROLE_FILTERS = [
+        { value: 'all', label: 'Todos' },
+        { value: ROLES.TEACHER, label: 'Docentes', icon: GraduationCap, color: 'blue' },
+        { value: ROLES.STAFF, label: 'Asistentes', icon: Briefcase, color: 'teal' },
+        { value: ROLES.ADMIN, label: 'Admin', icon: ShieldCheck, color: 'amber' },
+        { value: ROLES.DIRECTOR, label: 'Director', icon: Shield, color: 'indigo' },
+        { value: ROLES.UTP_HEAD, label: 'UTP', icon: BookOpen, color: 'purple' },
+        { value: ROLES.INSPECTOR, label: 'Inspectoría', icon: Eye, color: 'orange' },
+        { value: ROLES.CONVIVENCIA, label: 'Convivencia', icon: Heart, color: 'rose' },
+    ];
+
+    // Only show filter options for roles that exist in the team
+    const availableRoleFilters = ROLE_FILTERS.filter(
+        rf => rf.value === 'all' || allUsers.some(u => u.role === rf.value)
     );
+
+    // Filter Logic with accent-insensitive search + role filter
+    const filteredUsers = sortedUsers.filter(u => {
+        const matchesSearch = normalizeText(u.name).includes(normalizeText(searchTerm)) ||
+            normalizeText(u.email).includes(normalizeText(searchTerm));
+        const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+        return matchesSearch && matchesRole;
+    });
 
     // Pagination Logic
     const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
@@ -238,7 +258,12 @@ export default function AdminUsers() {
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
-        setCurrentPage(1); // Reset to page 1 on search
+        setCurrentPage(1);
+    };
+
+    const handleRoleFilterChange = (role) => {
+        setRoleFilter(role);
+        setCurrentPage(1);
     };
 
     return (
@@ -279,7 +304,7 @@ export default function AdminUsers() {
             </div>
 
             {/* Search Bar */}
-            <div className="mb-8 relative w-full md:max-w-xl">
+            <div className="mb-4 relative w-full md:max-w-xl">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Search className="h-5 w-5 text-slate-400" />
                 </div>
@@ -290,6 +315,46 @@ export default function AdminUsers() {
                     value={searchTerm}
                     onChange={handleSearchChange}
                 />
+            </div>
+
+            {/* Role Filter */}
+            <div className="mb-8 flex flex-wrap gap-2">
+                {availableRoleFilters.map(rf => {
+                    const isActive = roleFilter === rf.value;
+                    const Icon = rf.icon;
+                    const colorMap = {
+                        blue: 'bg-blue-100 text-blue-700 border-blue-200',
+                        teal: 'bg-teal-100 text-teal-700 border-teal-200',
+                        amber: 'bg-amber-100 text-amber-700 border-amber-200',
+                        indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+                        purple: 'bg-purple-100 text-purple-700 border-purple-200',
+                        orange: 'bg-orange-100 text-orange-700 border-orange-200',
+                        rose: 'bg-rose-100 text-rose-700 border-rose-200',
+                    };
+                    const activeClass = rf.value === 'all'
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : colorMap[rf.color] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+                    return (
+                        <button
+                            key={rf.value}
+                            onClick={() => handleRoleFilterChange(rf.value)}
+                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                isActive
+                                    ? activeClass + ' shadow-sm'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                            }`}
+                        >
+                            {Icon && <Icon className="w-3.5 h-3.5" />}
+                            {rf.label}
+                            {isActive && rf.value !== 'all' && (
+                                <span className="ml-1 bg-white/30 px-1.5 py-0.5 rounded-md text-[10px]">
+                                    {filteredUsers.length}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Notification Toast */}
@@ -507,7 +572,7 @@ export default function AdminUsers() {
                                         type="email"
                                         required
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium"
-                                        placeholder="ejemplo@escuela.cl"
+                                        placeholder="ejemplo@eduhuechuraba.cl"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     />

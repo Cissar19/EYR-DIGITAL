@@ -263,16 +263,18 @@ export const AuthProvider = ({ children }) => {
             throw new Error('No tienes permisos para modificar otros usuarios');
         }
 
-        // Block role changes unless super_admin
-        if (updatedFields.role !== undefined && !isSuperAdmin(user)) {
-            throw new Error('Solo super_admin puede cambiar roles');
+        // Block role changes unless admin+
+        if (updatedFields.role !== undefined && !isAdmin(user)) {
+            throw new Error('Solo administradores pueden cambiar roles');
         }
 
-        // Prevent uid/email tampering
         const safeFields = { ...updatedFields };
         delete safeFields.uid;
-        delete safeFields.email;
         delete safeFields.id;
+        // Only admins can update email
+        if (!isAdmin(user)) {
+            delete safeFields.email;
+        }
 
         // Sanitize name if provided
         if (safeFields.name) {

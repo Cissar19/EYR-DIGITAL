@@ -408,14 +408,14 @@ export default function JustificativesView() {
                             students={students}
                             user={user}
                             onSave={async (data) => {
-                                let ok;
                                 if (editingItem) {
-                                    ok = await updateJustificative(editingItem.id, data);
+                                    const ok = await updateJustificative(editingItem.id, data);
+                                    if (ok) setShowModal(false);
                                 } else {
-                                    ok = await addJustificative(data);
+                                    await addJustificative(data);
                                 }
-                                if (ok) setShowModal(false);
                             }}
+                            onDone={() => setShowModal(false)}
                             onClose={() => setShowModal(false)}
                         />
                     </ModalOverlay>
@@ -444,108 +444,143 @@ export default function JustificativesView() {
 // ── Modal Overlay ──
 
 function ModalOverlay({ children, onClose }) {
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = ''; };
-    }, []);
-
     return (
-        <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col"
-        >
+        <div className="fixed inset-0 z-50" onClick={onClose}>
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            {/* Scrollable container */}
-            <div className="relative z-10 flex-1 overflow-y-auto flex items-start justify-center p-4 py-12">
-                <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                    onClick={e => e.stopPropagation()}
-                    className="w-full max-w-lg my-auto"
-                >
-                    {children}
-                </motion.div>
+            <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none"
+            />
+            {/* Scroll wrapper - this is the scrollable layer */}
+            <div className="absolute inset-0 overflow-y-auto">
+                <div className="min-h-full flex items-start justify-center px-4 py-6">
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                        onClick={e => e.stopPropagation()}
+                        className="relative w-full max-w-md"
+                    >
+                        {children}
+                    </motion.div>
+                </div>
             </div>
-        </motion.div>
+        </div>
     );
 }
 
 // ── Form ──
 
-function JustificativeForm({ editing, preselectedStudent, students, user, onSave, onClose }) {
+function JustificativeForm({ editing, preselectedStudent, students, user, onSave, onDone, onClose }) {
     // When editing, find the student; when creating with preselected, use that
     const lockedStudent = preselectedStudent || (editing ? students.find(s => s.id === editing.studentId) : null);
 
-    const [date, setDate] = useState(editing?.date || new Date().toISOString().slice(0, 10));
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const [dateFrom, setDateFrom] = useState(editing?.date || todayStr);
+    const [dateTo, setDateTo] = useState(editing?.date || todayStr);
     const [type, setType] = useState(editing?.type || '');
     const [diagnosis, setDiagnosis] = useState(editing?.diagnosis || '');
     const [attachmentNote, setAttachmentNote] = useState(editing?.attachmentNote || '');
     const [saving, setSaving] = useState(false);
+
+    // Generate all dates in range [from, to]
+    const datesInRange = useMemo(() => {
+        const dates = [];
+        const start = new Date(dateFrom + 'T12:00:00');
+        const end = new Date(dateTo + 'T12:00:00');
+        const current = new Date(start);
+        while (current <= end) {
+            dates.push(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`);
+            current.setDate(current.getDate() + 1);
+        }
+        return dates;
+    }, [dateFrom, dateTo]);
 
     const handleSubmit = async () => {
         if (!lockedStudent || !type) return;
         if (type === 'medico' && !diagnosis.trim()) return;
         setSaving(true);
         try {
-            await onSave({
+            const baseData = {
                 studentId: lockedStudent.id,
                 studentName: lockedStudent.fullName || '',
                 studentRut: lockedStudent.rut || '',
                 studentCurso: lockedStudent.curso || '',
-                date,
                 type,
                 diagnosis: type === 'medico' ? diagnosis : '',
                 attachmentNote,
                 registeredBy: { id: user.uid, name: user.name },
-            });
+            };
+
+            if (editing) {
+                // Editing: single date update
+                await onSave({ ...baseData, date: dateFrom });
+            } else {
+                // Creating: one justificative per day in range
+                for (const d of datesInRange) {
+                    await onSave({ ...baseData, date: d });
+                }
+                onDone?.();
+            }
         } finally {
             setSaving(false);
         }
     };
 
-    const isValid = lockedStudent && type && date && (type !== 'medico' || diagnosis.trim());
+    const isValid = lockedStudent && type && dateFrom && (type !== 'medico' || diagnosis.trim());
+    const rangeCount = datesInRange.length;
 
     return (
         <div className="bg-white rounded-2xl w-full">
-            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800 text-lg">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+                <h3 className="font-bold text-slate-800">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
                 <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="px-5 py-4 space-y-3.5">
                 {/* Student (locked) */}
                 {lockedStudent && (
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1.5">Alumno</label>
-                        <div className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 shrink-0">
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Alumno</label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shrink-0">
                                 {lockedStudent.fullName?.charAt(0)}
                             </div>
                             <span className="font-medium text-sm text-slate-800 truncate">{lockedStudent.fullName}</span>
-                            <span className="text-xs text-slate-400 font-mono shrink-0">{lockedStudent.rut}</span>
                             {lockedStudent.curso && (
-                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full shrink-0">{lockedStudent.curso}</span>
+                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full shrink-0">{lockedStudent.curso}</span>
                             )}
                         </div>
                     </div>
                 )}
 
-                {/* Date - mini calendar */}
+                {/* Date - mini calendar with range */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Fecha *</label>
-                    <MiniCalendar value={date} onChange={setDate} />
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                        {editing ? 'Fecha *' : 'Fecha(s) *'}
+                    </label>
+                    <MiniCalendar
+                        startDate={dateFrom}
+                        endDate={dateTo}
+                        onRangeChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
+                        singleMode={!!editing}
+                    />
+                    {!editing && rangeCount > 1 && (
+                        <p className="text-xs text-indigo-600 font-medium mt-2 flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {rangeCount} dias seleccionados: {formatDate(dateFrom)} — {formatDate(dateTo)}
+                        </p>
+                    )}
                 </div>
 
                 {/* Type pills */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Tipo *</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Tipo *</label>
                     <div className="flex flex-wrap gap-2">
                         {TYPES.map(t => (
                             <button
                                 key={t.value}
                                 type="button"
                                 onClick={() => setType(t.value)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${type === t.value
+                                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${type === t.value
                                     ? `${t.color} ring-2 ring-offset-1 ring-current`
                                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                                 }`}
@@ -559,20 +594,20 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                 {/* Diagnosis (only for medico) */}
                 {type === 'medico' && (
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1.5">Diagnostico medico *</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Diagnostico medico *</label>
                         <input
                             type="text"
                             value={diagnosis}
                             onChange={e => setDiagnosis(e.target.value)}
                             placeholder="Ej: Amigdalitis aguda, control dental, etc."
-                            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
                         />
                     </div>
                 )}
 
                 {/* Attachment note */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Nota de documento adjunto</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Nota de documento adjunto</label>
                     <input
                         type="text"
                         value={attachmentNote}
@@ -583,14 +618,14 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                 </div>
             </div>
 
-            <div className="flex gap-3 justify-end p-6 pt-4 border-t border-slate-100">
+            <div className="flex gap-3 justify-end px-5 py-3.5 border-t border-slate-100">
                 <button onClick={onClose} className="px-5 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors font-medium">Cancelar</button>
                 <button
                     onClick={handleSubmit}
                     disabled={!isValid || saving}
                     className="px-5 py-2.5 text-sm rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Registrar'}
+                    {saving ? 'Guardando...' : editing ? 'Actualizar' : rangeCount > 1 ? `Registrar ${rangeCount} dias` : 'Registrar'}
                 </button>
             </div>
         </div>
@@ -602,10 +637,12 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
 const DAYS_HEADER = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-function MiniCalendar({ value, onChange }) {
-    const selected = value ? new Date(value + 'T12:00:00') : new Date();
-    const [viewYear, setViewYear] = useState(selected.getFullYear());
-    const [viewMonth, setViewMonth] = useState(selected.getMonth());
+function MiniCalendar({ startDate, endDate, onRangeChange, singleMode }) {
+    const initial = startDate ? new Date(startDate + 'T12:00:00') : new Date();
+    const [viewYear, setViewYear] = useState(initial.getFullYear());
+    const [viewMonth, setViewMonth] = useState(initial.getMonth());
+    // Track whether next click sets a new start (true) or sets end (false)
+    const [pickingStart, setPickingStart] = useState(false);
 
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -613,12 +650,10 @@ function MiniCalendar({ value, onChange }) {
     const days = useMemo(() => {
         const firstDay = new Date(viewYear, viewMonth, 1);
         const lastDay = new Date(viewYear, viewMonth + 1, 0);
-        // Monday = 0, Sunday = 6
         let startWeekday = firstDay.getDay() - 1;
         if (startWeekday < 0) startWeekday = 6;
 
         const cells = [];
-        // Blanks before first day
         for (let i = 0; i < startWeekday; i++) cells.push(null);
         for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d);
         return cells;
@@ -635,45 +670,93 @@ function MiniCalendar({ value, onChange }) {
 
     const handleSelect = (day) => {
         const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        onChange(dateStr);
+
+        if (singleMode) {
+            onRangeChange(dateStr, dateStr);
+            return;
+        }
+
+        if (pickingStart || !startDate) {
+            // First click: set start, clear end
+            onRangeChange(dateStr, dateStr);
+            setPickingStart(false);
+        } else {
+            // Second click: set end (ensure from <= to)
+            if (dateStr < startDate) {
+                onRangeChange(dateStr, startDate);
+            } else {
+                onRangeChange(startDate, dateStr);
+            }
+            setPickingStart(true);
+        }
     };
 
+    // Check if a date string falls within the range
+    const isInRange = (dateStr) => {
+        if (!startDate || !endDate) return false;
+        return dateStr >= startDate && dateStr <= endDate;
+    };
+    const isRangeStart = (dateStr) => dateStr === startDate;
+    const isRangeEnd = (dateStr) => dateStr === endDate;
+    const hasRange = startDate && endDate && startDate !== endDate;
+
     return (
-        <div className="border border-slate-200 rounded-xl p-3 bg-white">
+        <div className="border border-slate-200 rounded-xl p-2.5 bg-white">
             {/* Month nav */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
                 <button type="button" onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-sm font-semibold text-slate-700">{MONTH_NAMES[viewMonth]} {viewYear}</span>
+                <span className="text-xs font-semibold text-slate-700">{MONTH_NAMES[viewMonth]} {viewYear}</span>
                 <button type="button" onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3.5 h-3.5" />
                 </button>
             </div>
+            {/* Hint */}
+            {!singleMode && (
+                <p className="text-[10px] text-slate-400 text-center mb-1">
+                    {pickingStart || !startDate
+                        ? 'Selecciona el primer dia'
+                        : startDate === endDate
+                            ? 'Selecciona el ultimo dia del rango'
+                            : 'Clic en un dia para nueva seleccion'
+                    }
+                </p>
+            )}
             {/* Day headers */}
-            <div className="grid grid-cols-7 gap-0.5 mb-1">
+            <div className="grid grid-cols-7 mb-0.5">
                 {DAYS_HEADER.map(d => (
-                    <div key={d} className="text-center text-[10px] font-semibold text-slate-400 py-1">{d}</div>
+                    <div key={d} className="text-center text-[10px] font-semibold text-slate-400 py-0.5">{d}</div>
                 ))}
             </div>
             {/* Day cells */}
-            <div className="grid grid-cols-7 gap-0.5">
+            <div className="grid grid-cols-7">
                 {days.map((day, i) => {
                     if (day === null) return <div key={`blank-${i}`} />;
                     const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const isSelected = dateStr === value;
+                    const inRange = isInRange(dateStr);
+                    const isStart = isRangeStart(dateStr);
+                    const isEnd = isRangeEnd(dateStr);
                     const isToday = dateStr === todayStr;
+                    const isSingleSelected = isStart && isEnd;
+
                     return (
                         <button
                             key={day}
                             type="button"
                             onClick={() => handleSelect(day)}
-                            className={`w-full aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition-all
-                                ${isSelected
-                                    ? 'bg-indigo-600 text-white shadow-sm'
-                                    : isToday
-                                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
-                                        : 'text-slate-700 hover:bg-slate-100'
+                            className={`h-7 flex items-center justify-center text-[11px] font-medium transition-all
+                                ${isSingleSelected
+                                    ? 'bg-indigo-600 text-white rounded-md'
+                                    : isStart && hasRange
+                                        ? 'bg-indigo-600 text-white rounded-l-md'
+                                        : isEnd && hasRange
+                                            ? 'bg-indigo-600 text-white rounded-r-md'
+                                            : inRange && hasRange
+                                                ? 'bg-indigo-100 text-indigo-700'
+                                                : isToday
+                                                    ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 rounded-md'
+                                                    : 'text-slate-700 hover:bg-slate-100 rounded-md'
                                 }`}
                         >
                             {day}

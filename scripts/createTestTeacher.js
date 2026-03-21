@@ -11,7 +11,7 @@ const firebaseConfig = {
     appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
-const TEST_EMAIL = 'manuel.test@escuela.cl';
+const TEST_EMAIL = 'manuel.test@eduhuechuraba.cl';
 const TEST_PASSWORD = 'test1234';
 const TEST_NAME = 'Manuel Profesor Test';
 const TEST_ROLE = 'teacher';

@@ -565,3 +565,339 @@ export function exportAbsencesPDF({ dateLabel, dateStr, groupedAbsences, replace
     const safeDateStr = dateStr.replace(/-/g, '');
     doc.save(`Ausencias_${safeDateStr}.pdf`);
 }
+
+// ============================================
+// ENTREVISTAS — Acta Individual
+// ============================================
+
+/**
+ * Exports a single entrevista as a formal "acta" PDF with signature lines.
+ *
+ * @param {Object} params
+ * @param {Object} params.entrevista - The entrevista record
+ */
+export function exportEntrevistaActaPDF({ entrevista }) {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 22;
+    const marginR = 22;
+    const contentW = pageW - marginL - marginR;
+    let y = 22;
+
+    const mainColor = [55, 48, 163];
+    const headerBg = [238, 242, 255];
+
+    const reasonLabels = { conducta: 'Conducta', asistencia: 'Asistencia', academico: 'Academico', otro: 'Otro' };
+    const participantLabels = { alumno: 'Alumno', apoderado: 'Apoderado' };
+
+    function formatDateShort(d) {
+        if (!d) return '';
+        const [yy, mm, dd] = d.split('-');
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // ─── HEADER ───
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text('Escuela y Recinto Huechuraba', pageW / 2, y, { align: 'center' });
+    y += 7;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Acta de Entrevista — Inspectoria', pageW / 2, y, { align: 'center' });
+    y += 10;
+
+    // Date bar
+    doc.setFillColor(...headerBg);
+    doc.roundedRect(marginL, y, contentW, 10, 2, 2, 'F');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text(`Fecha: ${formatDateShort(entrevista.date)}`, pageW / 2, y + 7, { align: 'center' });
+    y += 16;
+
+    // ─── STUDENT INFO TABLE ───
+    const infoRows = [
+        ['Alumno', entrevista.studentName || ''],
+        ['RUT', entrevista.studentRut || ''],
+        ['Curso', entrevista.studentCurso || ''],
+        ['Participantes', participantLabels[entrevista.participants] || entrevista.participants],
+    ];
+    if (entrevista.parentName) {
+        infoRows.push(['Apoderado', entrevista.parentName]);
+    }
+
+    autoTable(doc, {
+        startY: y,
+        margin: { left: marginL, right: marginR },
+        body: infoRows,
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [226, 232, 240],
+            lineWidth: 0.3,
+        },
+        columnStyles: {
+            0: { cellWidth: 35, fontStyle: 'bold', textColor: [55, 48, 163] },
+            1: { cellWidth: contentW - 35 },
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ─── MOTIVO ───
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('MOTIVO', marginL, y);
+    y += 2;
+    doc.setDrawColor(...mainColor);
+    doc.setLineWidth(0.4);
+    doc.line(marginL, y, marginL + 20, y);
+    y += 5;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(55, 48, 163);
+    doc.text(reasonLabels[entrevista.reason] || entrevista.reason, marginL, y);
+    y += 5;
+
+    if (entrevista.reasonDetail) {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        const lines = doc.splitTextToSize(entrevista.reasonDetail, contentW);
+        doc.text(lines, marginL, y);
+        y += lines.length * 5 + 4;
+    }
+
+    // ─── RESUMEN ───
+    if (entrevista.summary) {
+        y += 2;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('RESUMEN DE LO CONVERSADO', marginL, y);
+        y += 2;
+        doc.setDrawColor(...mainColor);
+        doc.line(marginL, y, marginL + 58, y);
+        y += 5;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        const lines = doc.splitTextToSize(entrevista.summary, contentW);
+        doc.text(lines, marginL, y);
+        y += lines.length * 5 + 4;
+    }
+
+    // ─── COMPROMISOS ───
+    if (entrevista.commitments) {
+        y += 2;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('COMPROMISOS / ACUERDOS', marginL, y);
+        y += 2;
+        doc.setDrawColor(...mainColor);
+        doc.line(marginL, y, marginL + 54, y);
+        y += 5;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        const lines = doc.splitTextToSize(entrevista.commitments, contentW);
+        doc.text(lines, marginL, y);
+        y += lines.length * 5 + 4;
+    }
+
+    // ─── SIGNATURE LINES ───
+    const sigY = Math.max(y + 20, pageH - 65);
+    const sigW = (contentW - 20) / 3;
+
+    const signatures = ['Inspector(a)', 'Apoderado(a)', 'Alumno(a)'];
+    signatures.forEach((label, i) => {
+        const x = marginL + i * (sigW + 10);
+        doc.setDrawColor(100, 116, 139);
+        doc.setLineWidth(0.3);
+        doc.line(x, sigY, x + sigW, sigY);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(label, x + sigW / 2, sigY + 5, { align: 'center' });
+    });
+
+    // ─── FOOTER ───
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 10);
+    if (entrevista.registeredBy?.name) {
+        doc.text(`Registrado por: ${entrevista.registeredBy.name}`, pageW - marginR, pageH - 10, { align: 'right' });
+    }
+
+    // ─── SAVE ───
+    const safeName = (entrevista.studentName || 'alumno').replace(/\s+/g, '_').substring(0, 30);
+    doc.save(`Acta_Entrevista_${safeName}_${entrevista.date}.pdf`);
+}
+
+// ============================================
+// ENTREVISTAS — Reporte Resumen
+// ============================================
+
+/**
+ * Exports a summary report of filtered entrevistas.
+ *
+ * @param {Object} params
+ * @param {Array}  params.entrevistas - Filtered entrevista records
+ * @param {Object} params.stats       - { total, byReason, topCursos }
+ * @param {Object} params.filters     - Active filter labels for display
+ */
+export function exportEntrevistasResumenPDF({ entrevistas, stats, filters }) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginL = 14;
+    const marginR = 14;
+    const contentW = pageW - marginL - marginR;
+    let y = 18;
+
+    const mainColor = [55, 48, 163];
+    const headerBg = [238, 242, 255];
+
+    const reasonLabels = { conducta: 'Conducta', asistencia: 'Asistencia', academico: 'Academico', otro: 'Otro' };
+    const participantLabels = { alumno: 'Alumno', apoderado: 'Apoderado' };
+
+    function formatDateShort(d) {
+        if (!d) return '';
+        const [yy, mm, dd] = d.split('-');
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // ─── HEADER ───
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text('Escuela y Recinto Huechuraba', pageW / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Reporte de Entrevistas — Inspectoria', pageW / 2, y, { align: 'center' });
+    y += 9;
+
+    // ─── Active filters bar ───
+    const filterParts = [];
+    if (filters.curso) filterParts.push(`Curso: ${filters.curso}`);
+    if (filters.reason) filterParts.push(`Motivo: ${reasonLabels[filters.reason] || filters.reason}`);
+    if (filters.participants) filterParts.push(`Participantes: ${participantLabels[filters.participants] || filters.participants}`);
+    const filterText = filterParts.length > 0 ? filterParts.join(' | ') : 'Sin filtros';
+
+    doc.setFillColor(...headerBg);
+    doc.roundedRect(marginL, y, contentW, 9, 2, 2, 'F');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text(filterText, pageW / 2, y + 6.5, { align: 'center' });
+    y += 14;
+
+    // ─── KPIs ───
+    const reasons = ['conducta', 'asistencia', 'academico', 'otro'];
+    const kpis = [
+        { label: 'Total', value: String(stats.total || 0) },
+        ...reasons.map(r => ({ label: reasonLabels[r], value: String(stats.byReason?.[r] || 0) })),
+    ];
+    const kpiW = contentW / kpis.length;
+    for (let i = 0; i < kpis.length; i++) {
+        const x = marginL + i * kpiW;
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(x + 1, y, kpiW - 2, 14, 2, 2, 'F');
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(kpis[i].value, x + kpiW / 2, y + 8, { align: 'center' });
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpis[i].label, x + kpiW / 2, y + 12.5, { align: 'center' });
+    }
+    y += 19;
+
+    // ─── TABLE ───
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('DETALLE DE ENTREVISTAS', marginL, y);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${entrevistas.length} registro${entrevistas.length !== 1 ? 's' : ''}`, marginL + 55, y);
+    y += 2;
+    doc.setDrawColor(...mainColor);
+    doc.setLineWidth(0.4);
+    doc.line(marginL, y, marginL + 50, y);
+    y += 4;
+
+    const rows = entrevistas.map(e => [
+        formatDateShort(e.date),
+        e.studentName || '',
+        e.studentCurso || '',
+        reasonLabels[e.reason] || e.reason,
+        participantLabels[e.participants] || e.participants,
+        e.parentName || '—',
+        (e.reasonDetail || e.summary || '').substring(0, 60) + ((e.reasonDetail || e.summary || '').length > 60 ? '...' : ''),
+    ]);
+
+    autoTable(doc, {
+        startY: y,
+        margin: { left: marginL, right: marginR },
+        head: [['Fecha', 'Alumno', 'Curso', 'Motivo', 'Participantes', 'Apoderado', 'Detalle']],
+        body: rows,
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            lineColor: [226, 232, 240],
+            lineWidth: 0.2,
+            overflow: 'ellipsize',
+        },
+        headStyles: {
+            fillColor: mainColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 8,
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+            0: { cellWidth: contentW * 0.08, halign: 'center', font: 'courier' },
+            1: { cellWidth: contentW * 0.18 },
+            2: { cellWidth: contentW * 0.10, halign: 'center' },
+            3: { cellWidth: contentW * 0.10, halign: 'center' },
+            4: { cellWidth: contentW * 0.10, halign: 'center' },
+            5: { cellWidth: contentW * 0.16 },
+            6: { cellWidth: contentW * 0.28 },
+        },
+    });
+
+    // ─── FOOTER ───
+    const totalPages = doc.internal.getNumberOfPages();
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const pH = doc.internal.pageSize.getHeight();
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pH - 8);
+        doc.text(`Página ${i} de ${totalPages}`, pageW - marginR, pH - 8, { align: 'right' });
+    }
+
+    // ─── SAVE ───
+    const safeDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    doc.save(`Entrevistas_Resumen_${safeDate}.pdf`);
+}

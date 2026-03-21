@@ -179,7 +179,7 @@ export default function Topbar({ onMenuClick }) {
                             >
                                 <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                                     <p className="text-slate-900 font-semibold truncate">{user?.name}</p>
-                                    <p className="text-slate-500 text-xs truncate">{user?.email || 'usuario@escuela.cl'}</p>
+                                    <p className="text-slate-500 text-xs truncate">{user?.email || 'usuario@eduhuechuraba.cl'}</p>
                                 </div>
 
                                 <div className="p-1.5">
