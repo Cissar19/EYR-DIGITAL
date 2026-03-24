@@ -282,6 +282,33 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
+            // If email changed, also update in Firebase Auth via serverless function
+            if (safeFields.email) {
+                const targetUser = users.find(u => u.id === userId);
+                if (targetUser && targetUser.email !== safeFields.email) {
+                    const firebaseUser = auth.currentUser;
+                    if (firebaseUser) {
+                        const idToken = await firebaseUser.getIdToken();
+                        const res = await fetch('/api/update-user-email', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${idToken}`,
+                            },
+                            body: JSON.stringify({ uid: targetUser.uid, newEmail: safeFields.email }),
+                        });
+                        let data;
+                        const text = await res.text();
+                        try { data = JSON.parse(text); } catch {
+                            throw new Error('Error del servidor al actualizar correo en Authentication');
+                        }
+                        if (!res.ok) {
+                            throw new Error(data.error || 'Error al actualizar correo en Authentication');
+                        }
+                    }
+                }
+            }
+
             await updateDoc(doc(db, 'users', userId), safeFields);
 
             // Update local state
@@ -300,7 +327,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Error updating user:', error);
             throw error;
         }
-    }, [user]);
+    }, [user, users]);
 
     /**
      * Delete user from Firestore (auth user remains — admin SDK needed for full delete).
