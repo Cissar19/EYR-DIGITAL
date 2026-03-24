@@ -282,10 +282,10 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // If email changed, also update in Firebase Auth via serverless function
+            // Always sync email to Firebase Auth when email field is present
             if (safeFields.email) {
                 const targetUser = users.find(u => u.id === userId);
-                if (targetUser && targetUser.email !== safeFields.email) {
+                if (targetUser) {
                     const firebaseUser = auth.currentUser;
                     if (firebaseUser) {
                         const idToken = await firebaseUser.getIdToken();
