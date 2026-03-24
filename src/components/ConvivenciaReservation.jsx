@@ -90,12 +90,8 @@ export default function ConvivenciaReservation() {
 
     // --- 1. Navigation Logic (Week Calculation) ---
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-        const d = new Date();
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        d.setDate(diff);
-        d.setHours(0, 0, 0, 0);
-        return d;
+        // Start on the week of March 30, 2026
+        return new Date(2026, 2, 30); // month is 0-indexed: 2 = March
     });
 
     const handlePrevWeek = () => {
