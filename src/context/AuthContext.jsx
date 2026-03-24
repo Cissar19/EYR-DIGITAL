@@ -355,6 +355,45 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     /**
+     * Set password for another user (admin only, via serverless function)
+     */
+    const setUserPassword = React.useCallback(async (uid, newPassword) => {
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser) throw new Error('No hay sesión activa');
+
+        const idToken = await firebaseUser.getIdToken();
+        const res = await fetch('/api/set-user-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ uid, newPassword }),
+        });
+
+        let data;
+        const text = await res.text();
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.error('Respuesta no-JSON del servidor:', text.slice(0, 200));
+            throw new Error('El servidor devolvió una respuesta inválida. Verifica que las variables de entorno FIREBASE_ADMIN_* estén configuradas en Vercel.');
+        }
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Error al cambiar contraseña');
+        }
+
+        // Update local state with the new password info
+        const now = new Date().toISOString();
+        setUsers(prev => prev.map(u =>
+            u.uid === uid ? { ...u, lastSetPassword: newPassword, passwordSetAt: now } : u
+        ));
+
+        return data;
+    }, []);
+
+    /**
      * Change password for current user (requires re-authentication)
      */
     const changePassword = React.useCallback(async (currentPassword, newPassword) => {
@@ -381,6 +420,7 @@ export const AuthProvider = ({ children }) => {
         fetchUsers,
         resetPassword,
         changePassword,
+        setUserPassword,
         // Permission helpers bound to current user
         hasRole: (role) => hasRole(user, role),
         hasAnyRole: (roles) => hasAnyRole(user, roles),
@@ -395,7 +435,7 @@ export const AuthProvider = ({ children }) => {
         isConvivencia: () => isConvivencia(user),
         isManagement: () => isManagement(user),
         canEdit: () => canEdit(user)
-    }), [user, loading, users, addUser, updateUser, deleteUser, getAllUsers, getUsersByRole, getUserRoleLabel, fetchUsers, resetPassword, changePassword, login, logout]);
+    }), [user, loading, users, addUser, updateUser, deleteUser, getAllUsers, getUsersByRole, getUserRoleLabel, fetchUsers, resetPassword, changePassword, setUserPassword, login, logout]);
 
     return (
         <AuthContext.Provider value={value}>
