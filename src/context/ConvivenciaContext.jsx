@@ -7,6 +7,7 @@ import { sendConvivenciaEmail } from '../lib/emailService';
 
 const ConvivenciaContext = createContext();
 const ADMIN_ROLES = [ROLES.DIRECTOR, ROLES.ADMIN, ROLES.SUPER_ADMIN];
+const CAN_BLOCK_ROLES = [ROLES.CONVIVENCIA_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN];
 
 export const TIME_BLOCKS = [
     { id: 'recepcion', start: '08:00', end: '08:10', type: 'class', label: 'Recepcion' },
@@ -30,6 +31,7 @@ export const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 export function ConvivenciaProvider({ children }) {
     const { user, users } = useAuth();
     const [reservations, setReservations] = useState([]);
+    const [blockedSlots, setBlockedSlots] = useState([]);
 
     const resolveTeacherEmail = (teacherName) => {
         const found = users.find(u => u.name === teacherName);
@@ -48,7 +50,71 @@ export function ConvivenciaProvider({ children }) {
         return () => unsubscribe();
     }, []);
 
+    useEffect(() => {
+        const unsubscribe = subscribeToCollection('convivencia_blocks', (docs) => {
+            setBlockedSlots(docs);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const VALID_BLOCK_IDS = TIME_BLOCKS.map(b => b.id);
+
+    const getBlockedSlot = (date, blockId) => {
+        return blockedSlots.find(b => b.date === date && b.blockId === blockId);
+    };
+
+    const blockSlot = async (blockId, date, reason) => {
+        if (!user) {
+            toast.error('Debes iniciar sesion.');
+            return false;
+        }
+        if (!CAN_BLOCK_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para bloquear bloques.');
+            return false;
+        }
+
+        validateEnum(blockId, VALID_BLOCK_IDS, 'bloque');
+        validateDate(date, 'fecha');
+        validateRequiredString(reason, 'motivo de bloqueo', 200);
+
+        try {
+            const existing = blockedSlots.find(b => b.date === date && b.blockId === blockId);
+            if (existing) {
+                toast.error('Este bloque ya esta bloqueado.');
+                return false;
+            }
+
+            await createDocument('convivencia_blocks', {
+                blockId,
+                date,
+                reason: sanitizeText(reason),
+                blockedBy: user.id,
+                blockedByName: user.name,
+            });
+            toast.success('Bloque bloqueado.');
+            return true;
+        } catch (error) {
+            console.error('Error en blockSlot:', error);
+            toast.error('Error al bloquear el bloque.');
+            return false;
+        }
+    };
+
+    const unblockSlot = async (blockedSlotId) => {
+        if (!user) return;
+        if (!CAN_BLOCK_ROLES.includes(user.role)) {
+            toast.error('No tienes permisos para desbloquear bloques.');
+            return;
+        }
+
+        try {
+            await removeDocument('convivencia_blocks', blockedSlotId);
+            toast.success('Bloque desbloqueado.');
+        } catch (error) {
+            console.error('Error en unblockSlot:', error);
+            toast.error('Error al desbloquear el bloque.');
+        }
+    };
 
     const addReservation = async (blockId, date, subject, teacher) => {
         if (!user) {
@@ -62,6 +128,12 @@ export function ConvivenciaProvider({ children }) {
         validateRequiredString(teacher, 'profesor jefe', 100);
 
         try {
+            const isBlocked = blockedSlots.some(b => b.date === date && b.blockId === blockId);
+            if (isBlocked) {
+                toast.error('Este bloque esta bloqueado y no se puede reservar.');
+                return false;
+            }
+
             const currentData = await fetchCollection('convivencia_reservations');
             const isOccupied = currentData.some(r => r.date === date && r.blockId === blockId);
 
@@ -160,8 +232,12 @@ export function ConvivenciaProvider({ children }) {
         reservations,
         addReservation,
         removeReservation,
-        getReservation
-    }), [reservations, user]);
+        getReservation,
+        blockedSlots,
+        blockSlot,
+        unblockSlot,
+        getBlockedSlot
+    }), [reservations, blockedSlots, user]);
 
     return (
         <ConvivenciaContext.Provider value={value}>

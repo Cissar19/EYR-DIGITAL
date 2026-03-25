@@ -185,7 +185,7 @@ const PermissionGate = ({ moduleKey, children }) => {
 // Home redirect: teachers and convivencia go straight to Convivencia
 const HomeRedirect = () => {
   const { user } = useAuth();
-  if (user?.role === 'teacher' || user?.role === 'convivencia') return <Navigate to="/convivencia" replace />;
+  if (user?.role === 'teacher' || user?.role === 'convivencia' || user?.role === 'convivencia_head') return <Navigate to="/convivencia" replace />;
   return <DashboardHome />;
 };
 

@@ -16,8 +16,8 @@ import {
  *                 (null = everyone, array = only listed roles)
  */
 
-const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia', 'teacher', 'staff', 'printer'];
-const MANAGEMENT = ['super_admin', 'admin', 'director', 'utp_head', 'inspector'];
+const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer'];
+const MANAGEMENT = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
 
 export const MODULE_REGISTRY = [
     // ── Common ──
@@ -98,7 +98,7 @@ export const MODULE_REGISTRY = [
         icon: Shield,
         path: '/convivencia',
         category: 'role_specific',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher'],
     },
     {
         key: 'teacher_hours',
@@ -165,4 +165,4 @@ export const getModuleByPath = (path) => MODULE_REGISTRY.find(m => m.path === pa
 export const ALL_MODULE_KEYS = MODULE_REGISTRY.map(m => m.key);
 
 /** Configurable roles (excludes super_admin and admin which always have full access) */
-export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia', 'teacher', 'staff', 'printer'];
+export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer'];

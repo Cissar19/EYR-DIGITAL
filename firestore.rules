@@ -23,11 +23,11 @@ service cloud.firestore {
     }
 
     function isManagement() {
-      return isAuthenticated() && getUserRole() in ['admin', 'super_admin', 'director', 'utp_head', 'inspector'];
+      return isAuthenticated() && getUserRole() in ['admin', 'super_admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
     }
 
     function isConvivenciaOrAdmin() {
-      return isAuthenticated() && getUserRole() in ['convivencia', 'admin', 'super_admin'];
+      return isAuthenticated() && getUserRole() in ['convivencia', 'convivencia_head', 'admin', 'super_admin'];
     }
 
     function isPrinterOrAdmin() {
@@ -164,6 +164,14 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid || isConvivenciaOrAdmin()
       );
       allow update: if isConvivenciaOrAdmin();
+    }
+
+    // ============================================
+    // CONVIVENCIA BLOCKS (Blocked Slots)
+    // ============================================
+    match /convivencia_blocks/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isConvivenciaOrAdmin();
     }
 
     // ============================================

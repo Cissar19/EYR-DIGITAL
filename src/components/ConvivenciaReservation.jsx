@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useConvivencia, TIME_BLOCKS, DAYS } from '../context/ConvivenciaContext';
 import { useAuth } from '../context/AuthContext';
-import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon, BookOpen, User, Clock, CheckCircle2, AlertCircle, Sparkles, BarChart3, TrendingUp, UserX, ChevronDown, Users as UsersIcon, Search, AlertTriangle } from 'lucide-react';
+import { Shield, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon, BookOpen, User, Clock, CheckCircle2, AlertCircle, Sparkles, BarChart3, TrendingUp, UserX, ChevronDown, Users as UsersIcon, Search, AlertTriangle, Ban, Unlock } from 'lucide-react';
 import { useSchedule } from '../context/ScheduleContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,9 +12,9 @@ export default function ConvivenciaReservation() {
     const { user, getUsersByRole } = useAuth();
 
     // ── Tabs: only convivencia/admin/super_admin see Incidencias tab ──
-    const showTabs = user && ['convivencia', 'admin', 'super_admin'].includes(user.role);
+    const showTabs = user && ['convivencia_head', 'convivencia', 'admin', 'super_admin'].includes(user.role);
     const [activeTab, setActiveTab] = useState('reservas');
-    const { reservations, getReservation, addReservation, removeReservation } = useConvivencia();
+    const { reservations, getReservation, addReservation, removeReservation, getBlockedSlot, blockSlot, unblockSlot } = useConvivencia();
     const { getSchedule } = useSchedule();
 
     // Teachers list
@@ -22,6 +22,9 @@ export default function ConvivenciaReservation() {
         const list = getUsersByRole('teacher') || [];
         return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }, [getUsersByRole]);
+
+    // Can this user block/unblock slots?
+    const canBlockSlots = user && ['convivencia_head', 'admin', 'super_admin'].includes(user.role);
 
     // Filter: convivencia selects a teacher to see their schedule
     const [filterTeacherId, setFilterTeacherId] = useState('');
@@ -420,6 +423,8 @@ export default function ConvivenciaReservation() {
     const [selectedTeacher, setSelectedTeacher] = useState('');
     const [motivo, setMotivo] = useState('Reuniones bimensuales');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState('reserve'); // 'reserve' | 'block'
+    const [blockReason, setBlockReason] = useState('');
 
     // Mobile Day Navigation - default to today if it's a weekday in the current week
     const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
@@ -445,10 +450,16 @@ export default function ConvivenciaReservation() {
 
         const dateStr = dateObj.toLocaleDateString('en-CA');
         const reservation = getReservation(dateStr, block.id);
+        const blocked = getBlockedSlot(dateStr, block.id);
 
-        setSelectedSlot({ day: dayName, block, reservation, dateObj, dateStr });
+        // Non-blocker users can't interact with blocked slots
+        if (blocked && !canBlockSlots) return;
 
-        if (!reservation) {
+        setSelectedSlot({ day: dayName, block, reservation, dateObj, dateStr, blocked });
+        setModalMode('reserve');
+        setBlockReason('');
+
+        if (!reservation && !blocked) {
             // Auto-fill: teachers get their own name, admins get the filtered teacher
             if (isTeacherRole) {
                 setSelectedTeacher(user?.name || '');
@@ -472,6 +483,19 @@ export default function ConvivenciaReservation() {
     const handleCancelReservation = () => {
         if (selectedSlot.reservation) {
             removeReservation(selectedSlot.reservation.id);
+            setIsModalOpen(false);
+        }
+    };
+
+    const handleConfirmBlock = async () => {
+        if (!blockReason.trim()) return;
+        const success = await blockSlot(selectedSlot.block.id, selectedSlot.dateStr, blockReason);
+        if (success) setIsModalOpen(false);
+    };
+
+    const handleUnblock = async () => {
+        if (selectedSlot?.blocked) {
+            await unblockSlot(selectedSlot.blocked.id);
             setIsModalOpen(false);
         }
     };
@@ -593,6 +617,10 @@ export default function ConvivenciaReservation() {
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                             <span className="text-slate-600 font-medium">Recreo/Almuerzo</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-slate-500"></div>
+                            <span className="text-slate-600 font-medium">Bloqueado</span>
                         </div>
                         {overlaySchedule.length > 0 && (
                             <div className="flex items-center gap-1.5">
@@ -809,6 +837,7 @@ export default function ConvivenciaReservation() {
                                                 weekDates.map((d) => {
                                                     const dateStr = d.date.toLocaleDateString('en-CA');
                                                     const reservation = getReservation(dateStr, block.id);
+                                                    const blocked = getBlockedSlot(dateStr, block.id);
                                                     const isMyReservation = reservation && user && reservation.userId === user.id;
                                                     const isAdmin = user && (user.role === 'admin' || user.role === 'director');
                                                     const teacherClass = getTeacherClass(d.name, block.start);
@@ -816,7 +845,27 @@ export default function ConvivenciaReservation() {
 
                                                     return (
                                                         <div key={d.name} className={cn("p-1 border-l border-slate-100 h-[110px] relative", isTodayCol && "bg-amber-50/30")}>
-                                                            {teacherClass ? (
+                                                            {blocked ? (
+                                                                // Blocked slot
+                                                                <button
+                                                                    onClick={() => canBlockSlots ? handleSlotClick(d.name, block, d.date) : null}
+                                                                    className={cn(
+                                                                        "w-full h-full rounded-lg bg-slate-100 border border-slate-200 border-l-4 border-l-slate-500 flex flex-col p-3 text-left gap-0.5 relative overflow-hidden",
+                                                                        canBlockSlots ? "hover:bg-slate-200 cursor-pointer group" : "cursor-not-allowed opacity-70"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex items-center gap-1 mb-0.5">
+                                                                        <Ban className="w-3 h-3 text-slate-500 shrink-0" />
+                                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bloqueado</span>
+                                                                    </div>
+                                                                    <span className="text-xs font-medium text-slate-600 line-clamp-2">{blocked.reason}</span>
+                                                                    {canBlockSlots && (
+                                                                        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <Unlock className="w-3.5 h-3.5 text-slate-400" />
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ) : teacherClass ? (
                                                                 // Teacher is in class during this block
                                                                 <button
                                                                     onClick={() => handleSlotClick(d.name, block, d.date)}
@@ -931,6 +980,7 @@ export default function ConvivenciaReservation() {
                             const currentDay = weekDates[selectedDayIndex];
                             const dateStr = currentDay.date.toLocaleDateString('en-CA');
                             const reservation = getReservation(dateStr, block.id);
+                            const blocked = getBlockedSlot(dateStr, block.id);
                             const isMyReservation = reservation && user && reservation.userId === user.id;
                             const isAdmin = user && (user.role === 'admin' || user.role === 'director');
                             const teacherClass = getTeacherClass(currentDay.name, block.start);
@@ -943,6 +993,36 @@ export default function ConvivenciaReservation() {
                                             {block.label === 'RECREO' ? 'Recreo' : 'Almuerzo'}
                                             <span className="text-slate-300">|</span>
                                             {block.start} - {block.end}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            if (blocked) {
+                                return (
+                                    <div
+                                        key={block.id}
+                                        onClick={() => canBlockSlots ? handleSlotClick(currentDay.name, block, currentDay.date) : null}
+                                        className={cn(
+                                            "bg-slate-100 p-4 rounded-2xl shadow-sm border-l-4 border-l-slate-500 border-t border-r border-b border-slate-200 transition-all",
+                                            canBlockSlots ? "active:scale-[0.98] cursor-pointer" : "opacity-70 cursor-not-allowed"
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex flex-col min-w-[80px]">
+                                                <span className="text-lg font-bold text-slate-600">{block.start}</span>
+                                                <span className="text-xs text-slate-400 font-medium">{block.label}</span>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <Ban className="w-3.5 h-3.5 text-slate-500" />
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bloqueado</span>
+                                                </div>
+                                                <h4 className="font-medium text-slate-600 text-sm">{blocked.reason}</h4>
+                                            </div>
+                                            {canBlockSlots && (
+                                                <Unlock className="w-4 h-4 text-slate-400 shrink-0 mt-1" />
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1060,7 +1140,34 @@ export default function ConvivenciaReservation() {
                             </div>
 
                             <div className="p-6">
-                                {selectedSlot.reservation ? (
+                                {selectedSlot.blocked ? (
+                                    // ── Blocked slot: show info + unblock ──
+                                    <div className="space-y-6">
+                                        <div className="flex gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                                                <Ban className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-lg font-bold text-slate-800">Bloque Bloqueado</h4>
+                                                <p className="text-sm text-slate-500 mt-1">Motivo: <span className="font-semibold text-slate-700">{selectedSlot.blocked.reason}</span></p>
+                                                {selectedSlot.blocked.blockedByName && (
+                                                    <p className="text-xs text-slate-400 mt-1">Bloqueado por: {selectedSlot.blocked.blockedByName}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {canBlockSlots && (
+                                            <div className="pt-4 border-t border-slate-100">
+                                                <button
+                                                    onClick={handleUnblock}
+                                                    className="w-full py-3.5 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Unlock className="w-5 h-5" /> Desbloquear
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : selectedSlot.reservation ? (
+                                    // ── Existing reservation ──
                                     <div className="space-y-6">
                                         <div className="flex gap-4">
                                             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
@@ -1072,7 +1179,7 @@ export default function ConvivenciaReservation() {
                                             </div>
                                         </div>
 
-                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director' || user?.role === 'convivencia' || user?.role === 'super_admin') ? (
+                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director' || user?.role === 'convivencia' || user?.role === 'convivencia_head' || user?.role === 'super_admin') ? (
                                             <div className="pt-4 border-t border-slate-100">
                                                 <button
                                                     onClick={handleCancelReservation}
@@ -1090,61 +1197,125 @@ export default function ConvivenciaReservation() {
                                         )}
                                     </div>
                                 ) : (
+                                    // ── Empty slot: reserve or block ──
                                     <div className="space-y-5">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                Profesor Jefe
-                                            </label>
-                                            {isTeacherRole ? (
-                                                <div className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/80 font-medium text-slate-700 flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
-                                                        {user?.name?.charAt(0)}
-                                                    </div>
-                                                    {user?.name}
-                                                </div>
-                                            ) : (
-                                                <select
-                                                    value={selectedTeacher}
-                                                    onChange={(e) => setSelectedTeacher(e.target.value)}
-                                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                                        {/* Mode toggle for users who can block */}
+                                        {canBlockSlots && (
+                                            <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModalMode('reserve')}
+                                                    className={cn(
+                                                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
+                                                        modalMode === 'reserve'
+                                                            ? "bg-white text-amber-700 shadow-sm"
+                                                            : "text-slate-500 hover:text-slate-700"
+                                                    )}
                                                 >
-                                                    <option value="">Seleccionar Profesor...</option>
-                                                    {teachers.map(t => (
-                                                        <option key={t.id} value={t.name}>{t.name}</option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                Motivo de la Reunion
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={motivo}
-                                                onChange={(e) => setMotivo(e.target.value)}
-                                                placeholder="Ej: Reunion apoderados, mediacion, entrevista..."
-                                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                                                autoFocus
-                                            />
-                                        </div>
-
-                                        {/* Hint for teacher about schedule blocks */}
-                                        {isTeacherRole && getTeacherClass(selectedSlot.day, selectedSlot.block.start) && (
-                                            <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs text-indigo-700">
-                                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                                <span>Este bloque coincide con tu hora de clase. Puedes reservar igualmente si necesitas sacar a un alumno de clases.</span>
+                                                    <Plus className="w-4 h-4" /> Reservar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModalMode('block')}
+                                                    className={cn(
+                                                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
+                                                        modalMode === 'block'
+                                                            ? "bg-white text-slate-700 shadow-sm"
+                                                            : "text-slate-500 hover:text-slate-700"
+                                                    )}
+                                                >
+                                                    <Ban className="w-4 h-4" /> Bloquear
+                                                </button>
                                             </div>
                                         )}
 
-                                        <button
-                                            onClick={handleConfirmReservation}
-                                            disabled={!selectedTeacher || !motivo.trim()}
-                                            className="w-full py-4 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
-                                        >
-                                            <Check className="w-5 h-5" /> Confirmar Reserva
-                                        </button>
+                                        {modalMode === 'block' ? (
+                                            // Block form
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                                        Motivo del Bloqueo
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={blockReason}
+                                                        onChange={(e) => setBlockReason(e.target.value)}
+                                                        placeholder="Ej: Reunion equipo convivencia, actividad interna..."
+                                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-slate-500 focus:bg-white transition-all font-medium text-slate-700"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+                                                    <Ban className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+                                                    <span>Al bloquear este bloque, ningun profesor podra reservarlo. Solo un Jefe de Convivencia o administrador puede desbloquearlo.</span>
+                                                </div>
+                                                <button
+                                                    onClick={handleConfirmBlock}
+                                                    disabled={!blockReason.trim()}
+                                                    className="w-full py-4 px-4 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg shadow-slate-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
+                                                >
+                                                    <Ban className="w-5 h-5" /> Confirmar Bloqueo
+                                                </button>
+                                            </>
+                                        ) : (
+                                            // Reserve form
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                                        Profesor Jefe
+                                                    </label>
+                                                    {isTeacherRole ? (
+                                                        <div className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/80 font-medium text-slate-700 flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
+                                                                {user?.name?.charAt(0)}
+                                                            </div>
+                                                            {user?.name}
+                                                        </div>
+                                                    ) : (
+                                                        <select
+                                                            value={selectedTeacher}
+                                                            onChange={(e) => setSelectedTeacher(e.target.value)}
+                                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                                                        >
+                                                            <option value="">Seleccionar Profesor...</option>
+                                                            {teachers.map(t => (
+                                                                <option key={t.id} value={t.name}>{t.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                                        Motivo de la Reunion
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={motivo}
+                                                        onChange={(e) => setMotivo(e.target.value)}
+                                                        placeholder="Ej: Reunion apoderados, mediacion, entrevista..."
+                                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                                                        autoFocus
+                                                    />
+                                                </div>
+
+                                                {/* Hint for teacher about schedule blocks */}
+                                                {isTeacherRole && getTeacherClass(selectedSlot.day, selectedSlot.block.start) && (
+                                                    <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs text-indigo-700">
+                                                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                                        <span>Este bloque coincide con tu hora de clase. Puedes reservar igualmente si necesitas sacar a un alumno de clases.</span>
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    onClick={handleConfirmReservation}
+                                                    disabled={!selectedTeacher || !motivo.trim()}
+                                                    className="w-full py-4 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
+                                                >
+                                                    <Check className="w-5 h-5" /> Confirmar Reserva
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>

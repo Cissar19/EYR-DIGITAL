@@ -38,6 +38,8 @@ const AuthContext = createContext();
  * - director: Director (Strategic dashboards, approval workflows)
  * - utp_head: Jefa UTP (Curriculum oversight, academic coordination)
  * - inspector: Inspectoria (Attendance, discipline, daily operations oversight)
+ * - convivencia_head: Jefe Convivencia (Convivencia management + block scheduling)
+ * - convivencia: Convivencia Escolar (Basic convivencia access)
  * - teacher: Docente (Reservations, prints, administrative days)
  * - staff: Asistente (Basic access, attendance, simple requests)
  * - printer: Print Manager (Print request management only)
@@ -48,6 +50,7 @@ export const ROLES = {
     DIRECTOR: 'director',
     UTP_HEAD: 'utp_head',
     INSPECTOR: 'inspector',
+    CONVIVENCIA_HEAD: 'convivencia_head',
     CONVIVENCIA: 'convivencia',
     TEACHER: 'teacher',
     STAFF: 'staff',
@@ -63,6 +66,7 @@ export const ROLE_LABELS = {
     [ROLES.DIRECTOR]: 'Director',
     [ROLES.UTP_HEAD]: 'Jefa UTP',
     [ROLES.INSPECTOR]: 'Inspectoria',
+    [ROLES.CONVIVENCIA_HEAD]: 'Jefe Convivencia',
     [ROLES.CONVIVENCIA]: 'Convivencia Escolar',
     [ROLES.TEACHER]: 'Docente',
     [ROLES.STAFF]: 'Asistente',
@@ -84,8 +88,9 @@ export const isAdmin = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMI
 export const isDirectorOrHigher = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DIRECTOR]);
 export const isUtpHead = (user) => hasRole(user, ROLES.UTP_HEAD);
 export const isInspector = (user) => hasRole(user, ROLES.INSPECTOR);
-export const isConvivencia = (user) => hasRole(user, ROLES.CONVIVENCIA);
-export const isManagement = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.CONVIVENCIA]);
+export const isConvivenciaHead = (user) => hasRole(user, ROLES.CONVIVENCIA_HEAD);
+export const isConvivencia = (user) => hasAnyRole(user, [ROLES.CONVIVENCIA, ROLES.CONVIVENCIA_HEAD]);
+export const isManagement = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DIRECTOR, ROLES.UTP_HEAD, ROLES.INSPECTOR, ROLES.CONVIVENCIA_HEAD, ROLES.CONVIVENCIA]);
 export const isTeacher = (user) => hasRole(user, ROLES.TEACHER);
 export const isStaff = (user) => hasRole(user, ROLES.STAFF);
 export const isPrinter = (user) => hasRole(user, ROLES.PRINTER);
@@ -473,6 +478,7 @@ export const AuthProvider = ({ children }) => {
         isSuperAdmin: () => isSuperAdmin(user),
         isUtpHead: () => isUtpHead(user),
         isInspector: () => isInspector(user),
+        isConvivenciaHead: () => isConvivenciaHead(user),
         isConvivencia: () => isConvivencia(user),
         isManagement: () => isManagement(user),
         canEdit: () => canEdit(user)

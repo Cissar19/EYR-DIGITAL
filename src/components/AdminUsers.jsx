@@ -3,7 +3,7 @@ import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -206,6 +206,13 @@ export default function AdminUsers() {
                     label: 'Inspectoría',
                     icon: Eye
                 };
+            case ROLES.CONVIVENCIA_HEAD:
+                return {
+                    bgColor: 'bg-fuchsia-100',
+                    textColor: 'text-fuchsia-600',
+                    label: 'Jefe Convivencia',
+                    icon: ShieldAlert
+                };
             case ROLES.CONVIVENCIA:
                 return {
                     bgColor: 'bg-rose-100',
@@ -247,6 +254,7 @@ export default function AdminUsers() {
         { value: ROLES.DIRECTOR, label: 'Director', icon: Shield, color: 'indigo' },
         { value: ROLES.UTP_HEAD, label: 'UTP', icon: BookOpen, color: 'purple' },
         { value: ROLES.INSPECTOR, label: 'Inspectoría', icon: Eye, color: 'orange' },
+        { value: ROLES.CONVIVENCIA_HEAD, label: 'Jefe Conv.', icon: ShieldAlert, color: 'fuchsia' },
         { value: ROLES.CONVIVENCIA, label: 'Convivencia', icon: Heart, color: 'rose' },
     ];
 
@@ -342,6 +350,7 @@ export default function AdminUsers() {
                         indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
                         purple: 'bg-purple-100 text-purple-700 border-purple-200',
                         orange: 'bg-orange-100 text-orange-700 border-orange-200',
+                        fuchsia: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
                         rose: 'bg-rose-100 text-rose-700 border-rose-200',
                     };
                     const activeClass = rf.value === 'all'
@@ -682,6 +691,17 @@ export default function AdminUsers() {
                                         >
                                             <Eye className="w-4 h-4" />
                                             Inspectoría
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'convivencia_head' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'convivencia_head'
+                                                    ? 'bg-fuchsia-600 border-fuchsia-600 text-white shadow-lg shadow-fuchsia-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <ShieldAlert className="w-4 h-4" />
+                                            Jefe Conv.
                                         </button>
                                         <button
                                             type="button"
