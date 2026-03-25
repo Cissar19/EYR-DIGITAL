@@ -429,7 +429,21 @@ export const AuthProvider = ({ children }) => {
         const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
         await reauthenticateWithCredential(firebaseUser, credential);
         await updatePassword(firebaseUser, newPassword);
-    }, []);
+
+        // Clear admin-set password reference since user changed it themselves
+        if (user?.id) {
+            try {
+                await updateDoc(doc(db, 'users', user.id), {
+                    lastSetPassword: null,
+                    passwordSetAt: null,
+                    passwordSetBy: null,
+                });
+                setUsers(prev => prev.map(u =>
+                    u.id === user.id ? { ...u, lastSetPassword: null, passwordSetAt: null, passwordSetBy: null } : u
+                ));
+            } catch (_) { /* non-critical */ }
+        }
+    }, [user]);
 
     const value = React.useMemo(() => ({
         user,
