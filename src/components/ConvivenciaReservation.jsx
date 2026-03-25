@@ -26,6 +26,10 @@ export default function ConvivenciaReservation() {
     // Can this user block/unblock slots?
     const canBlockSlots = user && ['convivencia_head', 'admin', 'super_admin'].includes(user.role);
 
+    // Fridays end after Bloque 7 — hide blocks 8, 9, 10
+    const FRIDAY_HIDDEN_BLOCKS = new Set(['b8', 'b9', 'b10']);
+    const isFridayHidden = (dayName, blockId) => dayName === 'Viernes' && FRIDAY_HIDDEN_BLOCKS.has(blockId);
+
     // Filter: convivencia selects a teacher to see their schedule
     const [filterTeacherId, setFilterTeacherId] = useState('');
     const [teacherSearch, setTeacherSearch] = useState('');
@@ -845,7 +849,11 @@ export default function ConvivenciaReservation() {
 
                                                     return (
                                                         <div key={d.name} className={cn("p-1 border-l border-slate-100 h-[110px] relative", isTodayCol && "bg-amber-50/30")}>
-                                                            {blocked ? (
+                                                            {isFridayHidden(d.name, block.id) ? (
+                                                                <div className="w-full h-full rounded-lg bg-slate-50/50 flex items-center justify-center">
+                                                                    <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">—</span>
+                                                                </div>
+                                                            ) : blocked ? (
                                                                 // Blocked slot
                                                                 <button
                                                                     onClick={() => canBlockSlots ? handleSlotClick(d.name, block, d.date) : null}
@@ -984,6 +992,9 @@ export default function ConvivenciaReservation() {
                             const isMyReservation = reservation && user && reservation.userId === user.id;
                             const isAdmin = user && (user.role === 'admin' || user.role === 'director');
                             const teacherClass = getTeacherClass(currentDay.name, block.start);
+
+                            // Hide blocks after b7 on Fridays
+                            if (isFridayHidden(currentDay.name, block.id)) return null;
 
                             if (isBreak) {
                                 return (
