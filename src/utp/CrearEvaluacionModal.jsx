@@ -12,6 +12,7 @@ export default function CrearEvaluacionModal({ onClose, onSave, user }) {
     const [curso, setCurso] = useState('');
     const [asignatura, setAsignatura] = useState('');
     const [numQuestions, setNumQuestions] = useState('5');
+    const [driveLink, setDriveLink] = useState('');
 
     const numQuestionsInt = parseInt(numQuestions, 10);
     const formValid = name.trim() && curso && asignatura && numQuestionsInt >= 1 && numQuestionsInt <= 50;
@@ -38,6 +39,7 @@ export default function CrearEvaluacionModal({ onClose, onSave, user }) {
                 asignatura,
                 date: new Date().toISOString().slice(0, 10),
                 questions,
+                driveLink: driveLink.trim() || '',
                 createdBy: { id: user.uid, name: user.name },
             });
         } finally {
@@ -120,6 +122,19 @@ export default function CrearEvaluacionModal({ onClose, onSave, user }) {
                             onChange={e => setNumQuestions(e.target.value)}
                             className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
                         />
+                    </div>
+
+                    {/* Drive link */}
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Link a la prueba (Google Drive)</label>
+                        <input
+                            type="url"
+                            value={driveLink}
+                            onChange={e => setDriveLink(e.target.value)}
+                            placeholder="https://drive.google.com/..."
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">Opcional — permite a jefa UTP revisar el documento de la prueba</p>
                     </div>
 
                     <p className="text-xs text-slate-400">Podras asignar Objetivos de Aprendizaje a cada pregunta despues de crear la evaluacion.</p>

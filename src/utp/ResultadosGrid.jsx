@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Check, X, Minus } from 'lucide-react';
+import { Check, X, Minus, Lock } from 'lucide-react';
 import { useStudents } from '../context/StudentsContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import { getOAByCode } from '../data/objetivosAprendizaje';
@@ -8,7 +8,7 @@ import { getOAByCode } from '../data/objetivosAprendizaje';
  * ResultadosGrid: clickable grid for marking student answers
  * Rows = students in the evaluacion's curso
  * Columns = questions P1..PN + "Logro" column
- * Cells cycle: null (gray) → true (green ✓) → false (red ✗) → null
+ * Cells default to true (correct). Cycle: true (green ✓) → false (red ✗) → null (gray) → true
  * Auto-saves with 500ms debounce per student
  */
 export default function ResultadosGrid({ evaluacion }) {
@@ -29,7 +29,7 @@ export default function ResultadosGrid({ evaluacion }) {
     const baseResults = useMemo(() => {
         const init = {};
         cursoStudents.forEach(s => {
-            init[s.id] = evaluacion.results?.[s.id] || Array(evaluacion.totalQuestions).fill(null);
+            init[s.id] = evaluacion.results?.[s.id] || Array(evaluacion.totalQuestions).fill(true);
         });
         return init;
     }, [evaluacion.results, cursoStudents, evaluacion.totalQuestions]);
@@ -74,15 +74,15 @@ export default function ResultadosGrid({ evaluacion }) {
 
     const handleCellClick = (studentId, qIndex) => {
         setLocalOverrides(prev => {
-            const current = prev[studentId] || localResults[studentId] || Array(evaluacion.totalQuestions).fill(null);
+            const current = prev[studentId] || localResults[studentId] || Array(evaluacion.totalQuestions).fill(true);
             const newAnswers = [...current];
-            // Cycle: null → true → false → null
-            if (newAnswers[qIndex] === null || newAnswers[qIndex] === undefined) {
-                newAnswers[qIndex] = true;
-            } else if (newAnswers[qIndex] === true) {
+            // Cycle: true → false → null → true
+            if (newAnswers[qIndex] === true) {
                 newAnswers[qIndex] = false;
-            } else {
+            } else if (newAnswers[qIndex] === false) {
                 newAnswers[qIndex] = null;
+            } else {
+                newAnswers[qIndex] = true;
             }
             debouncedSave(studentId, newAnswers);
             return { ...prev, [studentId]: newAnswers };
@@ -98,6 +98,22 @@ export default function ResultadosGrid({ evaluacion }) {
         const correct = answered.filter(a => a === true).length;
         return Math.round((correct / answered.length) * 100);
     };
+
+    const isApproved = evaluacion.status === 'approved';
+
+    if (!isApproved) {
+        return (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+                <Lock className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">Resultados bloqueados</p>
+                <p className="text-xs text-slate-400 mt-1">
+                    {evaluacion.status === 'rejected'
+                        ? 'Esta evaluacion fue rechazada. Corrige y reenvia para aprobacion.'
+                        : 'La evaluacion debe ser aprobada por UTP antes de ingresar resultados.'}
+                </p>
+            </div>
+        );
+    }
 
     if (cursoStudents.length === 0) {
         return (

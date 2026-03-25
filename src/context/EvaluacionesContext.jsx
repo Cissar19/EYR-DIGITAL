@@ -40,8 +40,10 @@ export const EvaluacionesProvider = ({ children }) => {
             totalQuestions: data.questions.length,
             questions: data.questions,
             results: {},
+            driveLink: data.driveLink || '',
             createdBy: data.createdBy,
             createdAt: new Date().toISOString(),
+            status: 'pending',
         };
 
         try {
@@ -63,6 +65,12 @@ export const EvaluacionesProvider = ({ children }) => {
             if (data.questions !== undefined) {
                 updates.questions = data.questions;
                 updates.totalQuestions = data.questions.length;
+            }
+            if (data.selectedIndicadores !== undefined) {
+                updates.selectedIndicadores = data.selectedIndicadores;
+            }
+            if (data.driveLink !== undefined) {
+                updates.driveLink = data.driveLink;
             }
 
             await updateDocument(COLLECTION, id, updates);
@@ -100,6 +108,56 @@ export const EvaluacionesProvider = ({ children }) => {
         }
     }, []);
 
+    const approveEvaluacion = useCallback(async (id, approverInfo) => {
+        try {
+            await updateDocument(COLLECTION, id, {
+                status: 'approved',
+                approvedBy: approverInfo,
+                approvalDate: new Date().toISOString(),
+                rejectionReason: null,
+                rejectedBy: null,
+            });
+            toast.success('Evaluacion aprobada');
+            return true;
+        } catch (error) {
+            console.error('Error aprobando evaluacion:', error);
+            toast.error('Error al aprobar evaluacion');
+            return false;
+        }
+    }, []);
+
+    const rejectEvaluacion = useCallback(async (id, reason, approverInfo) => {
+        try {
+            await updateDocument(COLLECTION, id, {
+                status: 'rejected',
+                rejectionReason: sanitizeText(reason),
+                rejectedBy: approverInfo,
+            });
+            toast.success('Evaluacion rechazada');
+            return true;
+        } catch (error) {
+            console.error('Error rechazando evaluacion:', error);
+            toast.error('Error al rechazar evaluacion');
+            return false;
+        }
+    }, []);
+
+    const resubmitEvaluacion = useCallback(async (id) => {
+        try {
+            await updateDocument(COLLECTION, id, {
+                status: 'pending',
+                rejectionReason: null,
+                rejectedBy: null,
+            });
+            toast.success('Evaluacion reenviada para revision');
+            return true;
+        } catch (error) {
+            console.error('Error reenviando evaluacion:', error);
+            toast.error('Error al reenviar evaluacion');
+            return false;
+        }
+    }, []);
+
     const value = React.useMemo(() => ({
         evaluaciones,
         loading,
@@ -107,7 +165,10 @@ export const EvaluacionesProvider = ({ children }) => {
         updateEvaluacion,
         deleteEvaluacion,
         saveResults,
-    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, saveResults]);
+        approveEvaluacion,
+        rejectEvaluacion,
+        resubmitEvaluacion,
+    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, saveResults, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion]);
 
     return (
         <EvaluacionesContext.Provider value={value}>

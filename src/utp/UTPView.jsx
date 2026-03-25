@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen } from 'lucide-react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -8,6 +8,7 @@ import CrearEvaluacionModal from './CrearEvaluacionModal';
 import ResultadosGrid from './ResultadosGrid';
 import ResumenOA from './ResumenOA';
 import OAAssignmentPanel from './OAAssignmentPanel';
+import IndicadoresSelectionPanel from './IndicadoresSelectionPanel';
 
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
@@ -22,16 +23,19 @@ const getAsignaturaName = (code) => ASIGNATURAS.find(a => a.code === code)?.name
 
 export default function UTPView() {
     const { user } = useAuth();
-    const { evaluaciones, loading, addEvaluacion, deleteEvaluacion } = useEvaluaciones();
+    const { evaluaciones, loading, addEvaluacion, deleteEvaluacion, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion } = useEvaluaciones();
     const userCanEdit = canEdit(user);
     const userIsManagement = isManagement(user);
 
     // Teachers and utp_head can also create evaluations
     const canCreateEval = userCanEdit || user?.role === 'teacher' || user?.role === 'utp_head';
 
+    // Who can approve: utp_head, super_admin, admin
+    const userCanApprove = userCanEdit || user?.role === 'utp_head';
+
     // View mode: 'list' or 'detail'
     const [selectedEval, setSelectedEval] = useState(null);
-    const [detailTab, setDetailTab] = useState('grid'); // 'grid' | 'resumen' | 'oas'
+    const [detailTab, setDetailTab] = useState('grid'); // 'grid' | 'resumen' | 'oas' | 'indicadores'
 
     // Filters
     const [search, setSearch] = useState('');
@@ -43,6 +47,10 @@ export default function UTPView() {
     // Modal
     const [showCreate, setShowCreate] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+    // Reject modal
+    const [rejectTarget, setRejectTarget] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
 
     // Dashboard
     const [dashboardOpen, setDashboardOpen] = useState(true);
@@ -138,6 +146,48 @@ export default function UTPView() {
         setDeleteConfirm(null);
     };
 
+    const approverInfo = { id: user?.uid, name: user?.displayName || user?.name || '' };
+
+    const handleApprove = async (id) => {
+        await approveEvaluacion(id, approverInfo);
+    };
+
+    const handleReject = async () => {
+        if (!rejectReason.trim()) return;
+        await rejectEvaluacion(rejectTarget, rejectReason.trim(), approverInfo);
+        setRejectTarget(null);
+        setRejectReason('');
+    };
+
+    const handleResubmit = async (id) => {
+        await resubmitEvaluacion(id);
+    };
+
+    // Status badge component
+    const StatusBadge = ({ status }) => {
+        if (status === 'approved') return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">
+                <CheckCircle2 className="w-3 h-3" /> Aprobada
+            </span>
+        );
+        if (status === 'rejected') return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-700">
+                <XCircle className="w-3 h-3" /> Rechazada
+            </span>
+        );
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">
+                <Clock className="w-3 h-3" /> Pendiente
+            </span>
+        );
+    };
+
+    // Pending evaluaciones for approvers
+    const pendingEvaluaciones = useMemo(() => {
+        if (!userCanApprove) return [];
+        return evaluaciones.filter(e => e.status === 'pending' || !e.status);
+    }, [evaluaciones, userCanApprove]);
+
     // ── Detail View ──
     if (liveEval) {
         return (
@@ -151,12 +201,77 @@ export default function UTPView() {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-bold text-slate-800 truncate">{liveEval.name}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-xl font-bold text-slate-800 truncate">{liveEval.name}</h1>
+                            <StatusBadge status={liveEval.status || 'pending'} />
+                        </div>
                         <p className="text-sm text-slate-500">
                             {getAsignaturaName(liveEval.asignatura)} — {liveEval.curso} — {formatDate(liveEval.date)} — {liveEval.totalQuestions} preguntas
+                            {liveEval.driveLink && (
+                                <>
+                                    {' — '}
+                                    <a href={liveEval.driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
+                                        Ver prueba <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </>
+                            )}
                         </p>
                     </div>
+                    {/* Approve/Reject buttons for approvers */}
+                    {userCanApprove && (liveEval.status === 'pending' || !liveEval.status) && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={() => handleApprove(liveEval.id)}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors text-sm font-medium"
+                            >
+                                <CheckCircle2 className="w-4 h-4" /> Aprobar
+                            </button>
+                            <button
+                                onClick={() => { setRejectTarget(liveEval.id); setRejectReason(''); }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors text-sm font-medium"
+                            >
+                                <XCircle className="w-4 h-4" /> Rechazar
+                            </button>
+                        </div>
+                    )}
                 </div>
+
+                {/* Status banners */}
+                {(liveEval.status === 'pending' || !liveEval.status) && !userCanApprove && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+                        <p className="text-sm text-amber-700">Esta evaluacion esta pendiente de aprobacion por UTP. No puedes ingresar resultados hasta que sea aprobada.</p>
+                    </div>
+                )}
+
+                {liveEval.status === 'rejected' && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                        <XCircle className="w-5 h-5 text-red-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-red-700">Evaluacion rechazada</p>
+                            {liveEval.rejectionReason && (
+                                <p className="text-sm text-red-600 mt-0.5">Motivo: {liveEval.rejectionReason}</p>
+                            )}
+                        </div>
+                        {liveEval.createdBy?.id === user?.uid && (
+                            <button
+                                onClick={() => handleResubmit(liveEval.id)}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium shrink-0"
+                            >
+                                <Send className="w-4 h-4" /> Reenviar
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {liveEval.status === 'approved' && (
+                    <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <p className="text-sm text-emerald-700">
+                            Aprobada{liveEval.approvedBy?.name ? ` por ${liveEval.approvedBy.name}` : ''}
+                        </p>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
@@ -190,12 +305,24 @@ export default function UTPView() {
                     >
                         <BookOpen className="w-4 h-4" /> Asignar OAs
                     </button>
+                    <button
+                        onClick={() => setDetailTab('indicadores')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            detailTab === 'indicadores'
+                                ? 'bg-white text-slate-800 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <ListChecks className="w-4 h-4" /> Indicadores
+                    </button>
                 </div>
 
                 {detailTab === 'grid' ? (
                     <ResultadosGrid evaluacion={liveEval} />
                 ) : detailTab === 'resumen' ? (
                     <ResumenOA evaluacion={liveEval} />
+                ) : detailTab === 'indicadores' ? (
+                    <IndicadoresSelectionPanel evaluacion={liveEval} key={liveEval.id + '-indicadores-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
                 ) : (
                     <OAAssignmentPanel evaluacion={liveEval} key={liveEval.id + '-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
                 )}
@@ -350,6 +477,48 @@ export default function UTPView() {
                 </div>
             </div>
 
+            {/* Pending review section for approvers */}
+            {!loading && userCanApprove && pendingEvaluaciones.length > 0 && (
+                <div className="bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-amber-200 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="font-semibold text-sm text-amber-800">Pendientes de revision ({pendingEvaluaciones.length})</span>
+                    </div>
+                    <div className="divide-y divide-amber-100">
+                        {pendingEvaluaciones.map(item => (
+                            <div key={item.id} className="px-5 py-3 flex items-center gap-4">
+                                <div
+                                    className="flex-1 min-w-0 cursor-pointer hover:opacity-80"
+                                    onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
+                                >
+                                    <span className="font-medium text-sm text-slate-800">{item.name}</span>
+                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                                        <span>{item.curso}</span>
+                                        <span>{getAsignaturaName(item.asignatura)}</span>
+                                        <span>{formatDate(item.date)}</span>
+                                        {item.createdBy?.name && <span>Por {item.createdBy.name}</span>}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                    <button
+                                        onClick={() => handleApprove(item.id)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium"
+                                    >
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Aprobar
+                                    </button>
+                                    <button
+                                        onClick={() => { setRejectTarget(item.id); setRejectReason(''); }}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
+                                    >
+                                        <XCircle className="w-3.5 h-3.5" /> Rechazar
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Evaluaciones grouped by curso+asignatura */}
             {loading ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
@@ -390,7 +559,10 @@ export default function UTPView() {
                                             onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
                                         >
                                             <div className="flex-1 min-w-0">
-                                                <span className="font-medium text-sm text-slate-800">{item.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-sm text-slate-800">{item.name}</span>
+                                                    <StatusBadge status={item.status || 'pending'} />
+                                                </div>
                                                 <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
                                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(item.date)}</span>
                                                     <span>{item.totalQuestions} preg.</span>
@@ -447,6 +619,38 @@ export default function UTPView() {
                             <div className="flex gap-3 justify-end">
                                 <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
                                 <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Eliminar</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Reject modal */}
+            <AnimatePresence>
+                {rejectTarget && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setRejectTarget(null)}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40" />
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={e => e.stopPropagation()} className="relative bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
+                            <h3 className="font-bold text-slate-800 mb-2">Rechazar evaluacion</h3>
+                            <p className="text-sm text-slate-500 mb-3">Indica el motivo del rechazo para que el profesor pueda corregir.</p>
+                            <textarea
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                placeholder="Motivo del rechazo..."
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none resize-none"
+                                rows={3}
+                                autoFocus
+                            />
+                            <div className="flex gap-3 justify-end mt-4">
+                                <button onClick={() => setRejectTarget(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+                                <button
+                                    onClick={handleReject}
+                                    disabled={!rejectReason.trim()}
+                                    className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Rechazar
+                                </button>
                             </div>
                         </motion.div>
                     </div>
