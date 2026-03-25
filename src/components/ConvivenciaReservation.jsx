@@ -19,7 +19,7 @@ export default function ConvivenciaReservation() {
 
     // Teachers list
     const teachers = useMemo(() => {
-        const list = getUsersByRole('teacher') || [];
+        const list = (getUsersByRole('teacher') || []).filter(t => t.isHeadTeacher);
         return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }, [getUsersByRole]);
 

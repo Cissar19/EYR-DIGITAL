@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList } from 'lucide-react';
+import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList, GraduationCap } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
@@ -42,6 +42,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const ungroupedItems = roleSpecificItems.filter(m => !m.group);
     const groupedItems = roleSpecificItems.filter(m => m.group === 'administracion');
     const inspectoriaItems = roleSpecificItems.filter(m => m.group === 'inspectoria');
+    const utpItems = roleSpecificItems.filter(m => m.group === 'utp');
 
     // Track which groups are expanded (auto-expand if any child is active)
     const hasActiveChild = groupedItems.some(m => location.pathname === m.path);
@@ -51,6 +52,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const hasActiveInspChild = inspectoriaItems.some(m => location.pathname === m.path);
     const [inspOpen, setInspOpen] = React.useState(hasActiveInspChild);
     React.useEffect(() => { if (hasActiveInspChild) setInspOpen(true); }, [hasActiveInspChild]);
+
+    const hasActiveUtpChild = utpItems.some(m => location.pathname === m.path);
+    const [utpOpen, setUtpOpen] = React.useState(hasActiveUtpChild);
+    React.useEffect(() => { if (hasActiveUtpChild) setUtpOpen(true); }, [hasActiveUtpChild]);
 
     // Teachers and Convivencia: hide "General" header, show single "Menu" header
     const isMinimalRole = user?.role === ROLES.TEACHER || user?.role === ROLES.CONVIVENCIA;
@@ -312,6 +317,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     isOpen: inspOpen,
                                     setOpen: setInspOpen,
                                     hasActive: hasActiveInspChild,
+                                })}
+
+                                {/* UTP folder */}
+                                {renderGroup({
+                                    label: 'UTP',
+                                    icon: GraduationCap,
+                                    items: utpItems,
+                                    isOpen: utpOpen,
+                                    setOpen: setUtpOpen,
+                                    hasActive: hasActiveUtpChild,
                                 })}
                             </>
                         )}

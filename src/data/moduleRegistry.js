@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare
+    FileCheck, MessageSquare, GraduationCap
 } from 'lucide-react';
 
 /**
@@ -135,6 +135,15 @@ export const MODULE_REGISTRY = [
         category: 'role_specific',
         group: 'inspectoria',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector'],
+    },
+    {
+        key: 'utp_evaluaciones',
+        name: 'Evaluaciones UTP',
+        icon: GraduationCap,
+        path: '/utp',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
     },
     {
         key: 'stats',

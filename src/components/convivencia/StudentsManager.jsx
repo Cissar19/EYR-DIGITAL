@@ -10,8 +10,8 @@ import { parseCSV } from '../../lib/csvParser';
 // ── Curso options ──
 const CURSOS = [
     'Pre-Kinder', 'Kinder',
-    '1° Basico', '2° Basico', '3° Basico', '4° Basico',
-    '5° Basico', '6° Basico', '7° Basico', '8° Basico',
+    '1° Básico', '2° Básico', '3° Básico', '4° Básico',
+    '5° Básico', '6° Básico', '7° Básico', '8° Básico',
     'I Medio', 'II Medio', 'III Medio', 'IV Medio',
 ];
 

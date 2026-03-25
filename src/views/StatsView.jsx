@@ -5,7 +5,7 @@ import {
     TrendingUp, TrendingDown, AlertCircle, Clock, Printer,
     Monitor, LifeBuoy, Package, Search, ChevronRight,
     Circle, Info, AlertTriangle, CheckCircle, HeartPulse, ChevronDown,
-    Layers, FileCheck
+    Layers, FileCheck, Brain
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -34,12 +34,21 @@ import {
     CHART_COLORS, PIE_COLORS_BALANCE, PIE_COLORS_STATUS,
 } from '../components/StatsShared';
 import ImpactoGlobalTab from '../components/ImpactoGlobalTab';
+import InteligenciaTab from '../components/InteligenciaTab';
+import { useIncidents } from '../context/IncidentsContext';
+import { useEntrevistas } from '../context/EntrevistasContext';
+import {
+    forecastWeeklyAbsences, predictBalanceDepletion,
+    computeStudentRiskScores, detectAnomalies,
+} from '../lib/mlEngine';
+import { computeWeeklyTrend } from '../lib/impactCalculations';
 
 // ============================================
 // CONSTANTS
 // ============================================
 
 const TABS = [
+    { id: 'inteligencia', label: 'Inteligencia', icon: Brain },
     { id: 'impacto', label: 'Impacto Global', icon: Layers },
     { id: 'dias', label: 'Dias Administrativos', icon: CalendarCheck },
     { id: 'licencias', label: 'Licencias Medicas', icon: HeartPulse },
@@ -937,7 +946,7 @@ const JustificativosTab = ({ justificatives, students }) => {
 // ============================================
 
 export default function StatsView() {
-    const [activeTab, setActiveTab] = useState('impacto');
+    const [activeTab, setActiveTab] = useState('inteligencia');
     const { users } = useAuth();
     const { requests, getBalance, getHoursUsed, getDiscountDays } = useAdministrativeDays();
     const { tickets } = useTickets();
@@ -948,6 +957,8 @@ export default function StatsView() {
     const { getAllSchedules } = useSchedule();
     const { justificatives } = useJustificatives();
     const { students } = useStudents();
+    const { incidents } = useIncidents();
+    const { entrevistas } = useEntrevistas();
 
     // Attendance data for Impacto Global tab
     const [attendanceReports, setAttendanceReports] = useState([]);
@@ -978,6 +989,16 @@ export default function StatsView() {
         const global = computeGlobalImpact(admin, medical, attendance, users);
         return { globalData: global, adminImpactGlobal: admin, medicalImpactGlobal: medical, attendanceImpactGlobal: attendance };
     }, [requests, leaves, attendanceReports, users, allSchedules]);
+
+    // ML: Inteligencia tab data
+    const mlData = useMemo(() => {
+        const weeklyTrend = computeWeeklyTrend(adminImpactGlobal, medicalImpactGlobal, attendanceImpactGlobal);
+        const forecast = forecastWeeklyAbsences(weeklyTrend);
+        const depletion = predictBalanceDepletion(requests, getBalance, users);
+        const risk = computeStudentRiskScores(justificatives, incidents, entrevistas);
+        const anomalies = detectAnomalies(weeklyTrend, justificatives, incidents, tickets);
+        return { forecast, depletion, risk, anomalies };
+    }, [adminImpactGlobal, medicalImpactGlobal, attendanceImpactGlobal, requests, getBalance, users, justificatives, incidents, entrevistas, tickets]);
 
     return (
         <div className="space-y-6">
@@ -1065,6 +1086,14 @@ export default function StatsView() {
                     )}
                     {activeTab === 'justificativos' && (
                         <JustificativosTab justificatives={justificatives} students={students} />
+                    )}
+                    {activeTab === 'inteligencia' && (
+                        <InteligenciaTab
+                            forecastData={mlData.forecast}
+                            depletionData={mlData.depletion}
+                            riskData={mlData.risk}
+                            anomalies={mlData.anomalies}
+                        />
                     )}
                     {activeTab === 'impacto' && (
                         <ImpactoGlobalTab

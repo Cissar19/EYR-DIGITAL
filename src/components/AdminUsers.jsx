@@ -522,25 +522,33 @@ export default function AdminUsers() {
                                     </button>
                                 )}
 
-                                {/* Academic Attributes Preview */}
-                                {(u.headTeacherOf || u.subjects) ? (
-                                    <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-50 space-y-2">
-                                        {u.headTeacherOf && (
-                                            <div className="flex items-center gap-2 text-xs font-bold text-indigo-700">
-                                                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                                Profesor Jefe: {u.headTeacherOf}
-                                            </div>
-                                        )}
-                                        {u.subjects && (
-                                            <div className="text-xs text-slate-600 line-clamp-2">
-                                                <span className="font-bold text-slate-500">Asignaturas:</span> {u.subjects}
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center">
-                                        <span className="text-xs text-slate-400 italic">Sin atributos académicos asignados</span>
-                                    </div>
+                                {/* Profesor Jefe Toggle */}
+                                {canManageUsers && (
+                                    <button
+                                        onClick={() => {
+                                            const current = !!u.isHeadTeacher;
+                                            updateUser(u.id, { isHeadTeacher: !current });
+                                        }}
+                                        className={`flex items-center justify-between w-full p-3 rounded-xl border transition-all ${
+                                            u.isHeadTeacher
+                                                ? 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'
+                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <GraduationCap className={`w-3.5 h-3.5 ${
+                                                u.isHeadTeacher ? 'text-indigo-600' : 'text-slate-400'
+                                            }`} />
+                                            <span className="text-xs font-semibold text-slate-600">Profesor Jefe</span>
+                                        </div>
+                                        <div className={`w-9 h-5 rounded-full transition-colors relative ${
+                                            u.isHeadTeacher ? 'bg-indigo-500' : 'bg-slate-300'
+                                        }`}>
+                                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                                                u.isHeadTeacher ? 'translate-x-4' : 'translate-x-0.5'
+                                            }`} />
+                                        </div>
+                                    </button>
                                 )}
                             </div>
                         </motion.div>

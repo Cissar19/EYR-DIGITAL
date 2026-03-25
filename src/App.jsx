@@ -32,6 +32,7 @@ import TeacherHoursView from './views/TeacherHoursView';
 import AttendanceMonitorView from './views/AttendanceMonitorView';
 import JustificativesView from './views/JustificativesView';
 import EntrevistasView from './views/EntrevistasView';
+import UTPView from './utp/UTPView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -221,6 +222,7 @@ export default function App() {
           <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
           <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
+          <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>
