@@ -15,7 +15,7 @@ const CURSOS = [
 const REASONS = [
     { value: 'conducta', label: 'Conducta', color: 'bg-red-100 text-red-700', border: 'border-red-200' },
     { value: 'asistencia', label: 'Asistencia', color: 'bg-amber-100 text-amber-700', border: 'border-amber-200' },
-    { value: 'academico', label: 'Academico', color: 'bg-blue-100 text-blue-700', border: 'border-blue-200' },
+    { value: 'academico', label: 'Academico', color: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-200' },
     { value: 'otro', label: 'Otro', color: 'bg-slate-100 text-slate-700', border: 'border-slate-200' },
 ];
 

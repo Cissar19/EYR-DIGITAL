@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -41,8 +41,6 @@ export default function UTPView() {
     const [search, setSearch] = useState('');
     const [filterCurso, setFilterCurso] = useState('');
     const [filterAsignatura, setFilterAsignatura] = useState('');
-    const [filtersOpen, setFiltersOpen] = useState(false);
-    const filtersRef = useRef(null);
 
     // Modal
     const [showCreate, setShowCreate] = useState(false);
@@ -54,14 +52,6 @@ export default function UTPView() {
 
     // Dashboard
     const [dashboardOpen, setDashboardOpen] = useState(true);
-
-    useEffect(() => {
-        const handler = (e) => {
-            if (filtersRef.current && !filtersRef.current.contains(e.target)) setFiltersOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     // Filter evaluaciones: teachers see only theirs, management sees all
     const filteredEvaluaciones = useMemo(() => {
@@ -128,8 +118,6 @@ export default function UTPView() {
 
         return { total, thisMonth, topAsignaturas, avgQuestions };
     }, [evaluaciones, user, userIsManagement]);
-
-    const activeFilterCount = [filterCurso, filterAsignatura].filter(Boolean).length;
 
     // If viewing detail, find the live version from evaluaciones
     const liveEval = selectedEval ? evaluaciones.find(e => e.id === selectedEval.id) || selectedEval : null;
@@ -330,187 +318,131 @@ export default function UTPView() {
         );
     }
 
-    // ── List View (grouped cards) ──
+    // ── List View ──
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
                         <GraduationCap className="w-6 h-6 text-indigo-600" />
                     </div>
-                    <div className="min-w-0">
-                        <h1 className="text-2xl font-bold text-slate-800">Evaluaciones UTP</h1>
-                        <p className="text-sm text-slate-500">Evaluaciones por Objetivos de Aprendizaje</p>
-                    </div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Evaluaciones UTP</h1>
                 </div>
                 {canCreateEval && (
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium shrink-0"
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-sm text-sm font-semibold shrink-0"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Nueva</span> Evaluacion
+                        <Plus className="w-4 h-4" /> Nueva Evaluacion
                     </button>
                 )}
             </div>
 
-            {/* KPIs */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <button onClick={() => setDashboardOpen(v => !v)} className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
-                    <span className="font-semibold text-slate-700 text-sm">Resumen</span>
-                    {dashboardOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                </button>
-                <AnimatePresence>
-                    {dashboardOpen && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="px-6 pb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <div className="bg-indigo-50 rounded-xl p-3 text-center">
-                                    <p className="text-2xl font-bold text-indigo-700">{kpis.total}</p>
-                                    <p className="text-[11px] text-indigo-500 font-medium">Total</p>
-                                </div>
-                                <div className="bg-blue-50 rounded-xl p-3 text-center">
-                                    <p className="text-2xl font-bold text-blue-700">{kpis.thisMonth}</p>
-                                    <p className="text-[11px] text-blue-500 font-medium">Este Mes</p>
-                                </div>
-                                <div className="bg-purple-50 rounded-xl p-3 text-center">
-                                    <p className="text-2xl font-bold text-purple-700">{kpis.avgQuestions}</p>
-                                    <p className="text-[11px] text-purple-500 font-medium">Preguntas Prom.</p>
-                                </div>
-                                <div className="bg-emerald-50 rounded-xl p-3">
-                                    <p className="text-[11px] text-emerald-600 font-medium mb-1">Top Asignaturas</p>
-                                    {kpis.topAsignaturas.length === 0 && <p className="text-xs text-slate-400">Sin datos</p>}
-                                    {kpis.topAsignaturas.map(a => (
-                                        <p key={a.name} className="text-xs text-emerald-700 truncate">{a.name}: <span className="font-bold">{a.count}</span></p>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* Search & Filters */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar evaluacion..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
-                        />
+            {/* Bento KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-[#e0e7ff] p-6 rounded-3xl flex flex-col justify-between h-40 hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 bg-white/60 rounded-xl">
+                            <BarChart3 className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <span className="text-xs font-bold text-indigo-600 bg-white/60 px-2 py-1 rounded-full uppercase tracking-wider">Acumulado</span>
                     </div>
-
-                    <div ref={filtersRef} className="relative">
-                        <button
-                            onClick={() => setFiltersOpen(v => !v)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${activeFilterCount > 0
-                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            <SlidersHorizontal className="w-4 h-4" />
-                            <span className="hidden sm:inline">Filtros</span>
-                            {activeFilterCount > 0 && (
-                                <span className="w-5 h-5 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{activeFilterCount}</span>
-                            )}
-                        </button>
-
-                        <AnimatePresence>
-                            {filtersOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 z-30 overflow-hidden"
-                                >
-                                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-slate-700">Filtros</span>
-                                        {activeFilterCount > 0 && (
-                                            <button onClick={() => { setFilterCurso(''); setFilterAsignatura(''); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Limpiar</button>
-                                        )}
-                                    </div>
-                                    <div className="p-4 space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-medium text-slate-500 mb-2">Curso</label>
-                                            <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
-                                                {CURSOS.map(c => (
-                                                    <button key={c} onClick={() => setFilterCurso(filterCurso === c ? '' : c)}
-                                                        className={`px-3 py-2 rounded-lg text-xs font-medium text-left transition-all ${filterCurso === c ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                                                    >{c}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-slate-500 mb-2">Asignatura</label>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {ASIGNATURAS.map(a => (
-                                                    <button key={a.code} onClick={() => setFilterAsignatura(filterAsignatura === a.code ? '' : a.code)}
-                                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterAsignatura === a.code ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                                                    >{a.name}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    <div>
+                        <p className="text-4xl font-extrabold text-indigo-900">{kpis.total}</p>
+                        <p className="text-indigo-700 font-semibold">Total Evaluaciones</p>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <p className="text-xs text-slate-400">{filteredEvaluaciones.length} evaluacion{filteredEvaluaciones.length !== 1 ? 'es' : ''}</p>
-                    {filterCurso && (
-                        <button onClick={() => setFilterCurso('')} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[11px] font-medium hover:bg-indigo-200 transition-colors">
-                            {filterCurso}<X className="w-3 h-3" />
-                        </button>
-                    )}
-                    {filterAsignatura && (
-                        <button onClick={() => setFilterAsignatura('')} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[11px] font-medium hover:bg-indigo-200 transition-colors">
-                            {getAsignaturaName(filterAsignatura)}<X className="w-3 h-3" />
-                        </button>
-                    )}
+                <div className="bg-[#e0f2fe] p-6 rounded-3xl flex flex-col justify-between h-40 hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 bg-white/60 rounded-xl">
+                            <Calendar className="w-5 h-5 text-sky-600" />
+                        </div>
+                        <span className="text-xs font-bold text-sky-600 bg-white/60 px-2 py-1 rounded-full uppercase tracking-wider">Reciente</span>
+                    </div>
+                    <div>
+                        <p className="text-4xl font-extrabold text-sky-900">{kpis.thisMonth}</p>
+                        <p className="text-sky-700 font-semibold">Este Mes</p>
+                    </div>
+                </div>
+                <div className="bg-[#f5f3ff] p-6 rounded-3xl flex flex-col justify-between h-40 hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 bg-white/60 rounded-xl">
+                            <ClipboardList className="w-5 h-5 text-violet-600" />
+                        </div>
+                        <span className="text-xs font-bold text-violet-600 bg-white/60 px-2 py-1 rounded-full uppercase tracking-wider">Promedio</span>
+                    </div>
+                    <div>
+                        <p className="text-4xl font-extrabold text-violet-900">{kpis.avgQuestions}</p>
+                        <p className="text-violet-700 font-semibold">Preguntas Prom.</p>
+                    </div>
+                </div>
+                <div className="bg-[#f0fdf4] p-6 rounded-3xl flex flex-col justify-between h-40 hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 bg-white/60 rounded-xl">
+                            <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600 bg-white/60 px-2 py-1 rounded-full uppercase tracking-wider">Destacado</span>
+                    </div>
+                    <div>
+                        <p className="text-2xl font-extrabold text-emerald-900 truncate">
+                            {kpis.topAsignaturas[0]?.name || '—'}
+                        </p>
+                        <p className="text-emerald-700 font-semibold">Top Asignaturas</p>
+                    </div>
                 </div>
             </div>
 
-            {/* Pending review section for approvers */}
+            {/* Pending review banner */}
             {!loading && userCanApprove && pendingEvaluaciones.length > 0 && (
-                <div className="bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-amber-200 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="font-semibold text-sm text-amber-800">Pendientes de revision ({pendingEvaluaciones.length})</span>
+                <div className="bg-[#fffbeb] rounded-3xl p-6 overflow-hidden relative shadow-sm">
+                    <div className="absolute right-0 top-0 opacity-10 select-none pointer-events-none">
+                        <MessageSquare className="w-[120px] h-[120px] text-amber-500" />
                     </div>
-                    <div className="divide-y divide-amber-100">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="flex h-3 w-3 rounded-full bg-amber-500 animate-pulse" />
+                        <h2 className="text-lg font-bold text-amber-900">Pendientes de revisión ({pendingEvaluaciones.length})</h2>
+                    </div>
+                    <div className="space-y-3">
                         {pendingEvaluaciones.map(item => (
-                            <div key={item.id} className="px-5 py-3 flex items-center gap-4">
+                            <div key={item.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 border border-amber-200/50">
                                 <div
-                                    className="flex-1 min-w-0 cursor-pointer hover:opacity-80"
+                                    className="flex items-center gap-4 cursor-pointer"
                                     onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
                                 >
-                                    <span className="font-medium text-sm text-slate-800">{item.name}</span>
-                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
-                                        <span>{item.curso}</span>
-                                        <span>{getAsignaturaName(item.asignatura)}</span>
-                                        <span>{formatDate(item.date)}</span>
-                                        {item.createdBy?.name && <span>Por {item.createdBy.name}</span>}
+                                    <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xl shrink-0">
+                                        {item.totalQuestions}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800">{item.name}</h3>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                                <GraduationCap className="w-3.5 h-3.5" />{item.curso}
+                                            </span>
+                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                                <BookOpen className="w-3.5 h-3.5" />{getAsignaturaName(item.asignatura)}
+                                            </span>
+                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                                <Calendar className="w-3.5 h-3.5" />{formatDate(item.date)}
+                                            </span>
+                                            {item.createdBy?.name && (
+                                                <span className="text-sm text-slate-500 italic">Por {item.createdBy.name}</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                <div className="flex gap-3 shrink-0" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => handleApprove(item.id)}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium"
+                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-emerald-700 bg-[#f0fdf4] hover:bg-emerald-100 transition-all border border-emerald-200"
                                     >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Aprobar
+                                        <CheckCircle2 className="w-4 h-4" /> Aprobar
                                     </button>
                                     <button
                                         onClick={() => { setRejectTarget(item.id); setRejectReason(''); }}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
+                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-rose-700 bg-[#fef2f2] hover:bg-rose-100 transition-all border border-rose-200"
                                     >
-                                        <XCircle className="w-3.5 h-3.5" /> Rechazar
+                                        <XCircle className="w-4 h-4" /> Rechazar
                                     </button>
                                 </div>
                             </div>
@@ -519,79 +451,117 @@ export default function UTPView() {
                 </div>
             )}
 
-            {/* Evaluaciones grouped by curso+asignatura */}
-            {loading ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                    <p className="text-slate-400">Cargando evaluaciones...</p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {groupedEvaluaciones.length === 0 && (
-                        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                            <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                            <p className="text-slate-500 font-medium">No se encontraron evaluaciones</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                                {canCreateEval ? 'Haz clic en "Nueva Evaluacion" para crear una' : 'Aun no tienes evaluaciones registradas'}
-                            </p>
+            {/* Historial de Evaluaciones */}
+            <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-slate-800">Historial de Evaluaciones</h2>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar evaluacion..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-9 pr-3 py-2 bg-white border border-slate-200/20 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none w-48 transition-all"
+                            />
                         </div>
-                    )}
+                        <select
+                            value={filterCurso}
+                            onChange={e => setFilterCurso(e.target.value)}
+                            className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all appearance-none bg-no-repeat cursor-pointer ${filterCurso ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200/20 bg-white text-slate-600'}`}
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
+                        >
+                            <option value="">Todos los cursos</option>
+                            {CURSOS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <select
+                            value={filterAsignatura}
+                            onChange={e => setFilterAsignatura(e.target.value)}
+                            className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all appearance-none bg-no-repeat cursor-pointer ${filterAsignatura ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200/20 bg-white text-slate-600'}`}
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
+                        >
+                            <option value="">Todas las asignaturas</option>
+                            {ASIGNATURAS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
+                        </select>
+                    </div>
+                </div>
 
-                    {groupedEvaluaciones.map(group => (
-                        <div key={`${group.curso}-${group.asignatura}`} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            {/* Card header */}
-                            <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-medium">{group.curso}</span>
-                                    <span className="font-semibold text-sm text-slate-700">{getAsignaturaName(group.asignatura)}</span>
-                                </div>
-                                <span className="text-xs text-slate-400">{group.items.length} evaluacion{group.items.length !== 1 ? 'es' : ''}</span>
-                            </div>
-
-                            {/* Evaluaciones list inside card */}
-                            <div className="divide-y divide-slate-100">
-                                {group.items.map(item => {
-                                    const answeredCount = Object.keys(item.results || {}).length;
-
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            className="px-5 py-3 hover:bg-slate-50/50 transition-colors cursor-pointer flex items-center gap-4"
-                                            onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
-                                        >
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-sm text-slate-800">{item.name}</span>
+                {loading ? (
+                    <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100/5">
+                        <p className="text-slate-400">Cargando evaluaciones...</p>
+                    </div>
+                ) : filteredEvaluaciones.length === 0 ? (
+                    <div className="bg-white rounded-3xl border border-slate-100/5 p-12 text-center shadow-sm">
+                        <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500 font-medium">No se encontraron evaluaciones</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                            {canCreateEval ? 'Haz clic en "Nueva Evaluacion" para crear una' : 'Aun no tienes evaluaciones registradas'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="overflow-hidden bg-white rounded-3xl shadow-sm border border-slate-100/5">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-100/50">
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Estado</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Asignatura / Nivel</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Fecha</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Preguntas</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Alumnos</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100/5">
+                                {filteredEvaluaciones
+                                    .slice()
+                                    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                                    .map(item => {
+                                        const answeredCount = Object.keys(item.results || {}).length;
+                                        return (
+                                            <tr
+                                                key={item.id}
+                                                className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                                onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
+                                            >
+                                                <td className="px-6 py-4">
                                                     <StatusBadge status={item.status || 'pending'} />
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
-                                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(item.date)}</span>
-                                                    <span>{item.totalQuestions} preg.</span>
-                                                    <span>{answeredCount} alumno{answeredCount !== 1 ? 's' : ''}</span>
-                                                </div>
-                                                {item.createdBy?.name && (
-                                                    <p className="text-[11px] text-slate-400 mt-1">Por {item.createdBy.name}</p>
-                                                )}
-                                            </div>
-
-                                            {/* Delete button */}
-                                            <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                                                {canDeleteEval(item) && (
-                                                    <button
-                                                        onClick={() => setDeleteConfirm(item.id)}
-                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-800">{item.name}</span>
+                                                        <span className="text-xs text-slate-500 mt-0.5">{getAsignaturaName(item.asignatura)} · {item.curso}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center text-sm font-medium text-slate-600">{formatDate(item.date)}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="bg-slate-100 px-3 py-1 rounded-lg text-sm font-bold text-slate-700">{item.totalQuestions}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex items-center justify-center gap-1 text-sm font-medium text-slate-600">
+                                                        <Users className="w-4 h-4 text-slate-400" />
+                                                        {answeredCount}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
+                                                    {canDeleteEval(item) && (
+                                                        <button
+                                                            onClick={() => setDeleteConfirm(item.id)}
+                                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50/10 rounded-xl transition-all"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
 
             {/* Create Modal */}
             <AnimatePresence>

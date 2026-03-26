@@ -48,7 +48,7 @@ export default function AdminDashboard() {
             <div className="max-w-5xl mx-auto space-y-8">
 
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100/5">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">Panel de Dirección</h1>
                         <p className="text-slate-500">Gestión de Solicitudes</p>
@@ -60,8 +60,8 @@ export default function AdminDashboard() {
 
                 {/* KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                        <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/5 flex items-center gap-4">
+                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
                             <Bell className="w-6 h-6" />
                         </div>
                         <div>
@@ -70,8 +70,8 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/5 flex items-center gap-4">
+                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
                             <User className="w-6 h-6" />
                         </div>
                         <div>
@@ -86,13 +86,13 @@ export default function AdminDashboard() {
                     <h2 className="text-xl font-bold text-slate-800 mb-4">Solicitudes por Revisar</h2>
 
                     {pendingCount === 0 ? (
-                        <div className="p-10 text-center bg-white rounded-xl border border-slate-200 border-dashed text-slate-400">
+                        <div className="p-10 text-center bg-white rounded-3xl border border-slate-100/5 border-dashed text-slate-400">
                             No hay solicitudes pendientes. ¡Todo al día!
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {pendingRequests.map(req => (
-                                <div key={req.id} className="bg-white p-6 rounded-xl shadow-md border border-slate-100 flex flex-col justify-between h-full transition-transform hover:scale-[1.02]">
+                                <div key={req.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100/5 flex flex-col justify-between h-full transition-transform hover:scale-[1.02]">
                                     <div>
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className="bg-slate-100 p-2 rounded-full">
@@ -105,7 +105,7 @@ export default function AdminDashboard() {
                                             <Calendar className="w-4 h-4" />
                                             <span>{req.date}</span>
                                             {req.isHalfDay && (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
                                                     ½ {req.isHalfDay === 'am' ? 'Mañana' : req.isHalfDay === 'pm' ? 'Tarde' : 'Día'}
                                                 </span>
                                             )}

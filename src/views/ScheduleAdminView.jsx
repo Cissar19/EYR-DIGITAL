@@ -148,7 +148,7 @@ export default function ScheduleAdminView() {
     const horasInfo = canShowSchedule ? calcularHoras() : null;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4 md:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 p-4 md:p-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <motion.div
@@ -158,7 +158,7 @@ export default function ScheduleAdminView() {
                 >
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl shadow-blue-300/50 shrink-0">
+                            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl shadow-indigo-300/50 shrink-0">
                                 <CalendarClock className="w-6 h-6 md:w-8 md:h-8 text-white" />
                             </div>
                             <div>
@@ -183,7 +183,7 @@ export default function ScheduleAdminView() {
                                     className={cn(
                                         "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
                                         !isEditMode
-                                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-200"
+                                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200"
                                             : "text-slate-600 hover:text-slate-900"
                                     )}
                                 >
@@ -195,7 +195,7 @@ export default function ScheduleAdminView() {
                                     className={cn(
                                         "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
                                         isEditMode
-                                            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-200"
+                                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200"
                                             : "text-slate-600 hover:text-slate-900"
                                     )}
                                 >
@@ -256,7 +256,7 @@ export default function ScheduleAdminView() {
                                                 <ClipboardList className="w-3.5 h-3.5" />
                                                 Tiempo Completo
                                             </button>
-                                            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
                                                 <Edit3 className="w-3.5 h-3.5" />
                                                 Modo Edición Activo
                                             </div>

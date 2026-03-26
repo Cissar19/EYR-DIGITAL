@@ -63,7 +63,7 @@ export default function TeacherDashboard() {
                 <div className="lg:col-span-1 space-y-8">
 
                     {/* Hero Card: Available Days */}
-                    <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-500/20 group hover:scale-[1.02] transition-transform duration-300">
+                    <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-indigo-500/20 group hover:scale-[1.02] transition-transform duration-300">
                         {/* Decorative Background Icon */}
                         <Calendar className="absolute -right-6 -bottom-6 w-48 h-48 text-white opacity-10 rotate-12 group-hover:rotate-6 transition-transform duration-500" />
 
@@ -82,7 +82,7 @@ export default function TeacherDashboard() {
                     </div>
 
                     {/* New Request Form */}
-                    <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100/5 p-8">
                         <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                             <Plus className="w-5 h-5 text-indigo-500" /> Nueva Solicitud
                         </h3>
@@ -95,7 +95,7 @@ export default function TeacherDashboard() {
                                     required
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 transition-shadow outline-none"
+                                    className="w-full bg-slate-50 border border-slate-200/20 text-slate-800 text-sm rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 block p-3 transition-shadow outline-none"
                                 />
                             </div>
                             {/* ... (Reason Select - assumed identical to previous, keeping context concise) ... */}
@@ -106,7 +106,7 @@ export default function TeacherDashboard() {
                                     <select
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 appearance-none outline-none"
+                                        className="w-full bg-slate-50 border border-slate-200/20 text-slate-800 text-sm rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 block p-3 appearance-none outline-none"
                                     >
                                         <option value="Personal">Asuntos Personales</option>
                                         <option value="Médico">Consulta Médica</option>
@@ -119,7 +119,7 @@ export default function TeacherDashboard() {
 
                             <button
                                 type="submit"
-                                className="w-full text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 focus:ring-4 focus:ring-indigo-300 font-semibold rounded-xl text-sm px-5 py-3.5 text-center shadow-lg shadow-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
+                                className="w-full text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:ring-4 focus:ring-indigo-200 font-semibold rounded-xl text-sm px-5 py-3.5 text-center shadow-lg shadow-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
                             >
                                 Solicitar Día <ChevronRight className="w-4 h-4" />
                             </button>
@@ -147,7 +147,7 @@ export default function TeacherDashboard() {
 
                         <div className="space-y-6">
                             {requests.length === 0 ? (
-                                <div className="ml-8 bg-white p-8 rounded-2xl border border-dashed border-slate-300 text-center">
+                                <div className="ml-8 bg-white p-12 rounded-3xl border border-slate-100/5 border-dashed text-center shadow-sm">
                                     <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                                     <p className="text-slate-500 font-medium">No has realizado solicitudes aún.</p>
                                 </div>
@@ -165,7 +165,7 @@ export default function TeacherDashboard() {
                                             )} />
 
                                             {/* Card */}
-                                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all duration-300 group-hover:border-slate-200">
+                                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100/5 hover:shadow-md transition-all duration-300 group-hover:border-slate-200/50">
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="bg-slate-50 p-2.5 rounded-xl text-slate-500">
@@ -178,7 +178,7 @@ export default function TeacherDashboard() {
                                                             <div className="flex items-center gap-2">
                                                                 <p className="text-sm text-slate-500 capitalize">{req.reason}</p>
                                                                 {req.isHalfDay && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
                                                                         ½ {req.isHalfDay === 'am' ? 'Mañana' : req.isHalfDay === 'pm' ? 'Tarde' : 'Día Admin.'}
                                                                     </span>
                                                                 )}

@@ -47,10 +47,10 @@ function RoleMatrixTab({ roleDefaults, updateRoleDefaults }) {
             <div className="min-w-[700px]">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b border-slate-200">
-                            <th className="text-left py-3 px-4 font-bold text-slate-700 bg-slate-50 rounded-tl-xl sticky left-0 z-10 min-w-[180px]">Modulo</th>
+                        <tr className="bg-slate-100/50">
+                            <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-100/50 rounded-tl-xl sticky left-0 z-10 min-w-[180px]">Modulo</th>
                             {CONFIGURABLE_ROLES.map(role => (
-                                <th key={role} className="py-3 px-2 font-bold text-slate-600 text-center bg-slate-50 text-xs whitespace-nowrap">
+                                <th key={role} className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center bg-slate-100/50 whitespace-nowrap">
                                     {getRoleLabel(role)}
                                 </th>
                             ))}
@@ -58,7 +58,7 @@ function RoleMatrixTab({ roleDefaults, updateRoleDefaults }) {
                     </thead>
                     <tbody>
                         {MODULE_REGISTRY.map(mod => (
-                            <tr key={mod.key} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                            <tr key={mod.key} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/5">
                                 <td className="py-3 px-4 font-medium text-slate-700 sticky left-0 bg-white z-10">
                                     <div className="flex items-center gap-2">
                                         <mod.icon className="w-4 h-4 text-slate-400" />
@@ -209,7 +209,7 @@ function UserPermissionsTab({ roleDefaults, updateUserPermissionOverrides }) {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                     type="text"
-                    className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all shadow-sm font-medium"
+                    className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200/20 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all shadow-sm font-medium"
                     placeholder="Buscar usuario por nombre o correo..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
@@ -242,12 +242,12 @@ function UserPermissionsTab({ roleDefaults, updateUserPermissionOverrides }) {
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                    className="bg-white rounded-3xl border border-slate-100/5 shadow-sm overflow-hidden"
                 >
                     {/* User header */}
                     <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
                                 {selectedUser.name?.charAt(0)}
                             </div>
                             <div>
@@ -348,12 +348,14 @@ export default function PermissionsManager() {
         <div className="max-w-7xl mx-auto pb-20 px-4 sm:px-6">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                    Gestionar Permisos
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider border border-indigo-100">
-                        Admin
-                    </span>
-                </h1>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Shield className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Gestionar Permisos</h1>
+                    </div>
+                </div>
                 <p className="text-slate-500 mt-2 text-lg">Controla que modulos puede ver cada rol o usuario individual.</p>
             </div>
 
@@ -382,7 +384,7 @@ export default function PermissionsManager() {
             </div>
 
             {/* Tab content */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm p-6">
                 {activeTab === 'roles' && (
                     <RoleMatrixTab
                         roleDefaults={roleDefaults}

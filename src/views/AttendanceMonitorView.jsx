@@ -412,16 +412,13 @@ export default function AttendanceMonitorView() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                            <Clock className="w-6 h-6 text-amber-600" />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Clock className="w-6 h-6 text-indigo-600" />
                         </div>
-                        Monitor de Horas
-                    </h1>
-                    <p className="text-slate-500 mt-1 text-lg">
-                        Análisis de atrasos, salidas anticipadas y ausencias
-                    </p>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Monitor de Horas</h1>
+                    </div>
                 </div>
                 {showingResults && (
                     <div className="flex items-center gap-2">
@@ -464,7 +461,7 @@ export default function AttendanceMonitorView() {
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     className={cn(
-                        "relative bg-white rounded-2xl border-2 border-dashed p-8 text-center transition-all",
+                        "relative bg-white rounded-3xl border-2 border-dashed p-8 text-center transition-all",
                         viewState === 'processing'
                             ? "border-amber-300 bg-amber-50/50"
                             : viewState === 'error'
@@ -544,7 +541,7 @@ export default function AttendanceMonitorView() {
                     </h2>
 
                     {savedReports.length === 0 ? (
-                        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+                        <div className="bg-white rounded-3xl border border-slate-100/5 p-12 text-center shadow-sm">
                             <FileSpreadsheet className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                             <p className="text-sm text-slate-400 font-medium">No hay reportes guardados</p>
                             <p className="text-xs text-slate-400 mt-1">Sube un Excel de marcaciones para comenzar</p>
@@ -601,7 +598,7 @@ export default function AttendanceMonitorView() {
                         <div>
                             <button
                                 onClick={() => setShowDashboard(v => !v)}
-                                className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 mb-3 transition-colors"
+                                className="flex items-center gap-2 text-xl font-bold text-slate-800 hover:text-slate-900 mb-3 transition-colors"
                             >
                                 {showDashboard ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 Dashboard
@@ -731,7 +728,7 @@ export default function AttendanceMonitorView() {
                         })()}
 
                         {/* Filters */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
+                        <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm p-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
                             <div className="relative flex-1 w-full">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
@@ -813,36 +810,36 @@ export default function AttendanceMonitorView() {
                         </div>
 
                         {/* Detail Table */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="overflow-hidden bg-white rounded-3xl shadow-sm border border-slate-100/5">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b border-slate-200 bg-slate-50">
-                                            <th className="text-left py-3 px-4 font-bold text-slate-600 min-w-[180px]">Docente</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[90px]">Fecha</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[80px]">Día</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Ent. Esperada</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Ent. Real</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[70px]">Atraso</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Sal. Esperada</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[75px]">Sal. Real</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[70px]">Sal. Ant.</th>
-                                            <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[70px]">Deuda</th>
+                                        <tr className="bg-slate-100/50">
+                                            <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[180px]">Docente</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[90px]">Fecha</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[80px]">Día</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[75px]">Ent. Esperada</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[75px]">Ent. Real</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[70px]">Atraso</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[75px]">Sal. Esperada</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[75px]">Sal. Real</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[70px]">Sal. Ant.</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[70px]">Deuda</th>
                                             {viewState === 'viewing' && (
-                                                <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[80px]">Estado</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[80px]">Estado</th>
                                             )}
                                             {viewState === 'viewing' && userCanEdit && (
-                                                <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[50px]"></th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center min-w-[50px]"></th>
                                             )}
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody className="divide-y divide-slate-100/5">
                                         {paginatedRecords.map((rec, idx) => {
                                             const isEditing = viewState === 'viewing' && userCanEdit && editingIndex === rec._originalIndex;
                                             return (
                                                 <React.Fragment key={`${rec.teacherName}-${rec.dateFormatted}-${idx}`}>
                                                     <tr className={cn(
-                                                        "border-b border-slate-100 transition-colors",
+                                                        "hover:bg-slate-50/50 transition-colors",
                                                         rec.justified
                                                             ? "bg-emerald-50/60"
                                                             : rec.absent

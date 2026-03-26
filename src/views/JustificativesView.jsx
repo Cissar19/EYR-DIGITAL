@@ -134,18 +134,17 @@ export default function JustificativesView() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                    <FileCheck className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Justificativos</h1>
-                    <p className="text-sm text-slate-500">Registro de justificativos de alumnos</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                        <FileCheck className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Justificativos</h1>
                 </div>
             </div>
 
             {/* Dashboard KPIs */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm overflow-hidden">
                 <button onClick={() => setDashboardOpen(v => !v)} className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
                     <span className="font-semibold text-slate-700 text-sm">Resumen del Mes</span>
                     {dashboardOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -178,7 +177,7 @@ export default function JustificativesView() {
             </div>
 
             {/* Search & Filter */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm p-4">
                 <div className="flex items-center gap-2">
                     {/* Search input */}
                     <div className="relative flex-1">
@@ -272,7 +271,7 @@ export default function JustificativesView() {
             {/* Student list */}
             <div className="space-y-2">
                 {paginatedStudents.length === 0 && (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+                    <div className="bg-white rounded-3xl border border-slate-100/5 p-12 text-center shadow-sm">
                         <User className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                         <p className="text-slate-500 font-medium">No se encontraron alumnos</p>
                     </div>
@@ -282,7 +281,7 @@ export default function JustificativesView() {
                     const isExpanded = expandedStudent === student.id;
 
                     return (
-                        <div key={student.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all hover:border-indigo-200">
+                        <div key={student.id} className="bg-white rounded-3xl border border-slate-100/5 shadow-sm overflow-hidden transition-all hover:border-indigo-200">
                             {/* Student row */}
                             <div className="flex items-center gap-3 p-4">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700 shrink-0">
@@ -426,7 +425,7 @@ export default function JustificativesView() {
             <AnimatePresence>
                 {deleteConfirm && (
                     <ModalOverlay onClose={() => setDeleteConfirm(null)}>
-                        <div className="bg-white rounded-2xl p-6 w-full">
+                        <div className="bg-white rounded-3xl p-6 w-full">
                             <h3 className="font-bold text-slate-800 mb-2">Eliminar justificativo</h3>
                             <p className="text-sm text-slate-500 mb-5">Esta accion no se puede deshacer.</p>
                             <div className="flex gap-3 justify-end">
@@ -529,7 +528,7 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
     const rangeCount = datesInRange.length;
 
     return (
-        <div className="bg-white rounded-2xl w-full">
+        <div className="bg-white rounded-3xl w-full">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
                 <h3 className="font-bold text-slate-800">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
                 <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>

@@ -538,15 +538,15 @@ const DetalleTab = ({ users, requests, getBalance, getHoursUsed, getDiscountDays
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="overflow-hidden bg-white rounded-3xl shadow-sm border border-slate-100/5">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="text-left py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Nombre</th>
-                                <th className="text-left py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Rol</th>
-                                <th className="text-center py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Restantes</th>
-                                <th className="text-center py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Usados</th>
+                            <tr className="bg-slate-100/50">
+                                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</th>
+                                <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Rol</th>
+                                <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Restantes</th>
+                                <th className="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Usados</th>
                                 <th className="text-center py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Horas</th>
                                 <th className="text-center py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Devol.</th>
                                 <th className="text-center py-3 px-4 font-bold text-slate-500 text-xs uppercase tracking-wider">Desc.</th>
@@ -1008,9 +1008,9 @@ export default function StatsView() {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
             >
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-indigo-100 rounded-2xl text-indigo-600">
-                        <BarChart3 className="w-7 h-7" />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                        <BarChart3 className="w-6 h-6 text-indigo-600" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Estadisticas</h1>

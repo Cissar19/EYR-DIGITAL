@@ -549,7 +549,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                                                         ? "from-violet-500 to-purple-600"
                                                         : isHalfGeneric
                                                             ? "from-teal-500 to-cyan-600"
-                                                            : "from-blue-500 to-indigo-600";
+                                                            : "from-indigo-500 to-indigo-600";
 
                                             return (
                                                 <div key={item.id} className={cn("flex items-center justify-between py-2.5 px-3 rounded-xl border hover:opacity-90 transition-all", rowColor)}>

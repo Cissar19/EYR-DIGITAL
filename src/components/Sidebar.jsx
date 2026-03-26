@@ -74,22 +74,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         "flex items-center gap-3 rounded-xl transition-all duration-200 group relative overflow-hidden",
                         isCollapsed ? "justify-center px-0 py-3 mx-auto w-12 h-12" : "px-4 py-3",
                         isActive
-                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                            ? "text-indigo-600 font-bold bg-indigo-50/60 border-l-4 border-indigo-600 rounded-l-none translate-x-0.5"
+                            : "text-slate-500 hover:bg-indigo-50/40 hover:text-slate-800"
                     )}
                 >
-                    <div className={cn(
-                        "absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity",
-                        isActive ? "opacity-0" : ""
-                    )} />
                     <Icon className={cn(
                         "w-5 h-5 shrink-0",
-                        isActive ? "text-white" : "text-slate-400 group-hover:text-indigo-500"
-                    )} />
+                        isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-500"
+                    )} style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}} />
                     {!isCollapsed && <span className="font-medium">{item.name}</span>}
-                    {!isCollapsed && isActive && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/20 rounded-l-full" />
-                    )}
                 </Link>
             </Tooltip>
         );
@@ -128,8 +121,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full text-left group",
                         hasActive && !groupOpen
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                            ? "bg-indigo-50/60 text-indigo-700"
+                            : "text-slate-500 hover:bg-indigo-50/40 hover:text-slate-800"
                     )}
                 >
                     {groupOpen
@@ -163,7 +156,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
             {/* Sidebar — Desktop: always visible, toggles width. Mobile: slide drawer */}
             <div className={cn(
-                "h-screen bg-white border-r border-slate-200 flex flex-col fixed left-0 top-0 z-50 overflow-y-auto overflow-x-hidden",
+                "h-screen bg-[#f8f1ff] border-r-0 flex flex-col fixed left-0 top-0 z-50 overflow-y-auto overflow-x-hidden",
                 // Mobile: full-width drawer
                 "w-72 transition-transform duration-300 md:transition-[width] md:duration-300",
                 !isOpen && "-translate-x-full",
@@ -173,7 +166,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             )}>
                 {/* Header: Logo + collapse/close button */}
                 <div className={cn(
-                    "flex items-center shrink-0 border-b border-slate-100",
+                    "flex items-center shrink-0 border-b border-indigo-100/60",
                     isCollapsed ? "md:justify-center md:px-0 px-6 py-4" : "px-6 py-4 justify-between"
                 )}>
                     {/* Logo — hidden when collapsed on desktop */}
@@ -204,14 +197,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
                 {/* User Profile */}
                 <div className={cn(
-                    "shrink-0 border-b border-slate-100",
+                    "shrink-0 border-b border-indigo-100/60",
                     isCollapsed ? "md:py-4 md:px-0 md:flex md:justify-center p-4" : "p-4"
                 )}>
                     {isCollapsed ? (
                         /* Collapsed: avatar only with tooltip */
                         <>
                             {/* Mobile: show full profile even when desktop is collapsed */}
-                            <div className="md:hidden flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="md:hidden flex items-center gap-3 p-3 bg-white/80 rounded-xl shadow-sm">
                                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm overflow-hidden shadow-sm">
                                     {user?.avatar ? (
                                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -221,7 +214,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 </div>
                                 <div className="overflow-hidden flex-1">
                                     <p className="font-bold text-sm text-slate-800 truncate">{user?.name}</p>
-                                    <p className="text-[11px] text-slate-400 truncate">{getRoleLabel(user?.role)}</p>
+                                    <p className="text-[11px] text-slate-500 truncate">{getRoleLabel(user?.role)}</p>
                                 </div>
                             </div>
                             {/* Desktop collapsed: avatar only */}
@@ -237,7 +230,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         </>
                     ) : (
                         /* Expanded: full profile card */
-                        <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-3 p-3 bg-white/80 rounded-xl shadow-sm">
                             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm overflow-hidden shadow-sm">
                                 {user?.avatar ? (
                                     <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -247,7 +240,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                             </div>
                             <div className="overflow-hidden flex-1">
                                 <p className="font-bold text-sm text-slate-800 truncate">{user?.name}</p>
-                                <p className="text-[11px] text-slate-400 truncate">{getRoleLabel(user?.role)}</p>
+                                <p className="text-[11px] text-slate-500 truncate">{getRoleLabel(user?.role)}</p>
                             </div>
                         </div>
                     )}
@@ -335,7 +328,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
                 {/* Logout */}
                 <div className={cn(
-                    "shrink-0 border-t border-slate-100",
+                    "shrink-0 border-t border-indigo-100/60",
                     isCollapsed ? "md:py-4 md:px-0 md:flex md:justify-center p-4" : "p-4"
                 )}>
                     <Tooltip label="Cerrar Sesión" show={isCollapsed}>

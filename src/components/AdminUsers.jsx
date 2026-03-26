@@ -298,14 +298,19 @@ export default function AdminUsers() {
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                        Equipo EYR
-                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider border border-indigo-100">
-                            {allUsers.length} Miembros
-                        </span>
-                    </h1>
-                    <p className="text-slate-500 mt-2 text-lg">Gestión de todo el personal de la escuela (Docentes y Asistentes).</p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                            <User className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+                            Equipo EYR
+                            <span className="ml-2 px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider border border-indigo-100">
+                                {allUsers.length} Miembros
+                            </span>
+                        </h1>
+                    </div>
+                    <p className="text-slate-500 mt-1 text-base">Gestión de todo el personal de la escuela (Docentes y Asistentes).</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -331,7 +336,7 @@ export default function AdminUsers() {
                 </div>
                 <input
                     type="text"
-                    className="block w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all shadow-sm font-medium"
+                    className="block w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200/20 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all shadow-sm font-medium"
                     placeholder="Buscar por nombre o correo..."
                     value={searchTerm}
                     onChange={handleSearchChange}
@@ -344,7 +349,7 @@ export default function AdminUsers() {
                     const isActive = roleFilter === rf.value;
                     const Icon = rf.icon;
                     const colorMap = {
-                        blue: 'bg-blue-100 text-blue-700 border-blue-200',
+                        blue: 'bg-indigo-100 text-indigo-700 border-indigo-200',
                         teal: 'bg-teal-100 text-teal-700 border-teal-200',
                         amber: 'bg-amber-100 text-amber-700 border-amber-200',
                         indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -437,10 +442,10 @@ export default function AdminUsers() {
                                     <div className="flex items-center justify-end md:justify-end gap-2 shrink-0 w-full md:w-auto mt-4 md:mt-0 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
                                         <button
                                             onClick={() => openEditModal(u)}
-                                            className="flex-1 md:flex-none flex justify-center items-center p-2 hover:bg-blue-50 rounded-lg transition-colors group/btn"
+                                            className="flex-1 md:flex-none flex justify-center items-center p-2 hover:bg-indigo-50 rounded-lg transition-colors group/btn"
                                             title="Editar Usuario"
                                         >
-                                            <Pencil className="w-5 h-5 md:w-4 md:h-4 text-gray-400 group-hover/btn:text-blue-600 transition-colors" />
+                                            <Pencil className="w-5 h-5 md:w-4 md:h-4 text-gray-400 group-hover/btn:text-indigo-600 transition-colors" />
                                         </button>
                                         <button
                                             onClick={() => setResetTargetUser(u)}
@@ -639,7 +644,7 @@ export default function AdminUsers() {
                                             onClick={() => { setFormData({ ...formData, role: 'teacher' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'teacher'
-                                                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
                                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                                         >
                                             <GraduationCap className="w-4 h-4" />
@@ -890,7 +895,7 @@ export default function AdminUsers() {
                             </div>
 
                             <form onSubmit={handleAttributesSubmit} className="p-4 md:p-6 space-y-5">
-                                <div className="bg-blue-50 p-4 rounded-xl text-sm text-blue-800 mb-4">
+                                <div className="bg-indigo-50 p-4 rounded-xl text-sm text-indigo-800 mb-4">
                                     Configura la carga académica para este docente. Esto afectará cómo se muestra en los horarios y reportes.
                                 </div>
 
