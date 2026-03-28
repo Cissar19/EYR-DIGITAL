@@ -6,6 +6,7 @@ import { resolvePermissions } from '../lib/permissionResolver';
 import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import ModalContainer from './ModalContainer';
 
 export default function AdminUsers() {
     const { user: currentUser, users: MOCK_USERS, addUser, updateUser, deleteUser, resetPassword, setUserPassword } = useAuth();
@@ -597,47 +598,41 @@ export default function AdminUsers() {
             {/* Create/Edit Modal */}
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
-                        >
-                            <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                                <h3 className="text-lg font-bold text-slate-800">
-                                    {editingUserId ? 'Editar Usuario' : 'Nuevo Miembro'}
-                                </h3>
-                                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                    <X className="w-5 h-5 text-slate-500" />
-                                </button>
-                            </div>
+                    <ModalContainer onClose={() => setIsModalOpen(false)} maxWidth="max-w-md">
+                        <div className="px-7 pt-6 pb-4 flex justify-between items-center">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface">
+                                {editingUserId ? 'Editar Usuario' : 'Nuevo Miembro'}
+                            </h3>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-eyr-surface-low rounded-full transition-colors">
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
 
-                            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Nombre Completo</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium"
-                                        placeholder="Ej: Juan Pérez"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Correo Electrónico</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium"
-                                        placeholder="ejemplo@eduhuechuraba.cl"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Rol de Sistema</label>
+                        <form id="createEditUserForm" onSubmit={handleSubmit} className="px-7 pb-0 space-y-4 overflow-y-auto">
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Nombre Completo</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
+                                    placeholder="Ej: Juan Pérez"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Correo Electrónico</label>
+                                <input
+                                    type="email"
+                                    required
+                                    className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
+                                    placeholder="ejemplo@eduhuechuraba.cl"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Rol de Sistema</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         <button
                                             type="button"
@@ -854,426 +849,387 @@ export default function AdminUsers() {
                                     </div>
                                 )}
 
-                                <div className="pt-6 flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsModalOpen(false)}
-                                        className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-1 px-4 py-3.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl shadow-slate-200 hover:-translate-y-0.5 transition-all"
-                                    >
-                                        {editingUserId ? 'Guardar Cambios' : 'Crear'}
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
+                        </form>
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(false)}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                form="createEditUserForm"
+                                type="submit"
+                                className="flex-1 bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-lg hover:-translate-y-0.5 transition-all"
+                            >
+                                {editingUserId ? 'Guardar Cambios' : 'Crear'}
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
 
             {/* Edit Attributes Modal */}
             <AnimatePresence>
                 {isEditAttributesOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-indigo-900/40 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden border-4 border-indigo-50"
-                        >
-                            <div className="p-6 border-b border-indigo-100 flex justify-between items-center bg-indigo-50/50">
-                                <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
-                                    <GraduationCap className="w-5 h-5" /> Atributos Académicos
-                                </h3>
-                                <button onClick={() => setIsEditAttributesOpen(false)} className="p-2 hover:bg-indigo-100 rounded-full transition-colors">
-                                    <X className="w-5 h-5 text-indigo-400" />
-                                </button>
+                    <ModalContainer onClose={() => setIsEditAttributesOpen(false)} maxWidth="max-w-md">
+                        <div className="px-7 pt-6 pb-4 flex justify-between items-center">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface flex items-center gap-2">
+                                <GraduationCap className="w-5 h-5 text-eyr-primary" /> Atributos Académicos
+                            </h3>
+                            <button onClick={() => setIsEditAttributesOpen(false)} className="p-2 hover:bg-eyr-surface-low rounded-full transition-colors">
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
+
+                        <form id="attributesForm" onSubmit={handleAttributesSubmit} className="px-7 pb-0 space-y-5 overflow-y-auto">
+                            <div className="bg-eyr-surface-low p-4 rounded-2xl text-sm text-eyr-on-variant border border-eyr-outline-variant/30">
+                                Configura la carga académica para este docente. Esto afectará cómo se muestra en los horarios y reportes.
                             </div>
 
-                            <form onSubmit={handleAttributesSubmit} className="p-4 md:p-6 space-y-5">
-                                <div className="bg-indigo-50 p-4 rounded-xl text-sm text-indigo-800 mb-4">
-                                    Configura la carga académica para este docente. Esto afectará cómo se muestra en los horarios y reportes.
-                                </div>
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Profesor Jefe de:</label>
+                                <select
+                                    className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
+                                    value={attributesData.headTeacherOf}
+                                    onChange={(e) => setAttributesData({ ...attributesData, headTeacherOf: e.target.value })}
+                                >
+                                    <option value="">-- No es Profesor Jefe --</option>
+                                    <option value="Pre-Kinder">Pre-Kinder</option>
+                                    <option value="Kinder">Kinder</option>
+                                    <option value="1° Básico">1° Básico</option>
+                                    <option value="2° Básico">2° Básico</option>
+                                    <option value="3° Básico">3° Básico</option>
+                                    <option value="4° Básico">4° Básico</option>
+                                    <option value="5° Básico">5° Básico</option>
+                                    <option value="6° Básico">6° Básico</option>
+                                    <option value="7° Básico">7° Básico</option>
+                                    <option value="8° Básico">8° Básico</option>
+                                </select>
+                            </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Profesor Jefe de:</label>
-                                    <select
-                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium"
-                                        value={attributesData.headTeacherOf}
-                                        onChange={(e) => setAttributesData({ ...attributesData, headTeacherOf: e.target.value })}
-                                    >
-                                        <option value="">-- No es Profesor Jefe --</option>
-                                        <option value="Pre-Kinder">Pre-Kinder</option>
-                                        <option value="Kinder">Kinder</option>
-                                        <option value="1° Básico">1° Básico</option>
-                                        <option value="2° Básico">2° Básico</option>
-                                        <option value="3° Básico">3° Básico</option>
-                                        <option value="4° Básico">4° Básico</option>
-                                        <option value="5° Básico">5° Básico</option>
-                                        <option value="6° Básico">6° Básico</option>
-                                        <option value="7° Básico">7° Básico</option>
-                                        <option value="8° Básico">8° Básico</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Asignaturas (Separadas por comas)</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
+                                    placeholder="Ej: Matemáticas, Taller de Robótica"
+                                    value={attributesData.subjects}
+                                    onChange={(e) => setAttributesData({ ...attributesData, subjects: e.target.value })}
+                                />
+                                <p className="text-xs text-eyr-on-variant mt-1.5 ml-1">Escribe las asignaturas principales que imparte.</p>
+                            </div>
+                        </form>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Asignaturas (Separadas por comas)</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium"
-                                        placeholder="Ej: Matemáticas, Taller de Robótica"
-                                        value={attributesData.subjects}
-                                        onChange={(e) => setAttributesData({ ...attributesData, subjects: e.target.value })}
-                                    />
-                                    <p className="text-xs text-slate-400 mt-1.5 ml-1">Escribe las asignaturas principales que imparte.</p>
-                                </div>
-
-                                <div className="pt-4">
-                                    <button
-                                        type="submit"
-                                        className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-[0.98]"
-                                    >
-                                        Guardar Atributos
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setIsEditAttributesOpen(false)}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                form="attributesForm"
+                                type="submit"
+                                className="flex-1 bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-lg hover:-translate-y-0.5 transition-all"
+                            >
+                                Guardar Atributos
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
             {/* Reset Confirmation Modal */}
             <AnimatePresence>
                 {isResetModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
-                        >
-                            <div className="p-4 md:p-6 border-b border-red-100 flex justify-between items-center bg-red-50">
-                                <h3 className="text-lg font-bold text-red-800 flex items-center gap-2">
-                                    <div className="bg-red-100 p-1.5 rounded-full">
-                                        <AlertTriangle className="w-4 h-4 text-red-600" />
-                                    </div>
-                                    Zona de Peligro
-                                </h3>
-                                <button onClick={() => setIsResetModalOpen(false)} className="p-2 hover:bg-red-100 rounded-full transition-colors">
-                                    <X className="w-5 h-5 text-red-400" />
-                                </button>
-                            </div>
-
-                            <div className="p-4 md:p-6 space-y-4">
-                                <p className="text-slate-600 font-medium">
-                                    Estás a punto de borrar todos los datos y restaurar la configuración de fábrica con los usuarios originales.
-                                    <br /><br />
-                                    <span className="font-bold text-red-600">¿Estás seguro?</span>
-                                </p>
-
-                                <div className="pt-4 flex gap-3">
-                                    <button
-                                        onClick={() => setIsResetModalOpen(false)}
-                                        className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={confirmReset}
-                                        className="flex-1 px-4 py-3.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-xl shadow-red-200 hover:-translate-y-0.5 transition-all"
-                                    >
-                                        Confirmar Restauración
-                                    </button>
+                    <ModalContainer onClose={() => setIsResetModalOpen(false)} maxWidth="max-w-md">
+                        <div className="px-7 pt-6 pb-4 flex justify-between items-center">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface flex items-center gap-2">
+                                <div className="bg-red-100 p-1.5 rounded-full">
+                                    <AlertTriangle className="w-4 h-4 text-red-600" />
                                 </div>
-                            </div>
-                        </motion.div>
-                    </div>
+                                Zona de Peligro
+                            </h3>
+                            <button onClick={() => setIsResetModalOpen(false)} className="p-2 hover:bg-red-50 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
+
+                        <div className="px-7 pb-0 overflow-y-auto">
+                            <p className="text-eyr-on-variant font-medium">
+                                Estás a punto de borrar todos los datos y restaurar la configuración de fábrica con los usuarios originales.
+                                <br /><br />
+                                <span className="font-bold text-red-600">¿Estás seguro?</span>
+                            </p>
+                        </div>
+
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                onClick={() => setIsResetModalOpen(false)}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmReset}
+                                className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-white font-extrabold hover:bg-red-700 shadow-xl shadow-red-200 hover:-translate-y-0.5 transition-all"
+                            >
+                                Confirmar Restauración
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
 
-            {/* Delete Confirmation Modal - Apple Style */}
+            {/* Delete Confirmation Modal */}
             <AnimatePresence>
                 {isDeleteModalOpen && userToDelete && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm animate-in fade-in duration-200"
-                        onClick={() => setIsDeleteModalOpen(false)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full overflow-hidden"
-                        >
-                            <div className="p-4 md:p-6 space-y-4">
-                                {/* Icon + Title Section */}
-                                <div className="flex items-start gap-4">
-                                    {/* Alert Icon */}
-                                    <div className="bg-red-50 p-4 rounded-full shrink-0">
-                                        <AlertTriangle className="w-6 h-6 text-red-600" />
-                                    </div>
-
-                                    {/* Text Content */}
-                                    <div className="flex-1 pt-1">
-                                        <h3 className="text-lg font-bold text-slate-800 mb-1">
-                                            ¿Eliminar a {userToDelete.name}?
-                                        </h3>
-                                        <p className="text-sm text-gray-500 leading-relaxed">
-                                            Esta acción eliminará permanentemente al usuario y revocará todos sus accesos. No se puede deshacer.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        onClick={() => setIsDeleteModalOpen(false)}
-                                        className="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={confirmDelete}
-                                        className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
-                                    >
-                                        Sí, Eliminar
-                                    </button>
-                                </div>
+                    <ModalContainer onClose={() => setIsDeleteModalOpen(false)} maxWidth="max-w-sm">
+                        <div className="px-7 pt-6 pb-4 flex items-start gap-4">
+                            <div className="bg-red-50 p-4 rounded-full shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-red-600" />
                             </div>
-                        </motion.div>
-                    </div>
+                            <div className="flex-1 pt-1">
+                                <h3 className="text-lg font-headline font-extrabold text-eyr-on-surface mb-1">
+                                    ¿Eliminar a {userToDelete.name}?
+                                </h3>
+                                <p className="text-sm text-eyr-on-variant leading-relaxed">
+                                    Esta acción eliminará permanentemente al usuario y revocará todos sus accesos. No se puede deshacer.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-white font-extrabold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                            >
+                                Sí, Eliminar
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
 
             {/* Temp Password Modal */}
             <AnimatePresence>
                 {tempPasswordData && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white w-full max-w-md max-w-[calc(100vw-2rem)] rounded-3xl shadow-2xl overflow-hidden"
-                        >
-                            <div className="p-4 md:p-6 border-b border-emerald-100 flex justify-between items-center bg-emerald-50">
-                                <h3 className="text-lg font-bold text-emerald-800 flex items-center gap-2">
-                                    <div className="bg-emerald-100 p-1.5 rounded-full">
-                                        <KeyRound className="w-4 h-4 text-emerald-600" />
-                                    </div>
-                                    Usuario Creado
-                                </h3>
-                                <button onClick={() => setTempPasswordData(null)} className="p-2 hover:bg-emerald-100 rounded-full transition-colors">
-                                    <X className="w-5 h-5 text-emerald-400" />
-                                </button>
+                    <ModalContainer onClose={() => setTempPasswordData(null)} maxWidth="max-w-md">
+                        <div className="px-7 pt-6 pb-4 flex justify-between items-center">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface flex items-center gap-2">
+                                <div className="bg-emerald-100 p-1.5 rounded-full">
+                                    <KeyRound className="w-4 h-4 text-emerald-600" />
+                                </div>
+                                Usuario Creado
+                            </h3>
+                            <button onClick={() => setTempPasswordData(null)} className="p-2 hover:bg-eyr-surface-low rounded-full transition-colors">
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
+
+                        <div className="px-7 pb-0 space-y-4 overflow-y-auto">
+                            <div className="text-sm text-eyr-on-variant">
+                                <p className="font-medium">Se creó el usuario <span className="font-bold text-eyr-on-surface">{tempPasswordData.name}</span> con el correo:</p>
+                                <p className="text-eyr-primary font-mono text-sm mt-1">{tempPasswordData.email}</p>
                             </div>
 
-                            <div className="p-4 md:p-6 space-y-4">
-                                <div className="text-sm text-slate-600">
-                                    <p className="font-medium">Se creó el usuario <span className="font-bold text-slate-800">{tempPasswordData.name}</span> con el correo:</p>
-                                    <p className="text-indigo-600 font-mono text-sm mt-1">{tempPasswordData.email}</p>
+                            <div className="bg-eyr-surface-low border border-eyr-outline-variant/30 rounded-2xl p-4 space-y-2">
+                                <label className="text-xs font-bold text-eyr-on-variant uppercase tracking-wider">Contraseña Temporal</label>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 bg-white border border-eyr-outline-variant/30 rounded-xl px-4 py-3 font-mono text-lg text-eyr-on-surface tracking-wider select-all">
+                                        {tempPasswordData.tempPassword}
+                                    </code>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(tempPasswordData.tempPassword);
+                                                setCopiedPassword(true);
+                                                setTimeout(() => setCopiedPassword(false), 2000);
+                                            } catch {
+                                                toast.error('No se pudo copiar. Selecciona y copia manualmente.');
+                                            }
+                                        }}
+                                        className={`p-3 rounded-xl transition-all ${copiedPassword ? 'bg-emerald-100 text-emerald-600' : 'bg-eyr-surface-low hover:bg-eyr-surface-mid text-eyr-on-variant'}`}
+                                        title="Copiar contraseña"
+                                    >
+                                        {copiedPassword ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                    </button>
                                 </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contraseña Temporal</label>
-                                    <div className="flex items-center gap-2">
-                                        <code className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-3 font-mono text-lg text-slate-800 tracking-wider select-all">
-                                            {tempPasswordData.tempPassword}
-                                        </code>
-                                        <button
-                                            onClick={async () => {
-                                                try {
-                                                    await navigator.clipboard.writeText(tempPasswordData.tempPassword);
-                                                    setCopiedPassword(true);
-                                                    setTimeout(() => setCopiedPassword(false), 2000);
-                                                } catch {
-                                                    toast.error('No se pudo copiar. Selecciona y copia manualmente.');
-                                                }
-                                            }}
-                                            className={`p-3 rounded-lg transition-all ${copiedPassword ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                            title="Copiar contraseña"
-                                        >
-                                            {copiedPassword ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                                    <p className="text-xs text-amber-700 font-medium">
-                                        Esta contraseña solo se muestra una vez. Cópiala ahora y entrégala al usuario.
-                                    </p>
-                                </div>
-
-                                <button
-                                    onClick={() => setTempPasswordData(null)}
-                                    className="w-full px-4 py-3.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all"
-                                >
-                                    Entendido
-                                </button>
                             </div>
-                        </motion.div>
-                    </div>
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                                <p className="text-xs text-amber-700 font-medium">
+                                    Esta contraseña solo se muestra una vez. Cópiala ahora y entrégala al usuario.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="px-7 py-5 bg-eyr-surface-mid shrink-0">
+                            <button
+                                onClick={() => setTempPasswordData(null)}
+                                className="w-full bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-lg hover:-translate-y-0.5 transition-all"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
 
             {/* Admin Set Password Modal */}
             <AnimatePresence>
                 {resetTargetUser && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm"
-                        onClick={() => !isResettingPassword && (() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); })()}
+                    <ModalContainer
+                        onClose={() => !isResettingPassword && (() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); })()}
+                        maxWidth="max-w-md"
                     >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full overflow-hidden"
-                        >
-                            <div className="p-4 md:p-6 border-b border-amber-100 flex justify-between items-center bg-amber-50">
-                                <h3 className="text-lg font-bold text-amber-900 flex items-center gap-2">
-                                    <div className="bg-amber-100 p-1.5 rounded-full">
-                                        <KeyRound className="w-4 h-4 text-amber-600" />
-                                    </div>
-                                    Cambiar Contraseña
-                                </h3>
-                                <button
-                                    onClick={() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); }}
-                                    disabled={isResettingPassword}
-                                    className="p-2 hover:bg-amber-100 rounded-full transition-colors"
-                                >
-                                    <X className="w-5 h-5 text-amber-400" />
-                                </button>
-                            </div>
+                        <div className="px-7 pt-6 pb-4 flex justify-between items-center">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface flex items-center gap-2">
+                                <div className="bg-amber-100 p-1.5 rounded-full">
+                                    <KeyRound className="w-4 h-4 text-amber-600" />
+                                </div>
+                                Cambiar Contraseña
+                            </h3>
+                            <button
+                                onClick={() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); }}
+                                disabled={isResettingPassword}
+                                className="p-2 hover:bg-eyr-surface-low rounded-full transition-colors disabled:opacity-50"
+                            >
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
 
-                            <div className="p-4 md:p-6 space-y-4">
-                                <p className="text-sm text-gray-500">
-                                    Establece una nueva contraseña para <span className="font-semibold text-slate-700">{resetTargetUser.name}</span> ({resetTargetUser.email}).
-                                </p>
+                        <div className="px-7 pb-0 space-y-4 overflow-y-auto">
+                            <p className="text-sm text-eyr-on-variant">
+                                Establece una nueva contraseña para <span className="font-semibold text-eyr-on-surface">{resetTargetUser.name}</span> ({resetTargetUser.email}).
+                            </p>
 
-                                {/* Password Input */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Nueva Contraseña</label>
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <input
-                                                type={showNewPassword ? 'text' : 'password'}
-                                                value={newPasswordValue}
-                                                onChange={(e) => setNewPasswordValue(e.target.value)}
-                                                placeholder="Mínimo 6 caracteres"
-                                                className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-mono text-sm"
-                                                disabled={isResettingPassword}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNewPassword(v => !v)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                            >
-                                                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                            </button>
-                                        </div>
+                            {/* Password Input */}
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Nueva Contraseña</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            value={newPasswordValue}
+                                            onChange={(e) => setNewPasswordValue(e.target.value)}
+                                            placeholder="Mínimo 6 caracteres"
+                                            className="w-full px-5 py-4 pr-12 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-mono text-sm text-eyr-on-surface"
+                                            disabled={isResettingPassword}
+                                        />
                                         <button
                                             type="button"
-                                            onClick={() => { setNewPasswordValue(generateRandomPassword()); setShowNewPassword(true); }}
-                                            disabled={isResettingPassword}
-                                            className="px-3 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 transition-colors disabled:opacity-50"
-                                            title="Generar contraseña aleatoria"
+                                            onClick={() => setShowNewPassword(v => !v)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-eyr-on-variant hover:text-eyr-on-surface transition-colors"
                                         >
-                                            <Dices className="w-5 h-5" />
+                                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
                                     </div>
-                                    {newPasswordValue.length > 0 && newPasswordValue.length < 6 && (
-                                        <p className="text-xs text-red-500 mt-1 ml-1">La contraseña debe tener al menos 6 caracteres</p>
-                                    )}
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-3 pt-2">
                                     <button
-                                        onClick={() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); }}
+                                        type="button"
+                                        onClick={() => { setNewPasswordValue(generateRandomPassword()); setShowNewPassword(true); }}
                                         disabled={isResettingPassword}
-                                        className="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                        className="px-3 py-3 rounded-2xl bg-eyr-surface-low hover:bg-eyr-surface-mid border border-eyr-outline-variant/30 text-eyr-on-variant transition-colors disabled:opacity-50"
+                                        title="Generar contraseña aleatoria"
                                     >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            if (newPasswordValue.length < 6) return;
-                                            setIsResettingPassword(true);
-                                            try {
-                                                await setUserPassword(resetTargetUser.uid, newPasswordValue);
-                                                toast.success(
-                                                    <div>
-                                                        <p className="font-semibold">Contraseña actualizada para {resetTargetUser.name}</p>
-                                                        <div className="mt-1 flex items-center gap-2">
-                                                            <code className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{newPasswordValue}</code>
-                                                            <button
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(newPasswordValue);
-                                                                    toast.success('Contraseña copiada');
-                                                                }}
-                                                                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
-                                                            >
-                                                                Copiar
-                                                            </button>
-                                                        </div>
-                                                    </div>,
-                                                    { duration: 10000 }
-                                                );
-                                                setResetTargetUser(null);
-                                                setNewPasswordValue('');
-                                                setShowNewPassword(false);
-                                            } catch (error) {
-                                                toast.error('Error: ' + error.message);
-                                            } finally {
-                                                setIsResettingPassword(false);
-                                            }
-                                        }}
-                                        disabled={isResettingPassword || newPasswordValue.length < 6}
-                                        className="flex-1 px-4 py-3 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors shadow-lg shadow-amber-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                                    >
-                                        {isResettingPassword ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                Guardando...
-                                            </>
-                                        ) : (
-                                            'Cambiar Contraseña'
-                                        )}
+                                        <Dices className="w-5 h-5" />
                                     </button>
                                 </div>
-
-                                {/* Fallback: send email option */}
-                                <div className="pt-2 border-t border-slate-100">
-                                    <button
-                                        onClick={async () => {
-                                            setIsResettingPassword(true);
-                                            try {
-                                                await resetPassword(resetTargetUser.email, resetTargetUser.name);
-                                                toast.success(`Correo de recuperación enviado a ${resetTargetUser.email}`);
-                                                setResetTargetUser(null);
-                                                setNewPasswordValue('');
-                                                setShowNewPassword(false);
-                                            } catch (error) {
-                                                toast.error('Error al enviar correo: ' + error.message);
-                                            } finally {
-                                                setIsResettingPassword(false);
-                                            }
-                                        }}
-                                        disabled={isResettingPassword}
-                                        className="w-full text-center text-xs text-slate-400 hover:text-slate-600 font-medium py-2 transition-colors disabled:opacity-50"
-                                    >
-                                        <Mail className="w-3.5 h-3.5 inline mr-1" />
-                                        O enviar correo de recuperación
-                                    </button>
-                                </div>
+                                {newPasswordValue.length > 0 && newPasswordValue.length < 6 && (
+                                    <p className="text-xs text-red-500 mt-1 ml-1">La contraseña debe tener al menos 6 caracteres</p>
+                                )}
                             </div>
-                        </motion.div>
-                    </div>
+
+                            {/* Fallback: send email option */}
+                            <div className="border-t border-eyr-outline-variant/30 pt-2">
+                                <button
+                                    onClick={async () => {
+                                        setIsResettingPassword(true);
+                                        try {
+                                            await resetPassword(resetTargetUser.email, resetTargetUser.name);
+                                            toast.success(`Correo de recuperación enviado a ${resetTargetUser.email}`);
+                                            setResetTargetUser(null);
+                                            setNewPasswordValue('');
+                                            setShowNewPassword(false);
+                                        } catch (error) {
+                                            toast.error('Error al enviar correo: ' + error.message);
+                                        } finally {
+                                            setIsResettingPassword(false);
+                                        }
+                                    }}
+                                    disabled={isResettingPassword}
+                                    className="w-full text-center text-xs text-eyr-on-variant hover:text-eyr-on-surface font-medium py-2 transition-colors disabled:opacity-50"
+                                >
+                                    <Mail className="w-3.5 h-3.5 inline mr-1" />
+                                    O enviar correo de recuperación
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                onClick={() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); }}
+                                disabled={isResettingPassword}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (newPasswordValue.length < 6) return;
+                                    setIsResettingPassword(true);
+                                    try {
+                                        await setUserPassword(resetTargetUser.uid, newPasswordValue);
+                                        toast.success(
+                                            <div>
+                                                <p className="font-semibold">Contraseña actualizada para {resetTargetUser.name}</p>
+                                                <div className="mt-1 flex items-center gap-2">
+                                                    <code className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{newPasswordValue}</code>
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(newPasswordValue);
+                                                            toast.success('Contraseña copiada');
+                                                        }}
+                                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+                                                    >
+                                                        Copiar
+                                                    </button>
+                                                </div>
+                                            </div>,
+                                            { duration: 10000 }
+                                        );
+                                        setResetTargetUser(null);
+                                        setNewPasswordValue('');
+                                        setShowNewPassword(false);
+                                    } catch (error) {
+                                        toast.error('Error: ' + error.message);
+                                    } finally {
+                                        setIsResettingPassword(false);
+                                    }
+                                }}
+                                disabled={isResettingPassword || newPasswordValue.length < 6}
+                                className="flex-1 bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isResettingPassword ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Guardando...
+                                    </>
+                                ) : (
+                                    'Cambiar Contraseña'
+                                )}
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
         </div>

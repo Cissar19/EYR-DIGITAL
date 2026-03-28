@@ -28,10 +28,6 @@ export const EvaluacionesProvider = ({ children }) => {
         validateRequiredString(data.asignatura, 'asignatura');
         validateDate(data.date, 'fecha');
 
-        if (!data.questions || data.questions.length === 0) {
-            throw new Error('Debe tener al menos una pregunta');
-        }
-
         const doc = {
             name: sanitizeText(data.name),
             curso: data.curso,
@@ -47,13 +43,13 @@ export const EvaluacionesProvider = ({ children }) => {
         };
 
         try {
-            await createDocument(COLLECTION, doc);
+            const created = await createDocument(COLLECTION, doc);
             toast.success('Evaluacion creada');
-            return true;
+            return created.id;
         } catch (error) {
             console.error('Error creando evaluacion:', error);
             toast.error('Error al crear evaluacion');
-            return false;
+            return null;
         }
     }, []);
 

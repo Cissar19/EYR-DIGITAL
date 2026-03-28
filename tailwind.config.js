@@ -8,6 +8,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        headline: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
         brand: {
@@ -16,7 +17,26 @@ export default {
           500: '#6366f1',
           600: '#4f46e5',
           700: '#4338ca',
-        }
+        },
+        // Paleta EYR — Material Design 3 (del diseño Stitch)
+        eyr: {
+          primary:           '#4e45e4',
+          'primary-dim':     '#4135d8',
+          'primary-container': '#bdbaff',
+          background:        '#fdf7ff',
+          surface:           '#fdf7ff',
+          'surface-lowest':  '#ffffff',
+          'surface-low':     '#f8f1ff',
+          'surface-mid':     '#f2eaff',
+          'surface-high':    '#ede4ff',
+          'surface-highest': '#e8deff',
+          'on-surface':      '#362c55',
+          'on-variant':      '#635984',
+          outline:           '#7f74a2',
+          'outline-variant': '#b7abdc',
+          'tertiary-bg':     '#53ddfc',
+          'on-tertiary':     '#004b58',
+        },
       },
       boxShadow: {
         'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',

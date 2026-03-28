@@ -30,7 +30,10 @@ function doPost(e) {
     }
 
     // Si tiene "actionType" es de dias admin, "employeeName" es licencias, "convivenciaAction" es convivencia
-    if (data.actionType) {
+    // "crearPrueba" genera un Google Doc con el formato EYR
+    if (data.crearPrueba) {
+      return handleCrearPrueba(data);
+    } else if (data.actionType) {
       return handleAdminDays(data);
     } else if (data.convivenciaAction) {
       return handleConvivencia(data);
@@ -540,4 +543,162 @@ function buildPasswordResetEmail_(toName, resetLink, cfg) {
 
     '<tr><td style="background:linear-gradient(to right,#1B3A8C 33%,#F5D33A 33%,#F5D33A 66%,#8C1B1B 66%);height:7px;font-size:0;line-height:0;">&nbsp;</td></tr>' +
     '</table></td></tr></table></body></html>';
+}
+
+/* ============================================================
+   HANDLER - CREAR PRUEBA EN GOOGLE DOCS
+   Recibe: nombre, curso, asignatura, fecha, profesor, preguntas[]
+   Retorna: { success: true, url: string }
+   ============================================================ */
+function handleCrearPrueba(data) {
+  var nombre     = data.nombre     || 'Prueba';
+  var curso      = data.curso      || '';
+  var asignatura = data.asignatura || '';
+  var fecha      = data.fecha      || '';
+  var profesor   = data.profesor   || '';
+  var preguntas  = data.preguntas  || [];
+
+  // Formatear fecha YYYY-MM-DD → "DD de mes de YYYY"
+  var fechaLabel = fecha;
+  try {
+    var parts = fecha.split('-');
+    var meses = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                 'agosto','septiembre','octubre','noviembre','diciembre'];
+    fechaLabel = parseInt(parts[2]) + ' de ' + meses[parseInt(parts[1]) - 1] + ' de ' + parts[0];
+  } catch(e) {}
+
+  var smPreguntas  = preguntas.filter(function(p) { return p.tipo === 'seleccion_multiple'; });
+  var devPreguntas = preguntas.filter(function(p) { return p.tipo === 'desarrollo'; });
+  var totalPuntos  = preguntas.length;
+
+  // Crear documento
+  var doc  = DocumentApp.create(nombre + ' \u2014 ' + curso + ' \u2014 ' + asignatura);
+  var body = doc.getBody();
+  body.setMarginTop(54);
+  body.setMarginBottom(54);
+  body.setMarginLeft(72);
+  body.setMarginRight(72);
+  body.clear();
+
+  // ── Encabezado escuela ──────────────────────────────────────
+  var h1 = body.appendParagraph('CENTRO EDUCACIONAL ERNESTO Y\u00c1\u00d1EZ RIVERA');
+  h1.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  h1.editAsText().setFontFamily('Arial').setFontSize(13).setBold(true).setForegroundColor('#1B3A8C');
+
+  var h2 = body.appendParagraph('Huechuraba \u00b7 Santiago');
+  h2.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  h2.editAsText().setFontSize(9).setBold(false).setForegroundColor('#666666');
+
+  body.appendHorizontalRule();
+
+  // ── Título de la evaluación ─────────────────────────────────
+  var etitle = body.appendParagraph(nombre.toUpperCase());
+  etitle.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  etitle.editAsText().setFontSize(15).setBold(true).setForegroundColor('#1B3A8C');
+
+  var emeta = body.appendParagraph(asignatura + '   |   ' + curso);
+  emeta.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  emeta.editAsText().setFontSize(10).setItalic(true).setBold(false).setForegroundColor('#555555');
+
+  if (profesor) {
+    var eprofe = body.appendParagraph('Profesor(a): ' + profesor);
+    eprofe.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    eprofe.editAsText().setFontSize(10).setItalic(false).setForegroundColor('#555555');
+  }
+
+  body.appendParagraph('');
+
+  // ── Tabla datos alumno ──────────────────────────────────────
+  var infoTable = body.appendTable([
+    ['Nombre:', '', 'Fecha:', fechaLabel],
+    ['Curso:', curso, 'Puntaje:', '_______ / ' + totalPuntos + ' pts'],
+  ]);
+  infoTable.setBorderColor('#1B3A8C');
+
+  [[0,0],[0,2],[1,0],[1,2]].forEach(function(rc) {
+    var cell = infoTable.getCell(rc[0], rc[1]);
+    cell.setBackgroundColor('#E8EDF7');
+    cell.editAsText().setBold(true).setFontSize(10).setForegroundColor('#1B3A8C');
+  });
+  [[0,1],[0,3],[1,1],[1,3]].forEach(function(rc) {
+    infoTable.getCell(rc[0], rc[1]).editAsText().setFontSize(10);
+  });
+
+  body.appendParagraph('');
+
+  // ── Instrucciones generales ─────────────────────────────────
+  var instr = body.appendParagraph('Lee atentamente cada pregunta. Responde con letra clara y ordenada.');
+  instr.editAsText().setFontSize(10).setItalic(true).setForegroundColor('#444444');
+  body.appendParagraph('');
+
+  // ── Sección Selección Múltiple ──────────────────────────────
+  var qNum = 0;
+  if (smPreguntas.length > 0) {
+    var secSM = body.appendParagraph('I.  SECCI\u00d3N SELECCI\u00d3N M\u00daLTIPLE');
+    secSM.editAsText().setFontSize(11).setBold(true).setForegroundColor('#1B3A8C');
+
+    var iSM = body.appendParagraph('Marca con una X la alternativa correcta. (' + smPreguntas.length + ' pregunta' + (smPreguntas.length !== 1 ? 's' : '') + ')');
+    iSM.editAsText().setFontSize(10).setItalic(true).setBold(false).setForegroundColor('#555555');
+    body.appendParagraph('');
+
+    for (var i = 0; i < smPreguntas.length; i++) {
+      qNum++;
+      var p = smPreguntas[i];
+      var qPara = body.appendParagraph(qNum + '.  ' + (p.enunciado || ''));
+      qPara.editAsText().setFontSize(11).setBold(false);
+
+      var altKeys = Object.keys(p.alternativas || {})
+        .filter(function(k) { return ['a','b','c','d'].indexOf(k) >= 0; })
+        .sort();
+
+      for (var j = 0; j < altKeys.length; j++) {
+        var altPara = body.appendParagraph('        ' + altKeys[j] + ')  ' + (p.alternativas[altKeys[j]] || ''));
+        altPara.editAsText().setFontSize(11);
+      }
+      body.appendParagraph('');
+    }
+  }
+
+  // ── Sección Desarrollo ──────────────────────────────────────
+  if (devPreguntas.length > 0) {
+    var secLabel = smPreguntas.length > 0 ? 'II.' : 'I.';
+    var secDev = body.appendParagraph(secLabel + '  SECCI\u00d3N DESARROLLO');
+    secDev.editAsText().setFontSize(11).setBold(true).setForegroundColor('#1B3A8C');
+
+    var iDev = body.appendParagraph('Responde con letra clara. (' + devPreguntas.length + ' pregunta' + (devPreguntas.length !== 1 ? 's' : '') + ')');
+    iDev.editAsText().setFontSize(10).setItalic(true).setBold(false).setForegroundColor('#555555');
+    body.appendParagraph('');
+
+    for (var i = 0; i < devPreguntas.length; i++) {
+      qNum++;
+      var p = devPreguntas[i];
+      var qPara = body.appendParagraph(qNum + '.  ' + (p.enunciado || ''));
+      qPara.editAsText().setFontSize(11).setBold(false);
+
+      // Líneas subrayadas para respuesta (usando espacios NBSP subrayados)
+      var linea = '';
+      for (var s = 0; s < 80; s++) { linea += '\u00a0'; }
+      body.appendParagraph('');
+      body.appendParagraph(linea).editAsText().setUnderline(true).setFontSize(11);
+      body.appendParagraph(linea).editAsText().setUnderline(true).setFontSize(11);
+      body.appendParagraph(linea).editAsText().setUnderline(true).setFontSize(11);
+      body.appendParagraph('');
+    }
+  }
+
+  // ── Pie de página ───────────────────────────────────────────
+  body.appendHorizontalRule();
+  var footer = body.appendParagraph('EYR Digital \u00b7 Centro Educacional Ernesto Y\u00e1\u00f1ez Rivera \u00b7 Huechuraba');
+  footer.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  footer.editAsText().setFontSize(9).setForegroundColor('#888888').setItalic(true);
+
+  // Compartir solo lectura con cualquier persona que tenga el enlace
+  DriveApp.getFileById(doc.getId())
+    .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  doc.saveAndClose();
+
+  return ContentService.createTextOutput(
+    JSON.stringify({ success: true, url: doc.getUrl() })
+  ).setMimeType(ContentService.MimeType.JSON);
 }

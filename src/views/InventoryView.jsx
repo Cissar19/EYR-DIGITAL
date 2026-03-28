@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalContainer from '../components/ModalContainer';
 import {
     Package, Plus, Edit3, Trash2, X, AlertTriangle,
     TrendingUp, ShoppingCart, AlertCircle, Wrench, ChevronRight, FolderPlus, Home, Pencil, Minus
@@ -617,376 +618,237 @@ export default function InventoryView() {
                 {currentFolder ? renderFolderView() : renderRootView()}
 
                 {/* Item Modal */}
-                <AnimatePresence>
-                    {isItemModalOpen && (
-                        <>
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setIsItemModalOpen(false)}
-                                className="fixed inset-0 bg-black/40 backdrop-blur-md z-40"
-                            />
-
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                className="fixed inset-0 flex items-center justify-center z-50 p-4"
-                            >
-                                <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-2xl flex items-center justify-center">
-                                                <Package className="w-6 h-6 text-indigo-600" />
-                                            </div>
-                                            <h2 className="text-2xl font-semibold text-slate-900">
-                                                {editingItem ? 'Editar Artículo' : 'Nuevo Artículo'}
-                                            </h2>
-                                        </div>
-                                        <button
-                                            onClick={() => setIsItemModalOpen(false)}
-                                            className="w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
-                                        >
-                                            <X className="w-5 h-5 text-slate-400" />
-                                        </button>
-                                    </div>
-
-                                    <form onSubmit={handleSubmitItem} className="space-y-5">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                Nombre del Artículo *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={itemFormData.name}
-                                                onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })}
-                                                placeholder="Ej: Proyector Epson"
-                                                className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                Categoría *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={itemFormData.category}
-                                                onChange={(e) => setItemFormData({ ...itemFormData, category: e.target.value })}
-                                                placeholder="Ej: Tecnología, Audio"
-                                                className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Stock Total *
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    required
-                                                    min="1"
-                                                    value={itemFormData.stock}
-                                                    onChange={(e) => setItemFormData({ ...itemFormData, stock: e.target.value })}
-                                                    placeholder="Cantidad"
-                                                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Icono
-                                                </label>
-                                                <select
-                                                    value={itemFormData.icon}
-                                                    onChange={(e) => setItemFormData({ ...itemFormData, icon: e.target.value })}
-                                                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                                >
-                                                    {Object.keys(ICON_MAP).map(iconName => (
-                                                        <option key={iconName} value={iconName}>
-                                                            {iconName}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                Descripción (opcional)
-                                            </label>
-                                            <textarea
-                                                value={itemFormData.description}
-                                                onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
-                                                placeholder="Breve descripción..."
-                                                rows={3}
-                                                className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm resize-none"
-                                            />
-                                        </div>
-
-                                        <div className="flex gap-3 pt-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsItemModalOpen(false)}
-                                                className="flex-1 px-6 py-3 rounded-2xl font-semibold text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="flex-1 px-6 py-3 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg shadow-purple-200 transition-all"
-                                            >
-                                                {editingItem ? 'Guardar Cambios' : 'Crear Artículo'}
-                                            </button>
-                                        </div>
-                                    </form>
+                {isItemModalOpen && (
+                    <ModalContainer onClose={() => setIsItemModalOpen(false)} maxWidth="max-w-xl">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-2xl flex items-center justify-center">
+                                    <Package className="w-6 h-6 text-indigo-600" />
                                 </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
+                                <h2 className="font-headline font-extrabold text-eyr-on-surface text-2xl">
+                                    {editingItem ? 'Editar Artículo' : 'Nuevo Artículo'}
+                                </h2>
+                            </div>
+                            <button onClick={() => setIsItemModalOpen(false)} className="w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors">
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <form onSubmit={handleSubmitItem} className="px-8 pb-4 space-y-5 overflow-y-auto">
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Nombre del Artículo *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={itemFormData.name}
+                                    onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })}
+                                    placeholder="Ej: Proyector Epson"
+                                    className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Categoría *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={itemFormData.category}
+                                    onChange={(e) => setItemFormData({ ...itemFormData, category: e.target.value })}
+                                    placeholder="Ej: Tecnología, Audio"
+                                    className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Stock Total *</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="1"
+                                        value={itemFormData.stock}
+                                        onChange={(e) => setItemFormData({ ...itemFormData, stock: e.target.value })}
+                                        placeholder="Cantidad"
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Icono</label>
+                                    <select
+                                        value={itemFormData.icon}
+                                        onChange={(e) => setItemFormData({ ...itemFormData, icon: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    >
+                                        {Object.keys(ICON_MAP).map(iconName => (
+                                            <option key={iconName} value={iconName}>{iconName}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Descripción (opcional)</label>
+                                <textarea
+                                    value={itemFormData.description}
+                                    onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
+                                    placeholder="Breve descripción..."
+                                    rows={3}
+                                    className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface resize-none"
+                                />
+                            </div>
+                        </form>
+
+                        {/* Footer */}
+                        <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                            <button type="button" onClick={() => setIsItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                            <button type="submit" form="item-form" onClick={handleSubmitItem} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                                {editingItem ? 'Guardar Cambios' : 'Crear Artículo'}
+                            </button>
+                        </div>
+                    </ModalContainer>
+                )}
 
                 {/* Folder Modal (Create & Edit) */}
-                <AnimatePresence>
-                    {(isFolderModalOpen || isEditFolderModalOpen) && (
-                        <>
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => {
-                                    setIsFolderModalOpen(false);
-                                    setIsEditFolderModalOpen(false);
-                                }}
-                                className="fixed inset-0 bg-black/40 backdrop-blur-md z-40"
-                            />
-
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                className="fixed inset-0 flex items-center justify-center z-50 p-4"
-                            >
-                                <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-2xl flex items-center justify-center">
-                                                <FolderPlus className="w-6 h-6 text-indigo-600" />
-                                            </div>
-                                            <h2 className="text-2xl font-semibold text-slate-900">
-                                                {editingFolder ? 'Renombrar Carpeta' : 'Nueva Carpeta'}
-                                            </h2>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setIsFolderModalOpen(false);
-                                                setIsEditFolderModalOpen(false);
-                                            }}
-                                            className="w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
-                                        >
-                                            <X className="w-5 h-5 text-slate-400" />
-                                        </button>
-                                    </div>
-
-                                    <form onSubmit={editingFolder ? handleUpdateFolder : handleCreateFolder} className="space-y-5">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                Nombre de la Carpeta *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={folderFormData.name}
-                                                onChange={(e) => setFolderFormData({ ...folderFormData, name: e.target.value })}
-                                                placeholder="Ej: Materiales Deportivos"
-                                                className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Icono
-                                                </label>
-                                                <select
-                                                    value={folderFormData.icon}
-                                                    onChange={(e) => setFolderFormData({ ...folderFormData, icon: e.target.value })}
-                                                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                                >
-                                                    <option value="Package">Package</option>
-                                                    <option value="Store">Store</option>
-                                                    <option value="Monitor">Monitor</option>
-                                                    <option value="Laptop">Laptop</option>
-                                                    <option value="Volume2">Volume2</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Color
-                                                </label>
-                                                <select
-                                                    value={folderFormData.color}
-                                                    onChange={(e) => setFolderFormData({ ...folderFormData, color: e.target.value })}
-                                                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all text-sm"
-                                                >
-                                                    <option value="blue">Azul</option>
-                                                    <option value="yellow">Amarillo</option>
-                                                    <option value="purple">Morado</option>
-                                                    <option value="green">Verde</option>
-                                                    <option value="red">Rojo</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-3 pt-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setIsFolderModalOpen(false);
-                                                    setIsEditFolderModalOpen(false);
-                                                }}
-                                                className="flex-1 px-6 py-3 rounded-2xl font-semibold text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="flex-1 px-6 py-3 rounded-2xl font-semibold text-sm text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg shadow-purple-200 transition-all"
-                                            >
-                                                {editingFolder ? 'Guardar Cambios' : 'Crear Carpeta'}
-                                            </button>
-                                        </div>
-                                    </form>
+                {(isFolderModalOpen || isEditFolderModalOpen) && (
+                    <ModalContainer
+                        onClose={() => { setIsFolderModalOpen(false); setIsEditFolderModalOpen(false); }}
+                        maxWidth="max-w-md"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-2xl flex items-center justify-center">
+                                    <FolderPlus className="w-6 h-6 text-indigo-600" />
                                 </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
-
-                {/* Delete Confirmation Modal */}
-                <AnimatePresence>
-                    {isDeleteFolderModalOpen && folderToDelete && (
-                        <div
-                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm animate-in fade-in duration-200"
-                            onClick={() => setIsDeleteFolderModalOpen(false)}
-                        >
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                                <h2 className="font-headline font-extrabold text-eyr-on-surface text-2xl">
+                                    {editingFolder ? 'Renombrar Carpeta' : 'Nueva Carpeta'}
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => { setIsFolderModalOpen(false); setIsEditFolderModalOpen(false); }}
+                                className="w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
                             >
-                                <div className="p-6 space-y-4">
-                                    {/* Icon + Title Section */}
-                                    <div className="flex items-start gap-4">
-                                        {/* Alert Icon */}
-                                        <div className="bg-red-50 p-4 rounded-full shrink-0">
-                                            <AlertTriangle className="w-6 h-6 text-red-600" />
-                                        </div>
-
-                                        {/* Text Content */}
-                                        <div className="flex-1 pt-1">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-1">
-                                                ¿Eliminar carpeta "{folderToDelete.name}"?
-                                            </h3>
-                                            <p className="text-sm text-gray-500 leading-relaxed">
-                                                Si eliminas esta carpeta, todos los artículos en su interior también serán eliminados. Esta acción no se puede deshacer.
-                                            </p>
-
-                                            {/* Warning if items exist */}
-                                            {getItemsByFolder(folderToDelete.id).length > 0 && (
-                                                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
-                                                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                                    <p className="text-xs text-amber-800 font-medium">
-                                                        Advertencia: Esta carpeta contiene {getItemsByFolder(folderToDelete.id).length} artículos que también serán eliminados.
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-3 pt-2">
-                                        <button
-                                            onClick={() => setIsDeleteFolderModalOpen(false)}
-                                            className="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            onClick={confirmDeleteFolder}
-                                            className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
-                                        >
-                                            Sí, Eliminar
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
+                                <X className="w-5 h-5 text-eyr-on-variant" />
+                            </button>
                         </div>
-                    )}
-                </AnimatePresence>
+
+                        {/* Body */}
+                        <form onSubmit={editingFolder ? handleUpdateFolder : handleCreateFolder} className="px-8 pb-4 space-y-5 overflow-y-auto">
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Nombre de la Carpeta *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={folderFormData.name}
+                                    onChange={(e) => setFolderFormData({ ...folderFormData, name: e.target.value })}
+                                    placeholder="Ej: Materiales Deportivos"
+                                    className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Icono</label>
+                                    <select
+                                        value={folderFormData.icon}
+                                        onChange={(e) => setFolderFormData({ ...folderFormData, icon: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    >
+                                        <option value="Package">Package</option>
+                                        <option value="Store">Store</option>
+                                        <option value="Monitor">Monitor</option>
+                                        <option value="Laptop">Laptop</option>
+                                        <option value="Volume2">Volume2</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Color</label>
+                                    <select
+                                        value={folderFormData.color}
+                                        onChange={(e) => setFolderFormData({ ...folderFormData, color: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    >
+                                        <option value="blue">Azul</option>
+                                        <option value="yellow">Amarillo</option>
+                                        <option value="purple">Morado</option>
+                                        <option value="green">Verde</option>
+                                        <option value="red">Rojo</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+
+                        {/* Footer */}
+                        <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                            <button type="button" onClick={() => { setIsFolderModalOpen(false); setIsEditFolderModalOpen(false); }} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                            <button type="submit" onClick={editingFolder ? handleUpdateFolder : handleCreateFolder} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                                {editingFolder ? 'Guardar Cambios' : 'Crear Carpeta'}
+                            </button>
+                        </div>
+                    </ModalContainer>
+                )}
+
+                {/* Delete Folder Confirmation Modal */}
+                {isDeleteFolderModalOpen && folderToDelete && (
+                    <ModalContainer onClose={() => setIsDeleteFolderModalOpen(false)} maxWidth="max-w-sm" noGradient>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-start gap-4">
+                                <div className="bg-red-50 p-4 rounded-full shrink-0">
+                                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                                </div>
+                                <div className="flex-1 pt-1">
+                                    <h3 className="font-headline font-extrabold text-eyr-on-surface mb-1">
+                                        ¿Eliminar carpeta "{folderToDelete.name}"?
+                                    </h3>
+                                    <p className="text-sm text-eyr-on-variant leading-relaxed">
+                                        Si eliminas esta carpeta, todos los artículos en su interior también serán eliminados. Esta acción no se puede deshacer.
+                                    </p>
+                                    {getItemsByFolder(folderToDelete.id).length > 0 && (
+                                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+                                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-800 font-medium">
+                                                Advertencia: Esta carpeta contiene {getItemsByFolder(folderToDelete.id).length} artículos que también serán eliminados.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                            <button onClick={() => setIsDeleteFolderModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                            <button onClick={confirmDeleteFolder} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Sí, Eliminar</button>
+                        </div>
+                    </ModalContainer>
+                )}
 
                 {/* Item Delete Confirmation Modal */}
-                <AnimatePresence>
-                    {isDeleteItemModalOpen && itemToDelete && (
-                        <div
-                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm animate-in fade-in duration-200"
-                            onClick={() => setIsDeleteItemModalOpen(false)}
-                        >
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-                            >
-                                <div className="p-6 space-y-4">
-                                    {/* Icon + Title Section */}
-                                    <div className="flex items-start gap-4">
-                                        {/* Alert Icon */}
-                                        <div className="bg-red-50 p-4 rounded-full shrink-0">
-                                            <Trash2 className="w-6 h-6 text-red-600" />
-                                        </div>
-
-                                        {/* Text Content */}
-                                        <div className="flex-1 pt-1">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-1">
-                                                ¿Eliminar "{itemToDelete.name || 'este artículo'}"?
-                                            </h3>
-                                            <p className="text-sm text-gray-500 leading-relaxed">
-                                                Este artículo se eliminará permanentemente del inventario. Esta acción no se puede deshacer.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-3 pt-2">
-                                        <button
-                                            onClick={() => setIsDeleteItemModalOpen(false)}
-                                            className="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            onClick={confirmDeleteItem}
-                                            className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
-                                        >
-                                            Eliminar Artículo
-                                        </button>
-                                    </div>
+                {isDeleteItemModalOpen && itemToDelete && (
+                    <ModalContainer onClose={() => setIsDeleteItemModalOpen(false)} maxWidth="max-w-sm" noGradient>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-start gap-4">
+                                <div className="bg-red-50 p-4 rounded-full shrink-0">
+                                    <Trash2 className="w-6 h-6 text-red-600" />
                                 </div>
-                            </motion.div>
+                                <div className="flex-1 pt-1">
+                                    <h3 className="font-headline font-extrabold text-eyr-on-surface mb-1">
+                                        ¿Eliminar "{itemToDelete.name || 'este artículo'}"?
+                                    </h3>
+                                    <p className="text-sm text-eyr-on-variant leading-relaxed">
+                                        Este artículo se eliminará permanentemente del inventario. Esta acción no se puede deshacer.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                </AnimatePresence>
+                        <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                            <button onClick={() => setIsDeleteItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                            <button onClick={confirmDeleteItem} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Eliminar Artículo</button>
+                        </div>
+                    </ModalContainer>
+                )}
             </div>
         </div>
     );

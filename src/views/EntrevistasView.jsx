@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { MessageSquare, Plus, Search, X, ChevronDown, ChevronUp, Pencil, Trash2, User, Users, Calendar, SlidersHorizontal, Download, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalContainer from '../components/ModalContainer';
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useEntrevistas } from '../context/EntrevistasContext';
 import { useStudents } from '../context/StudentsContext';
@@ -438,69 +439,40 @@ export default function EntrevistasView() {
                 )}
             </div>
 
-            {/* Create/Edit — Slide-in panel */}
-            <AnimatePresence>
-                {showModal && (
-                    <SlidePanel onClose={() => setShowModal(false)}>
-                        <EntrevistaForm
-                            editing={editingItem}
-                            students={students}
-                            user={user}
-                            onSave={async (data) => {
-                                if (editingItem) {
-                                    const ok = await updateEntrevista(editingItem.id, data);
-                                    if (ok) setShowModal(false);
-                                } else {
-                                    const ok = await addEntrevista(data);
-                                    if (ok) setShowModal(false);
-                                }
-                            }}
-                            onClose={() => setShowModal(false)}
-                        />
-                    </SlidePanel>
-                )}
-            </AnimatePresence>
+            {/* Create/Edit Modal */}
+            {showModal && (
+                <ModalContainer onClose={() => setShowModal(false)} maxWidth="max-w-xl">
+                    <EntrevistaForm
+                        editing={editingItem}
+                        students={students}
+                        user={user}
+                        onSave={async (data) => {
+                            if (editingItem) {
+                                const ok = await updateEntrevista(editingItem.id, data);
+                                if (ok) setShowModal(false);
+                            } else {
+                                const ok = await addEntrevista(data);
+                                if (ok) setShowModal(false);
+                            }
+                        }}
+                        onClose={() => setShowModal(false)}
+                    />
+                </ModalContainer>
+            )}
 
             {/* Delete confirm */}
-            <AnimatePresence>
-                {deleteConfirm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setDeleteConfirm(null)}>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40" />
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            onClick={e => e.stopPropagation()} className="relative bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
-                            <h3 className="font-bold text-slate-800 mb-2">Eliminar entrevista</h3>
-                            <p className="text-sm text-slate-500 mb-5">Esta accion no se puede deshacer.</p>
-                            <div className="flex gap-3 justify-end">
-                                <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                                <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Eliminar</button>
-                            </div>
-                        </motion.div>
+            {deleteConfirm && (
+                <ModalContainer onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm" noGradient>
+                    <div className="p-6">
+                        <h3 className="font-headline font-extrabold text-eyr-on-surface mb-2">Eliminar entrevista</h3>
+                        <p className="text-sm text-eyr-on-variant mb-5">Esta accion no se puede deshacer.</p>
                     </div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-// ── Slide Panel (from right) ──
-
-function SlidePanel({ children, onClose }) {
-    return (
-        <div className="fixed inset-0 z-50">
-            {/* Backdrop — full screen blur */}
-            <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={onClose}
-            />
-            {/* Panel */}
-            <motion.div
-                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className="absolute right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-2xl flex flex-col"
-            >
-                {children}
-            </motion.div>
+                    <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                        <button onClick={() => setDeleteConfirm(null)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                        <button onClick={() => handleDelete(deleteConfirm)} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Eliminar</button>
+                    </div>
+                </ModalContainer>
+            )}
         </div>
     );
 }
@@ -572,14 +544,14 @@ function EntrevistaForm({ editing, students, user, onSave, onClose }) {
 
     return (
         <>
-            {/* Fixed header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-                <h3 className="font-bold text-lg text-slate-800">{editing ? 'Editar Entrevista' : 'Nueva Entrevista'}</h3>
-                <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0">
+                <h3 className="font-headline font-extrabold text-eyr-on-surface text-xl">{editing ? 'Editar Entrevista' : 'Nueva Entrevista'}</h3>
+                <button onClick={onClose} className="p-1.5 text-eyr-on-variant hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-8 pb-4 space-y-4">
                 {/* Student search / selected */}
                 <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Alumno *</label>
@@ -725,11 +697,11 @@ function EntrevistaForm({ editing, students, user, onSave, onClose }) {
                 </div>
             </div>
 
-            {/* Fixed footer */}
-            <div className="flex gap-3 justify-end px-5 py-4 border-t border-slate-100 shrink-0 bg-white">
-                <button onClick={onClose} className="px-5 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors font-medium">Cancelar</button>
+            {/* Footer */}
+            <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                <button onClick={onClose} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
                 <button onClick={handleSubmit} disabled={!isValid || saving}
-                    className="px-5 py-2.5 text-sm rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                     {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Registrar'}
                 </button>

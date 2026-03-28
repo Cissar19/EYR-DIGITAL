@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { FileCheck, Plus, Search, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, User, Calendar, History, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalContainer from '../components/ModalContainer';
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useJustificatives } from '../context/JustificativesContext';
 import { useStudents } from '../context/StudentsContext';
@@ -398,70 +399,40 @@ export default function JustificativesView() {
             </div>
 
             {/* Create/Edit Modal */}
-            <AnimatePresence>
-                {showModal && (
-                    <ModalOverlay onClose={() => setShowModal(false)}>
-                        <JustificativeForm
-                            editing={editingItem}
-                            preselectedStudent={modalStudent}
-                            students={students}
-                            user={user}
-                            onSave={async (data) => {
-                                if (editingItem) {
-                                    const ok = await updateJustificative(editingItem.id, data);
-                                    if (ok) setShowModal(false);
-                                } else {
-                                    await addJustificative(data);
-                                }
-                            }}
-                            onDone={() => setShowModal(false)}
-                            onClose={() => setShowModal(false)}
-                        />
-                    </ModalOverlay>
-                )}
-            </AnimatePresence>
+            {showModal && (
+                <ModalContainer onClose={() => setShowModal(false)} maxWidth="max-w-md">
+                    <JustificativeForm
+                        editing={editingItem}
+                        preselectedStudent={modalStudent}
+                        students={students}
+                        user={user}
+                        onSave={async (data) => {
+                            if (editingItem) {
+                                const ok = await updateJustificative(editingItem.id, data);
+                                if (ok) setShowModal(false);
+                            } else {
+                                await addJustificative(data);
+                            }
+                        }}
+                        onDone={() => setShowModal(false)}
+                        onClose={() => setShowModal(false)}
+                    />
+                </ModalContainer>
+            )}
 
             {/* Delete confirm */}
-            <AnimatePresence>
-                {deleteConfirm && (
-                    <ModalOverlay onClose={() => setDeleteConfirm(null)}>
-                        <div className="bg-white rounded-3xl p-6 w-full">
-                            <h3 className="font-bold text-slate-800 mb-2">Eliminar justificativo</h3>
-                            <p className="text-sm text-slate-500 mb-5">Esta accion no se puede deshacer.</p>
-                            <div className="flex gap-3 justify-end">
-                                <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                                <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Eliminar</button>
-                            </div>
-                        </div>
-                    </ModalOverlay>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-// ── Modal Overlay ──
-
-function ModalOverlay({ children, onClose }) {
-    return (
-        <div className="fixed inset-0 z-50" onClick={onClose}>
-            {/* Backdrop */}
-            <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none"
-            />
-            {/* Scroll wrapper - this is the scrollable layer */}
-            <div className="absolute inset-0 overflow-y-auto">
-                <div className="min-h-full flex items-start justify-center px-4 py-6">
-                    <motion.div
-                        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                        onClick={e => e.stopPropagation()}
-                        className="relative w-full max-w-md"
-                    >
-                        {children}
-                    </motion.div>
-                </div>
-            </div>
+            {deleteConfirm && (
+                <ModalContainer onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm" noGradient>
+                    <div className="p-6">
+                        <h3 className="font-headline font-extrabold text-eyr-on-surface mb-2">Eliminar justificativo</h3>
+                        <p className="text-sm text-eyr-on-variant mb-5">Esta accion no se puede deshacer.</p>
+                    </div>
+                    <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                        <button onClick={() => setDeleteConfirm(null)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                        <button onClick={() => handleDelete(deleteConfirm)} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Eliminar</button>
+                    </div>
+                </ModalContainer>
+            )}
         </div>
     );
 }
@@ -528,13 +499,13 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
     const rangeCount = datesInRange.length;
 
     return (
-        <div className="bg-white rounded-3xl w-full">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
-                <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+        <div className="w-full flex flex-col">
+            <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0">
+                <h3 className="font-headline font-extrabold text-eyr-on-surface text-xl">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
+                <button onClick={onClose} className="p-1 text-eyr-on-variant hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="px-5 py-4 space-y-3.5">
+            <div className="px-8 pb-4 space-y-3.5 overflow-y-auto flex-1">
                 {/* Student (locked) */}
                 {lockedStudent && (
                     <div>
@@ -617,12 +588,12 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                 </div>
             </div>
 
-            <div className="flex gap-3 justify-end px-5 py-3.5 border-t border-slate-100">
-                <button onClick={onClose} className="px-5 py-2.5 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors font-medium">Cancelar</button>
+            <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0 mt-4">
+                <button onClick={onClose} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
                 <button
                     onClick={handleSubmit}
                     disabled={!isValid || saving}
-                    className="px-5 py-2.5 text-sm rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                     {saving ? 'Guardando...' : editing ? 'Actualizar' : rangeCount > 1 ? `Registrar ${rangeCount} dias` : 'Registrar'}
                 </button>

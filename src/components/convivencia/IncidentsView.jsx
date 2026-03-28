@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import StudentsManager from './StudentsManager';
+import ModalContainer from '../ModalContainer';
 
 const PAGE_SIZE = 12;
 
@@ -342,38 +343,32 @@ export default function IncidentsView() {
             )}
 
             {/* ═══ CREATE MODAL ═══ */}
-            <AnimatePresence>
-                {showCreateModal && (
-                    <CreateIncidentModal
-                        onClose={() => setShowCreateModal(false)}
-                        students={students}
-                        users={users}
-                        onCreate={createIncident}
-                    />
-                )}
-            </AnimatePresence>
+            {showCreateModal && (
+                <CreateIncidentModal
+                    onClose={() => setShowCreateModal(false)}
+                    students={students}
+                    users={users}
+                    onCreate={createIncident}
+                />
+            )}
 
             {/* ═══ DETAIL MODAL ═══ */}
-            <AnimatePresence>
-                {detailIncident && (
-                    <IncidentDetailModal
-                        incident={detailIncident}
-                        onClose={() => setSelectedIncident(null)}
-                        onAddNote={addFollowUpNote}
-                        onChangeStatus={changeStatus}
-                        onDelete={deleteIncident}
-                        canDelete={user && ['admin', 'super_admin'].includes(user.role)}
-                        canEditData={userCanEdit}
-                    />
-                )}
-            </AnimatePresence>
+            {detailIncident && (
+                <IncidentDetailModal
+                    incident={detailIncident}
+                    onClose={() => setSelectedIncident(null)}
+                    onAddNote={addFollowUpNote}
+                    onChangeStatus={changeStatus}
+                    onDelete={deleteIncident}
+                    canDelete={user && ['admin', 'super_admin'].includes(user.role)}
+                    canEditData={userCanEdit}
+                />
+            )}
 
             {/* ═══ STUDENTS MANAGER ═══ */}
-            <AnimatePresence>
-                {showStudentsManager && (
-                    <StudentsManager onClose={() => setShowStudentsManager(false)} />
-                )}
-            </AnimatePresence>
+            {showStudentsManager && (
+                <StudentsManager onClose={() => setShowStudentsManager(false)} />
+            )}
         </div>
     );
 }
@@ -450,242 +445,241 @@ function CreateIncidentModal({ onClose, students, users, onCreate }) {
     const canSubmit = studentId && category && severity && description.trim();
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-100 flex flex-col"
-            >
-                {/* Header */}
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-amber-500" />
-                        Nueva Incidencia
-                    </h3>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
-                        <X className="w-5 h-5" />
-                    </button>
+        <ModalContainer onClose={onClose} maxWidth="max-w-2xl">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-eyr-outline-variant/30 flex justify-between items-center shrink-0">
+                <h3 className="font-headline font-extrabold text-eyr-on-surface text-lg flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    Nueva Incidencia
+                </h3>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-eyr-on-variant transition-colors">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Student selector */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Alumno *</label>
+                    <div className="relative" ref={dropdownRef}>
+                        <div
+                            onClick={() => setShowStudentDropdown(true)}
+                            className={cn(
+                                "w-full flex items-center gap-2 px-5 py-4 rounded-2xl border cursor-pointer transition-all text-sm font-medium",
+                                showStudentDropdown ? "border-eyr-primary ring-4 ring-eyr-primary/10 bg-white" : "border-eyr-outline-variant/30 bg-eyr-surface-low hover:border-eyr-primary/40",
+                                selectedStudent ? "text-eyr-on-surface" : "text-eyr-on-variant"
+                            )}
+                        >
+                            {selectedStudent ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                    <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700">
+                                        {selectedStudent.fullName?.charAt(0)}
+                                    </div>
+                                    <span className="truncate">{selectedStudent.fullName}</span>
+                                    <span className="text-xs text-eyr-on-variant font-mono">{selectedStudent.rut}</span>
+                                    {selectedStudent.curso && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{selectedStudent.curso}</span>}
+                                </div>
+                            ) : (
+                                <span>Seleccionar alumno...</span>
+                            )}
+                            <ChevronDown className="w-4 h-4 text-eyr-on-variant shrink-0" />
+                        </div>
+
+                        <AnimatePresence>
+                            {showStudentDropdown && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    className="absolute z-30 top-full mt-2 left-0 right-0 bg-white border border-eyr-outline-variant/30 rounded-2xl shadow-xl overflow-hidden"
+                                >
+                                    <div className="p-2 border-b border-eyr-outline-variant/30">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-eyr-on-variant" />
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                value={studentSearch}
+                                                onChange={(e) => setStudentSearch(e.target.value)}
+                                                placeholder="Buscar alumno..."
+                                                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-eyr-surface-low border border-eyr-outline-variant/30 text-sm font-medium text-eyr-on-surface placeholder-eyr-on-variant focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto">
+                                        {filteredStudents.length === 0 ? (
+                                            <div className="px-4 py-6 text-center text-sm text-eyr-on-variant">No se encontraron alumnos</div>
+                                        ) : (
+                                            filteredStudents.map(s => (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => { setStudentId(s.id); setShowStudentDropdown(false); setStudentSearch(''); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-3",
+                                                        studentId === s.id ? "bg-amber-50 text-amber-700" : "text-eyr-on-surface hover:bg-eyr-surface-low"
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
+                                                        studentId === s.id ? "bg-amber-100 text-amber-700" : "bg-eyr-surface-mid text-eyr-on-variant"
+                                                    )}>
+                                                        {s.fullName?.charAt(0)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="truncate block">{s.fullName}</span>
+                                                        <span className="text-xs text-eyr-on-variant font-mono">{s.rut}</span>
+                                                    </div>
+                                                    {s.curso && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full shrink-0">{s.curso}</span>}
+                                                    {studentId === s.id && <Check className="w-4 h-4 ml-auto shrink-0 text-amber-500" />}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                    {/* Student selector */}
+                {/* Date + Time */}
+                <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alumno *</label>
-                        <div className="relative" ref={dropdownRef}>
-                            <div
-                                onClick={() => setShowStudentDropdown(true)}
-                                className={cn(
-                                    "w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium",
-                                    showStudentDropdown ? "border-amber-500 bg-white" : "border-slate-100 bg-slate-50/50 hover:border-slate-200",
-                                    selectedStudent ? "text-slate-800" : "text-slate-400"
-                                )}
-                            >
-                                {selectedStudent ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700">
-                                            {selectedStudent.fullName?.charAt(0)}
-                                        </div>
-                                        <span className="truncate">{selectedStudent.fullName}</span>
-                                        <span className="text-xs text-slate-400 font-mono">{selectedStudent.rut}</span>
-                                        {selectedStudent.curso && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{selectedStudent.curso}</span>}
-                                    </div>
-                                ) : (
-                                    <span>Seleccionar alumno...</span>
-                                )}
-                                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                            </div>
-
-                            <AnimatePresence>
-                                {showStudentDropdown && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -4 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -4 }}
-                                        className="absolute z-30 top-full mt-2 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden"
-                                    >
-                                        <div className="p-2 border-b border-slate-100">
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                <input
-                                                    type="text"
-                                                    autoFocus
-                                                    value={studentSearch}
-                                                    onChange={(e) => setStudentSearch(e.target.value)}
-                                                    placeholder="Buscar alumno..."
-                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:bg-white transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="max-h-48 overflow-y-auto">
-                                            {filteredStudents.length === 0 ? (
-                                                <div className="px-4 py-6 text-center text-sm text-slate-400">No se encontraron alumnos</div>
-                                            ) : (
-                                                filteredStudents.map(s => (
-                                                    <button
-                                                        key={s.id}
-                                                        type="button"
-                                                        onClick={() => { setStudentId(s.id); setShowStudentDropdown(false); setStudentSearch(''); }}
-                                                        className={cn(
-                                                            "w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-3",
-                                                            studentId === s.id ? "bg-amber-50 text-amber-700" : "text-slate-700 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        <div className={cn(
-                                                            "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
-                                                            studentId === s.id ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
-                                                        )}>
-                                                            {s.fullName?.charAt(0)}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <span className="truncate block">{s.fullName}</span>
-                                                            <span className="text-xs text-slate-400 font-mono">{s.rut}</span>
-                                                        </div>
-                                                        {s.curso && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full shrink-0">{s.curso}</span>}
-                                                        {studentId === s.id && <Check className="w-4 h-4 ml-auto shrink-0 text-amber-500" />}
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-
-                    {/* Date + Time */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fecha *</label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hora</label>
-                            <input
-                                type="time"
-                                value={time}
-                                onChange={(e) => setTime(e.target.value)}
-                                className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Category (grid buttons) */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Categoria *</label>
-                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                            {CATEGORIES.map(c => (
-                                <button
-                                    key={c.value}
-                                    type="button"
-                                    onClick={() => setCategory(c.value)}
-                                    className={cn(
-                                        "px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all",
-                                        category === c.value
-                                            ? `border-${c.color}-400 bg-${c.color}-50 text-${c.color}-700`
-                                            : "border-slate-100 bg-slate-50/50 text-slate-500 hover:border-slate-200"
-                                    )}
-                                >
-                                    {c.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Severity (3 buttons) */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Severidad *</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {SEVERITIES.map(s => (
-                                <button
-                                    key={s.value}
-                                    type="button"
-                                    onClick={() => setSeverity(s.value)}
-                                    className={cn(
-                                        "px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all",
-                                        severity === s.value
-                                            ? `border-${s.color}-400 bg-${s.color}-50 text-${s.color}-700`
-                                            : "border-slate-100 bg-slate-50/50 text-slate-500 hover:border-slate-200"
-                                    )}
-                                >
-                                    {s.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Descripcion *</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={3}
-                            placeholder="Describe la incidencia..."
-                            className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700 resize-none"
-                        />
-                    </div>
-
-                    {/* Involved staff */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Personal Involucrado</label>
-                        <div className="flex flex-wrap gap-2">
-                            {staffOptions.map(s => {
-                                const isSelected = involvedStaff.some(is => is.id === s.id);
-                                return (
-                                    <button
-                                        key={s.id}
-                                        type="button"
-                                        onClick={() => {
-                                            if (isSelected) {
-                                                setInvolvedStaff(prev => prev.filter(is => is.id !== s.id));
-                                            } else {
-                                                setInvolvedStaff(prev => [...prev, { id: s.id, name: s.name }]);
-                                            }
-                                        }}
-                                        className={cn(
-                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
-                                            isSelected
-                                                ? "bg-amber-100 text-amber-700 border-amber-200"
-                                                : "bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-200"
-                                        )}
-                                    >
-                                        {s.name}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Follow-up date */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fecha de Seguimiento</label>
+                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Fecha *</label>
                         <input
                             type="date"
-                            value={followUpDate}
-                            onChange={(e) => setFollowUpDate(e.target.value)}
-                            className="w-full max-w-xs px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Hora</label>
+                        <input
+                            type="time"
+                            value={time}
+                            onChange={(e) => setTime(e.target.value)}
+                            className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
                         />
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || saving}
-                        className="w-full py-3.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-base shadow-sm"
-                    >
-                        {saving ? 'Guardando...' : <><Check className="w-5 h-5" /> Registrar Incidencia</>}
-                    </button>
+                {/* Category (grid buttons) */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Categoria *</label>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        {CATEGORIES.map(c => (
+                            <button
+                                key={c.value}
+                                type="button"
+                                onClick={() => setCategory(c.value)}
+                                className={cn(
+                                    "px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all",
+                                    category === c.value
+                                        ? `border-${c.color}-400 bg-${c.color}-50 text-${c.color}-700`
+                                        : "border-eyr-outline-variant/30 bg-eyr-surface-low text-eyr-on-variant hover:border-eyr-primary/40"
+                                )}
+                            >
+                                {c.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </motion.div>
-        </div>
+
+                {/* Severity (3 buttons) */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">Severidad *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {SEVERITIES.map(s => (
+                            <button
+                                key={s.value}
+                                type="button"
+                                onClick={() => setSeverity(s.value)}
+                                className={cn(
+                                    "px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all",
+                                    severity === s.value
+                                        ? `border-${s.color}-400 bg-${s.color}-50 text-${s.color}-700`
+                                        : "border-eyr-outline-variant/30 bg-eyr-surface-low text-eyr-on-variant hover:border-eyr-primary/40"
+                                )}
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Descripcion *</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={3}
+                        placeholder="Describe la incidencia..."
+                        className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface resize-none"
+                    />
+                </div>
+
+                {/* Involved staff */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Personal Involucrado</label>
+                    <div className="flex flex-wrap gap-2">
+                        {staffOptions.map(s => {
+                            const isSelected = involvedStaff.some(is => is.id === s.id);
+                            return (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => {
+                                        if (isSelected) {
+                                            setInvolvedStaff(prev => prev.filter(is => is.id !== s.id));
+                                        } else {
+                                            setInvolvedStaff(prev => [...prev, { id: s.id, name: s.name }]);
+                                        }
+                                    }}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                                        isSelected
+                                            ? "bg-amber-100 text-amber-700 border-amber-200"
+                                            : "bg-eyr-surface-low text-eyr-on-variant border-eyr-outline-variant/30 hover:border-eyr-primary/40"
+                                    )}
+                                >
+                                    {s.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Follow-up date */}
+                <div>
+                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1.5">Fecha de Seguimiento</label>
+                    <input
+                        type="date"
+                        value={followUpDate}
+                        onChange={(e) => setFollowUpDate(e.target.value)}
+                        className="w-full max-w-xs px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                    />
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-eyr-outline-variant/30 bg-eyr-surface-mid shrink-0 flex items-center justify-between gap-3">
+                <button
+                    onClick={onClose}
+                    className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                >
+                    Cancelar
+                </button>
+                <button
+                    onClick={handleSubmit}
+                    disabled={!canSubmit || saving}
+                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                    {saving ? 'Guardando...' : <><Check className="w-5 h-5" /> Registrar Incidencia</>}
+                </button>
+            </div>
+        </ModalContainer>
     );
 }
 
@@ -718,163 +712,156 @@ function IncidentDetailModal({ incident, onClose, onAddNote, onChangeStatus, onD
     const statusInfo = STATUSES.find(s => s.value === incident.status);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-100 flex flex-col"
-            >
-                {/* Header */}
-                <div className={cn("px-6 py-4 border-b border-slate-100 shrink-0", severityBg[incident.severity] || 'bg-slate-50')}>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-lg font-black text-slate-800">{incident.studentName}</span>
-                                {incident.studentCurso && (
-                                    <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{incident.studentCurso}</span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                {incident.studentRut && <span className="text-xs text-slate-400 font-mono">{incident.studentRut}</span>}
-                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", categoryBadgeColors[incident.category])}>
-                                    {categoryInfo?.label}
-                                </span>
-                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", statusBadgeColors[incident.status])}>
-                                    {statusInfo?.label}
-                                </span>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                    {severityInfo?.label}
-                                </span>
-                            </div>
+        <ModalContainer onClose={onClose} maxWidth="max-w-2xl">
+            {/* Header */}
+            <div className={cn("px-6 py-4 border-b border-eyr-outline-variant/30 shrink-0", severityBg[incident.severity] || 'bg-eyr-surface-low')}>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg font-black text-eyr-on-surface">{incident.studentName}</span>
+                            {incident.studentCurso && (
+                                <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{incident.studentCurso}</span>
+                            )}
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/50 text-slate-400 hover:text-slate-600 transition-colors">
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {incident.studentRut && <span className="text-xs text-eyr-on-variant font-mono">{incident.studentRut}</span>}
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", categoryBadgeColors[incident.category])}>
+                                {categoryInfo?.label}
+                            </span>
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", statusBadgeColors[incident.status])}>
+                                {statusInfo?.label}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-eyr-surface-mid text-eyr-on-variant">
+                                {severityInfo?.label}
+                            </span>
+                        </div>
                     </div>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-eyr-on-variant transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
+            </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                    {/* Incident info */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-3 text-sm text-slate-500">
-                            <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" />{incident.date}</span>
-                            {incident.time && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{incident.time}</span>}
-                            <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{incident.reportedBy?.name}</span>
-                        </div>
-
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap">{incident.description}</p>
-                        </div>
-
-                        {incident.involvedStaff?.length > 0 && (
-                            <div>
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Personal Involucrado</h4>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {incident.involvedStaff.map((s, i) => (
-                                        <span key={i} className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg">{s.name}</span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {incident.followUpDate && (
-                            <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-                                <Clock className="w-4 h-4" />
-                                <span className="font-medium">Seguimiento: {incident.followUpDate}</span>
-                            </div>
-                        )}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Incident info */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm text-eyr-on-variant">
+                        <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" />{incident.date}</span>
+                        {incident.time && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{incident.time}</span>}
+                        <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{incident.reportedBy?.name}</span>
                     </div>
 
-                    {/* Status buttons */}
-                    {canEditData && (
-                    <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cambiar Estado</h4>
-                        <div className="flex gap-2 flex-wrap">
-                            {STATUSES.map(s => (
-                                <button
-                                    key={s.value}
-                                    onClick={() => handleStatusChange(s.value)}
-                                    disabled={incident.status === s.value}
-                                    className={cn(
-                                        "px-3 py-2 rounded-xl text-sm font-bold transition-all border",
-                                        incident.status === s.value
-                                            ? `bg-${s.color}-100 text-${s.color}-700 border-${s.color}-200`
-                                            : "bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-200"
-                                    )}
-                                >
-                                    {s.label}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="bg-eyr-surface-low rounded-2xl p-4 border border-eyr-outline-variant/30">
+                        <p className="text-sm text-eyr-on-surface whitespace-pre-wrap">{incident.description}</p>
                     </div>
-                    )}
 
-                    {/* Notes Timeline */}
-                    <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            Notas de Seguimiento ({incident.notes?.length || 0})
-                        </h4>
-
-                        {incident.notes?.length > 0 ? (
-                            <div className="space-y-3 mb-4">
-                                {incident.notes.map((note, i) => (
-                                    <div key={i} className="flex gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700 shrink-0 mt-0.5">
-                                            {(note.author || '?').charAt(0)}
-                                        </div>
-                                        <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-bold text-slate-700">{note.author}</span>
-                                                <span className="text-[10px] text-slate-400">
-                                                    {note.timestamp ? new Date(note.timestamp).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{note.text}</p>
-                                        </div>
-                                    </div>
+                    {incident.involvedStaff?.length > 0 && (
+                        <div>
+                            <h4 className="text-xs font-bold text-eyr-on-variant uppercase tracking-wider mb-1.5">Personal Involucrado</h4>
+                            <div className="flex flex-wrap gap-1.5">
+                                {incident.involvedStaff.map((s, i) => (
+                                    <span key={i} className="text-xs font-bold bg-eyr-surface-mid text-eyr-on-variant px-2.5 py-1 rounded-lg">{s.name}</span>
                                 ))}
                             </div>
-                        ) : (
-                            <p className="text-sm text-slate-400 mb-4">Sin notas aun</p>
-                        )}
-
-                        {/* Add note form */}
-                        {canEditData && (
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                                placeholder="Agregar nota de seguimiento..."
-                                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all text-sm font-medium text-slate-700"
-                            />
-                            <button
-                                onClick={handleAddNote}
-                                disabled={!noteText.trim() || sendingNote}
-                                className="px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Send className="w-4 h-4" />
-                            </button>
                         </div>
-                        )}
-                    </div>
+                    )}
 
-                    {/* Delete */}
-                    {canDelete && (
-                        <div className="pt-3 border-t border-slate-100">
-                            <button
-                                onClick={() => { onDelete(incident.id); onClose(); }}
-                                className="text-sm text-red-500 hover:text-red-700 font-bold transition-colors"
-                            >
-                                Eliminar Incidencia
-                            </button>
+                    {incident.followUpDate && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
+                            <Clock className="w-4 h-4" />
+                            <span className="font-medium">Seguimiento: {incident.followUpDate}</span>
                         </div>
                     )}
                 </div>
-            </motion.div>
-        </div>
+
+                {/* Status buttons */}
+                {canEditData && (
+                <div>
+                    <h4 className="text-xs font-bold text-eyr-on-variant uppercase tracking-wider mb-2">Cambiar Estado</h4>
+                    <div className="flex gap-2 flex-wrap">
+                        {STATUSES.map(s => (
+                            <button
+                                key={s.value}
+                                onClick={() => handleStatusChange(s.value)}
+                                disabled={incident.status === s.value}
+                                className={cn(
+                                    "px-3 py-2 rounded-xl text-sm font-bold transition-all border",
+                                    incident.status === s.value
+                                        ? `bg-${s.color}-100 text-${s.color}-700 border-${s.color}-200`
+                                        : "bg-eyr-surface-low text-eyr-on-variant border-eyr-outline-variant/30 hover:border-eyr-primary/40"
+                                )}
+                            >
+                                {s.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                )}
+
+                {/* Notes Timeline */}
+                <div>
+                    <h4 className="text-xs font-bold text-eyr-on-variant uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Notas de Seguimiento ({incident.notes?.length || 0})
+                    </h4>
+
+                    {incident.notes?.length > 0 ? (
+                        <div className="space-y-3 mb-4">
+                            {incident.notes.map((note, i) => (
+                                <div key={i} className="flex gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700 shrink-0 mt-0.5">
+                                        {(note.author || '?').charAt(0)}
+                                    </div>
+                                    <div className="flex-1 bg-eyr-surface-low rounded-2xl p-3 border border-eyr-outline-variant/30">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm font-bold text-eyr-on-surface">{note.author}</span>
+                                            <span className="text-[10px] text-eyr-on-variant">
+                                                {note.timestamp ? new Date(note.timestamp).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-eyr-on-surface whitespace-pre-wrap">{note.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-eyr-on-variant mb-4">Sin notas aun</p>
+                    )}
+
+                    {/* Add note form */}
+                    {canEditData && (
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                            placeholder="Agregar nota de seguimiento..."
+                            className="flex-1 px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all text-sm font-medium text-eyr-on-surface"
+                        />
+                        <button
+                            onClick={handleAddNote}
+                            disabled={!noteText.trim() || sendingNote}
+                            className="px-4 py-2.5 bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-xl"
+                        >
+                            <Send className="w-4 h-4" />
+                        </button>
+                    </div>
+                    )}
+                </div>
+
+                {/* Delete */}
+                {canDelete && (
+                    <div className="pt-3 border-t border-eyr-outline-variant/30">
+                        <button
+                            onClick={() => { onDelete(incident.id); onClose(); }}
+                            className="text-sm text-red-500 hover:text-red-700 font-bold transition-colors"
+                        >
+                            Eliminar Incidencia
+                        </button>
+                    </div>
+                )}
+            </div>
+        </ModalContainer>
     );
 }

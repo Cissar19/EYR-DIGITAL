@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalContainer from '../components/ModalContainer';
 import {
     CalendarCheck, Search, TrendingDown, TrendingUp, Circle,
     Eye, AlertCircle, Users, ChevronLeft, ChevronRight, X, Calendar, Plus, Check, Clock, Ban, RotateCcw, Bell
@@ -657,307 +658,286 @@ export default function AdminDaysTrackingView() {
             </div>
 
             {/* Assign Day Modal */}
-            <AnimatePresence>
-                {isAssignModalOpen && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+            {isAssignModalOpen && (
+                <ModalContainer onClose={handleCloseAssignModal} maxWidth="max-w-md">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-8 pt-7 pb-5">
+                        <div className="flex items-center gap-3">
+                            {formData.mode === 'return' ? <RotateCcw className="w-6 h-6 text-emerald-500" /> : formData.mode === 'hour' ? <Clock className="w-6 h-6 text-amber-500" /> : formData.mode === 'discount' ? <Ban className="w-6 h-6 text-red-500" /> : <Plus className="w-6 h-6 text-eyr-primary" />}
+                            <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface">
+                                {formData.mode === 'return' ? 'Devolver Horas' : formData.mode === 'hour' ? 'Registrar Horas' : formData.mode === 'discount' ? 'Registrar Día de Descuento' : 'Asignar Día'}
+                            </h2>
+                        </div>
+                        <button
                             onClick={handleCloseAssignModal}
-                            className="fixed inset-0 bg-black/30 backdrop-blur-md z-40"
-                        />
-
-                        {/* Modal */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
                         >
-                            <div className="bg-white rounded-3xl shadow-2xl max-w-md max-w-[calc(100vw-2rem)] w-full p-5 md:p-8">
-                                {/* Modal Header */}
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        {formData.mode === 'return' ? <RotateCcw className="w-6 h-6 text-emerald-500" /> : formData.mode === 'hour' ? <Clock className="w-6 h-6 text-amber-500" /> : formData.mode === 'discount' ? <Ban className="w-6 h-6 text-red-500" /> : <Plus className="w-6 h-6 text-white" />}
-                                    </div>
-                                    <h2 className="text-2xl font-semibold text-slate-900">
-                                        {formData.mode === 'return' ? 'Devolver Horas' : formData.mode === 'hour' ? 'Registrar Horas' : formData.mode === 'discount' ? 'Registrar Día de Descuento' : 'Asignar Día'}
-                                    </h2>
-                                </div>
-                                <button
-                                    onClick={handleCloseAssignModal}
-                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors absolute top-6 right-6"
-                                >
-                                    <X className="w-5 h-5 text-slate-600" />
-                                </button>
+                            <X className="w-5 h-5 text-eyr-on-variant" />
+                        </button>
+                    </div>
 
-                                {/* Modal Body */}
-                                <div className="space-y-5">
-                                    {/* Teacher Autocomplete */}
-                                    <div className="relative" ref={autocompleteRef}>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Seleccionar Docente
+                    {/* Modal Body */}
+                    <div className="px-8 pb-6 space-y-5 overflow-y-auto">
+                        {/* Teacher Autocomplete */}
+                        <div className="relative" ref={autocompleteRef}>
+                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                Seleccionar Docente
+                            </label>
+                            <input
+                                type="text"
+                                value={teacherSearch}
+                                onChange={(e) => {
+                                    setTeacherSearch(e.target.value);
+                                    setShowTeacherDropdown(true);
+                                }}
+                                onFocus={() => setShowTeacherDropdown(true)}
+                                placeholder="Buscar docente por nombre..."
+                                className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                            />
+
+                            {/* Dropdown List */}
+                            {showTeacherDropdown && (
+                                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border-2 border-slate-200 max-h-60 overflow-y-auto">
+                                    {filteredTeachers.length > 0 ? (
+                                        filteredTeachers.map(user => (
+                                            <div
+                                                key={user.id}
+                                                onClick={() => handleSelectTeacher(user)}
+                                                className="p-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-b-0"
+                                            >
+                                                <div className="font-medium text-slate-900">
+                                                    {user.name}
+                                                </div>
+                                                <div className="text-xs text-slate-500 mt-0.5">
+                                                    {getRoleLabel(user.role)}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-4 text-center text-slate-500">
+                                            <p className="text-sm font-medium">No se encontraron docentes</p>
+                                            <p className="text-xs mt-1">Intenta con otro término de búsqueda</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Date Picker (Dropdowns) */}
+                        <div>
+                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                Fecha (2026)
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Month Select */}
+                                <div>
+                                    <select
+                                        value={parseInt(formData.date.split('-')[1]) - 1}
+                                        onChange={(e) => {
+                                            const newMonthIndex = parseInt(e.target.value);
+                                            const currentDay = parseInt(formData.date.split('-')[2]);
+                                            const daysInNewMonth = getDaysInMonth(newMonthIndex);
+                                            const newDay = Math.min(currentDay, daysInNewMonth);
+                                            const newDate = `2026-${String(newMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
+                                            setFormData({ ...formData, date: newDate });
+                                        }}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-eyr-on-surface"
+                                    >
+                                        {MONTHS.map((m, i) => (
+                                            <option key={i} value={i}>{m}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Day Select */}
+                                <div>
+                                    <select
+                                        value={parseInt(formData.date.split('-')[2])}
+                                        onChange={(e) => {
+                                            const newDay = parseInt(e.target.value);
+                                            const currentMonthIndex = parseInt(formData.date.split('-')[1]) - 1;
+                                            const newDate = `2026-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
+                                            setFormData({ ...formData, date: newDate });
+                                        }}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-eyr-on-surface"
+                                    >
+                                        {Array.from({ length: getDaysInMonth(parseInt(formData.date.split('-')[1]) - 1) }, (_, i) => i + 1).map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Time Inputs for Hours/Return Mode */}
+                        {(formData.mode === 'hour' || formData.mode === 'return') && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Hora Inicio
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={formData.startTime}
+                                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Hora Término
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={formData.endTime}
+                                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Reason Input */}
+                        {formData.mode === 'discount' ? (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Motivo del Descuento
+                                    </label>
+                                    <select
+                                        value={formData.reason}
+                                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-eyr-on-surface"
+                                    >
+                                        {DISCOUNT_REASONS.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Observaciones
+                                    </label>
+                                    <textarea
+                                        placeholder="Detalles adicionales (opcional)"
+                                        value={formData.observation}
+                                        onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
+                                        rows={3}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all resize-none text-eyr-on-surface"
+                                    />
+                                </div>
+                            </>
+                        ) : formData.mode === 'day' ? (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Motivo
+                                    </label>
+                                    <select
+                                        value={formData.reason === 'Personal' || formData.reason === 'Otro' ? formData.reason : 'Otro'}
+                                        onChange={(e) => setFormData({ ...formData, reason: e.target.value, observation: e.target.value === 'Personal' ? '' : formData.observation })}
+                                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-eyr-on-surface"
+                                    >
+                                        <option value="Personal">Personal</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                {formData.reason === 'Otro' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                            Especifique motivo
                                         </label>
                                         <input
                                             type="text"
-                                            value={teacherSearch}
-                                            onChange={(e) => {
-                                                setTeacherSearch(e.target.value);
-                                                setShowTeacherDropdown(true);
-                                            }}
-                                            onFocus={() => setShowTeacherDropdown(true)}
-                                            placeholder="Buscar docente por nombre..."
-                                            className="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all"
+                                            placeholder="Ingrese el motivo..."
+                                            value={formData.observation}
+                                            onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
+                                            className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
                                         />
-
-                                        {/* Dropdown List */}
-                                        {showTeacherDropdown && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border-2 border-slate-200 max-h-60 overflow-y-auto">
-                                                {filteredTeachers.length > 0 ? (
-                                                    filteredTeachers.map(user => (
-                                                        <div
-                                                            key={user.id}
-                                                            onClick={() => handleSelectTeacher(user)}
-                                                            className="p-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-b-0"
-                                                        >
-                                                            <div className="font-medium text-slate-900">
-                                                                {user.name}
-                                                            </div>
-                                                            <div className="text-xs text-slate-500 mt-0.5">
-                                                                {getRoleLabel(user.role)}
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="p-4 text-center text-slate-500">
-                                                        <p className="text-sm font-medium">No se encontraron docentes</p>
-                                                        <p className="text-xs mt-1">Intenta con otro término de búsqueda</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
-
-                                    {/* Date Picker (Dropdowns) */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Fecha (2026)
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {/* Month Select */}
-                                            <div>
-                                                <select
-                                                    value={parseInt(formData.date.split('-')[1]) - 1}
-                                                    onChange={(e) => {
-                                                        const newMonthIndex = parseInt(e.target.value);
-                                                        const currentDay = parseInt(formData.date.split('-')[2]);
-                                                        const daysInNewMonth = getDaysInMonth(newMonthIndex);
-                                                        const newDay = Math.min(currentDay, daysInNewMonth);
-                                                        const newDate = `2026-${String(newMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
-                                                        setFormData({ ...formData, date: newDate });
-                                                    }}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none"
-                                                >
-                                                    {MONTHS.map((m, i) => (
-                                                        <option key={i} value={i}>{m}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Day Select */}
-                                            <div>
-                                                <select
-                                                    value={parseInt(formData.date.split('-')[2])}
-                                                    onChange={(e) => {
-                                                        const newDay = parseInt(e.target.value);
-                                                        const currentMonthIndex = parseInt(formData.date.split('-')[1]) - 1;
-                                                        const newDate = `2026-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
-                                                        setFormData({ ...formData, date: newDate });
-                                                    }}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none"
-                                                >
-                                                    {Array.from({ length: getDaysInMonth(parseInt(formData.date.split('-')[1]) - 1) }, (_, i) => i + 1).map(d => (
-                                                        <option key={d} value={d}>{d}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
+                                )}
+                                {/* Half Day Toggle */}
+                                <label className="flex items-center gap-3 cursor-pointer select-none group">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!formData.isHalfDay}
+                                            onChange={(e) => setFormData({ ...formData, isHalfDay: e.target.checked ? 'am' : false })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
+                                        <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform" />
                                     </div>
-
-                                    {/* Time Inputs for Hours/Return Mode */}
-                                    {(formData.mode === 'hour' || formData.mode === 'return') && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Hora Inicio
-                                                </label>
-                                                <input
-                                                    type="time"
-                                                    value={formData.startTime}
-                                                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-amber-400 focus:ring-4 focus:ring-amber-100 focus:outline-none transition-all"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Hora Término
-                                                </label>
-                                                <input
-                                                    type="time"
-                                                    value={formData.endTime}
-                                                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-amber-400 focus:ring-4 focus:ring-amber-100 focus:outline-none transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Reason Input */}
-                                    {formData.mode === 'discount' ? (
-                                        <>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Motivo del Descuento
-                                                </label>
-                                                <select
-                                                    value={formData.reason}
-                                                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-red-400 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all appearance-none"
-                                                >
-                                                    {DISCOUNT_REASONS.map(r => (
-                                                        <option key={r} value={r}>{r}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Observaciones
-                                                </label>
-                                                <textarea
-                                                    placeholder="Detalles adicionales (opcional)"
-                                                    value={formData.observation}
-                                                    onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
-                                                    rows={3}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-red-400 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all resize-none"
-                                                />
-                                            </div>
-                                        </>
-                                    ) : formData.mode === 'day' ? (
-                                        <>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                    Motivo
-                                                </label>
-                                                <select
-                                                    value={formData.reason === 'Personal' || formData.reason === 'Otro' ? formData.reason : 'Otro'}
-                                                    onChange={(e) => setFormData({ ...formData, reason: e.target.value, observation: e.target.value === 'Personal' ? '' : formData.observation })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none"
-                                                >
-                                                    <option value="Personal">Personal</option>
-                                                    <option value="Otro">Otro</option>
-                                                </select>
-                                            </div>
-                                            {formData.reason === 'Otro' && (
-                                                <div>
-                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                        Especifique motivo
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Ingrese el motivo..."
-                                                        value={formData.observation}
-                                                        onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all"
-                                                    />
-                                                </div>
+                                    <span className="text-sm font-medium text-eyr-on-surface group-hover:text-eyr-on-surface transition-colors">
+                                        Medio dia (descuenta 0.5)
+                                    </span>
+                                </label>
+                                {/* AM / PM selector */}
+                                {formData.isHalfDay && (
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, isHalfDay: 'am' })}
+                                            className={cn(
+                                                "flex-1 py-2.5 rounded-2xl text-sm font-semibold border-2 transition-all",
+                                                formData.isHalfDay === 'am'
+                                                    ? "bg-indigo-50 border-indigo-400 text-indigo-700"
+                                                    : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
                                             )}
-                                            {/* Half Day Toggle */}
-                                            <label className="flex items-center gap-3 cursor-pointer select-none group">
-                                                <div className="relative">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!formData.isHalfDay}
-                                                        onChange={(e) => setFormData({ ...formData, isHalfDay: e.target.checked ? 'am' : false })}
-                                                        className="sr-only peer"
-                                                    />
-                                                    <div className="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-indigo-500 transition-colors" />
-                                                    <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform" />
-                                                </div>
-                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-                                                    Medio dia (descuenta 0.5)
-                                                </span>
-                                            </label>
-                                            {/* AM / PM selector */}
-                                            {formData.isHalfDay && (
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFormData({ ...formData, isHalfDay: 'am' })}
-                                                        className={cn(
-                                                            "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
-                                                            formData.isHalfDay === 'am'
-                                                                ? "bg-indigo-50 border-indigo-400 text-indigo-700"
-                                                                : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
-                                                        )}
-                                                    >
-                                                        Mañana (AM)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFormData({ ...formData, isHalfDay: 'pm' })}
-                                                        className={cn(
-                                                            "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
-                                                            formData.isHalfDay === 'pm'
-                                                                ? "bg-indigo-50 border-indigo-400 text-indigo-700"
-                                                                : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
-                                                        )}
-                                                    >
-                                                        Tarde (PM)
-                                                    </button>
-                                                </div>
+                                        >
+                                            Mañana (AM)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, isHalfDay: 'pm' })}
+                                            className={cn(
+                                                "flex-1 py-2.5 rounded-2xl text-sm font-semibold border-2 transition-all",
+                                                formData.isHalfDay === 'pm'
+                                                    ? "bg-indigo-50 border-indigo-400 text-indigo-700"
+                                                    : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
                                             )}
-                                        </>
-                                    ) : (
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                                Motivo
-                                            </label>
-                                            <input
-                                                type="text"
-                                                placeholder="Ej: Solicitado verbalmente"
-                                                value={formData.reason}
-                                                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Modal Footer */}
-                                <div className="flex gap-3 mt-8">
-                                    <button
-                                        onClick={handleCloseAssignModal}
-                                        className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={handleAssign}
-                                        className={cn(
-                                            "flex-1 px-6 py-3 text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all bg-gradient-to-r",
-                                            formData.mode === 'return' ? "from-emerald-500 to-green-600" : formData.mode === 'hour' ? "from-amber-500 to-orange-600" : formData.mode === 'discount' ? "from-red-500 to-rose-600" : "from-blue-500 to-indigo-600"
-                                        )}
-                                    >
-                                        {formData.mode === 'return' ? 'Confirmar Devolución' : formData.mode === 'hour' ? 'Confirmar Horas' : formData.mode === 'discount' ? 'Confirmar Descuento' : 'Confirmar Asignación'}
-                                    </button>
-                                </div>
+                                        >
+                                            Tarde (PM)
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                    Motivo
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: Solicitado verbalmente"
+                                    value={formData.reason}
+                                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                    className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                                />
                             </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+                        )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                        <button
+                            onClick={handleCloseAssignModal}
+                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleAssign}
+                            className={cn(
+                                "bg-gradient-to-r text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all",
+                                formData.mode === 'return' ? "from-emerald-500 to-green-600" : formData.mode === 'hour' ? "from-amber-500 to-orange-600" : formData.mode === 'discount' ? "from-red-500 to-rose-600" : "from-eyr-primary to-[#742fe5]"
+                            )}
+                        >
+                            {formData.mode === 'return' ? 'Confirmar Devolución' : formData.mode === 'hour' ? 'Confirmar Horas' : formData.mode === 'discount' ? 'Confirmar Descuento' : 'Confirmar Asignación'}
+                        </button>
+                    </div>
+                </ModalContainer>
+            )}
 
             {/* Success Toast */}
             <AnimatePresence>

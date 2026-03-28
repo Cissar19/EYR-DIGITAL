@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     HeartPulse, Search, ChevronLeft, ChevronRight, X, Plus, Check, Trash2, Calendar, CalendarCheck, Eye
 } from 'lucide-react';
+import ModalContainer from '../components/ModalContainer';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel, canEdit as canEditHelper } from '../context/AuthContext';
 import { useMedicalLeaves } from '../context/MedicalLeavesContext';
@@ -194,7 +195,7 @@ export default function MedicalLeavesView() {
 
         return (
             <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
+                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">{label}</label>
                 <div className="grid grid-cols-2 gap-3">
                     <select
                         value={monthIndex}
@@ -205,7 +206,7 @@ export default function MedicalLeavesView() {
                             const newDay = Math.min(currentDay, daysInNewMonth);
                             onChange(`${currentYear}-${String(newMonthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
                         }}
-                        className="w-full px-3 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none text-sm"
+                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-sm text-eyr-on-surface"
                     >
                         {MONTHS.map((m, i) => (
                             <option key={i} value={i}>{m}</option>
@@ -217,7 +218,7 @@ export default function MedicalLeavesView() {
                             const newDay = parseInt(e.target.value);
                             onChange(`${currentYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`);
                         }}
-                        className="w-full px-3 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all appearance-none text-sm"
+                        className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all appearance-none text-sm text-eyr-on-surface"
                     >
                         {Array.from({ length: getDaysInMonth(monthIndex) }, (_, i) => i + 1).map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -428,141 +429,123 @@ export default function MedicalLeavesView() {
             </div>
 
             {/* Register Modal */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={handleCloseModal}
-                            className="fixed inset-0 bg-black/30 backdrop-blur-md z-40"
-                        />
-
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                        >
-                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative">
-                                {/* Modal Header */}
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center">
-                                        <HeartPulse className="w-5 h-5 text-white" />
-                                    </div>
-                                    <h2 className="text-2xl font-semibold text-slate-900">
-                                        Registrar Licencia
-                                    </h2>
-                                </div>
-                                <button
-                                    onClick={handleCloseModal}
-                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors absolute top-6 right-6"
-                                >
-                                    <X className="w-5 h-5 text-slate-600" />
-                                </button>
-
-                                {/* Modal Body */}
-                                <div className="space-y-5">
-                                    {/* Teacher Autocomplete */}
-                                    <div className="relative" ref={autocompleteRef}>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Seleccionar Persona
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={teacherSearch}
-                                            onChange={(e) => {
-                                                setTeacherSearch(e.target.value);
-                                                setShowTeacherDropdown(true);
-                                            }}
-                                            onFocus={() => setShowTeacherDropdown(true)}
-                                            placeholder="Buscar funcionario por nombre..."
-                                            className="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-4 focus:ring-rose-100 focus:outline-none transition-all"
-                                        />
-
-                                        {showTeacherDropdown && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border-2 border-slate-200 max-h-60 overflow-y-auto">
-                                                {filteredTeachers.length > 0 ? (
-                                                    filteredTeachers.map(user => (
-                                                        <div
-                                                            key={user.id}
-                                                            onClick={() => handleSelectTeacher(user)}
-                                                            className="p-3 hover:bg-rose-50 cursor-pointer transition-colors border-b border-slate-100 last:border-b-0"
-                                                        >
-                                                            <div className="font-medium text-slate-900">{user.name}</div>
-                                                            <div className="text-xs text-slate-500 mt-0.5">{getRoleLabel(user.role)}</div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="p-4 text-center text-slate-500">
-                                                        <p className="text-sm font-medium">No se encontraron funcionarios</p>
-                                                        <p className="text-xs mt-1">Intenta con otro termino de busqueda</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Start Date */}
-                                    {renderDatePicker('Fecha Inicio', formData.startDate, (val) => setFormData({ ...formData, startDate: val }))}
-
-                                    {/* Number of Days */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                            Dias de licencia (corridos)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            max={365}
-                                            value={formData.leaveDays}
-                                            onChange={(e) => {
-                                                const val = Math.max(1, Math.min(365, parseInt(e.target.value) || 1));
-                                                setFormData({ ...formData, leaveDays: val });
-                                            }}
-                                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-rose-400 focus:ring-4 focus:ring-rose-100 focus:outline-none transition-all text-sm font-semibold"
-                                        />
-                                    </div>
-
-                                    {/* Auto-calculated End Date + Return Date */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                                            <Calendar className="w-5 h-5 text-indigo-500" />
-                                            <span className="text-sm font-semibold text-indigo-700">
-                                                Fecha termino: {formatDateFull(calculatedEndDate)}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                                            <CalendarCheck className="w-5 h-5 text-emerald-500" />
-                                            <span className="text-sm font-semibold text-emerald-700">
-                                                Reintegro: {formatDateFull(returnDate)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                </div>
-
-                                {/* Modal Footer */}
-                                <div className="flex gap-3 mt-8">
-                                    <button
-                                        onClick={handleCloseModal}
-                                        className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={handleSubmit}
-                                        className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-                                    >
-                                        Registrar Licencia
-                                    </button>
-                                </div>
+            {isModalOpen && (
+                <ModalContainer onClose={handleCloseModal} maxWidth="max-w-md">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-8 pt-7 pb-5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center">
+                                <HeartPulse className="w-5 h-5 text-white" />
                             </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+                            <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface">
+                                Registrar Licencia
+                            </h2>
+                        </div>
+                        <button
+                            onClick={handleCloseModal}
+                            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
+                            <X className="w-5 h-5 text-eyr-on-variant" />
+                        </button>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="px-8 pb-6 space-y-5 overflow-y-auto">
+                        {/* Teacher Autocomplete */}
+                        <div className="relative" ref={autocompleteRef}>
+                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                Seleccionar Persona
+                            </label>
+                            <input
+                                type="text"
+                                value={teacherSearch}
+                                onChange={(e) => {
+                                    setTeacherSearch(e.target.value);
+                                    setShowTeacherDropdown(true);
+                                }}
+                                onFocus={() => setShowTeacherDropdown(true)}
+                                placeholder="Buscar funcionario por nombre..."
+                                className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface"
+                            />
+
+                            {showTeacherDropdown && (
+                                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border-2 border-slate-200 max-h-60 overflow-y-auto">
+                                    {filteredTeachers.length > 0 ? (
+                                        filteredTeachers.map(user => (
+                                            <div
+                                                key={user.id}
+                                                onClick={() => handleSelectTeacher(user)}
+                                                className="p-3 hover:bg-rose-50 cursor-pointer transition-colors border-b border-slate-100 last:border-b-0"
+                                            >
+                                                <div className="font-medium text-slate-900">{user.name}</div>
+                                                <div className="text-xs text-slate-500 mt-0.5">{getRoleLabel(user.role)}</div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-4 text-center text-slate-500">
+                                            <p className="text-sm font-medium">No se encontraron funcionarios</p>
+                                            <p className="text-xs mt-1">Intenta con otro termino de busqueda</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Start Date */}
+                        {renderDatePicker('Fecha Inicio', formData.startDate, (val) => setFormData({ ...formData, startDate: val }))}
+
+                        {/* Number of Days */}
+                        <div>
+                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                Dias de licencia (corridos)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={formData.leaveDays}
+                                onChange={(e) => {
+                                    const val = Math.max(1, Math.min(365, parseInt(e.target.value) || 1));
+                                    setFormData({ ...formData, leaveDays: val });
+                                }}
+                                className="w-full px-5 py-4 bg-eyr-surface-low border border-transparent rounded-2xl focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none transition-all text-eyr-on-surface font-semibold"
+                            />
+                        </div>
+
+                        {/* Auto-calculated End Date + Return Date */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <Calendar className="w-5 h-5 text-indigo-500" />
+                                <span className="text-sm font-semibold text-indigo-700">
+                                    Fecha termino: {formatDateFull(calculatedEndDate)}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                                <CalendarCheck className="w-5 h-5 text-emerald-500" />
+                                <span className="text-sm font-semibold text-emerald-700">
+                                    Reintegro: {formatDateFull(returnDate)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
+                        <button
+                            onClick={handleCloseModal}
+                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl transition-all hover:shadow-2xl hover:scale-105"
+                        >
+                            Registrar Licencia
+                        </button>
+                    </div>
+                </ModalContainer>
+            )}
 
             {/* User Detail Panel */}
             {selectedUser && (

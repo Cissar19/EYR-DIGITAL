@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Monitor, X, Check, ChevronLeft, ChevronRight, Lock, Trash2, Plus, Info, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalContainer from './ModalContainer';
 
 // Generate Course List (Pre-K, Kinder, 1-8 Basic A/B)
 const COURSES = [
@@ -411,134 +412,133 @@ export default function LabReservation() {
             </div>
 
             {/* Reservation Modal */}
-            <AnimatePresence>
-                {isModalOpen && selectedSlot && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100"
+            {isModalOpen && selectedSlot && (
+                <ModalContainer onClose={() => setIsModalOpen(false)} maxWidth="max-w-lg">
+                    {/* Modal Header */}
+                    <div className="px-6 py-5 border-b border-eyr-outline-variant/30 flex justify-between items-start">
+                        <div>
+                            <h3 className="font-headline font-extrabold text-eyr-on-surface text-xl tracking-tight">
+                                {selectedSlot.reservation ? 'Detalle de Reserva' : 'Confirmar Reserva'}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2 text-sm text-eyr-on-variant">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span className="capitalize">{selectedSlot.dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                                <span className="w-1 h-1 bg-eyr-on-variant/40 rounded-full"></span>
+                                <span>{selectedSlot.block.label}</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setIsModalOpen(false)}
+                            className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-eyr-on-variant transition-colors"
                         >
-                            {/* Modal Header */}
-                            <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                                        {selectedSlot.reservation ? 'Detalle de Reserva' : 'Confirmar Reserva'}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-                                        <CalendarIcon className="w-4 h-4" />
-                                        <span className="capitalize">{selectedSlot.dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
-                                        <span>{selectedSlot.block.label}</span>
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="p-6">
+                        {selectedSlot.reservation ? (
+                            <div className="space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                        <Info className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-eyr-on-surface">{selectedSlot.reservation.subject}</h4>
+                                        <p className="text-sm text-eyr-on-variant mt-1">Reservado por <span className="font-semibold text-eyr-on-surface">{selectedSlot.reservation.teacher || selectedSlot.reservation.userName}</span></p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="p-2 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
 
-                            <div className="p-6">
-                                {selectedSlot.reservation ? (
-                                    <div className="space-y-6">
-                                        <div className="flex gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                                <Info className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-slate-800">{selectedSlot.reservation.subject}</h4>
-                                                <p className="text-sm text-slate-500 mt-1">Reservado por <span className="font-semibold text-slate-700">{selectedSlot.reservation.teacher || selectedSlot.reservation.userName}</span></p>
-                                            </div>
-                                        </div>
-
-                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director') ? (
-                                            <div className="pt-4 border-t border-slate-100">
-                                                <button
-                                                    onClick={handleCancelReservation}
-                                                    className="w-full py-3.5 px-4 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <Trash2 className="w-5 h-5" /> Cancelar Reserva
-                                                </button>
-                                                <p className="text-xs text-center text-slate-400 mt-3">Esta acción liberará el bloque para otros docentes.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 bg-slate-50 text-slate-500 text-sm rounded-xl flex gap-3 items-start border border-slate-100">
-                                                <Lock className="w-5 h-5 shrink-0 mt-0.5" />
-                                                <p>Este bloque está reservado por otro docente. Si necesitas el espacio urgente, contacta a Dirección.</p>
-                                            </div>
-                                        )}
+                                {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director') ? (
+                                    <div className="pt-4 border-t border-eyr-outline-variant/30">
+                                        <button
+                                            onClick={handleCancelReservation}
+                                            className="w-full py-3.5 px-4 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Trash2 className="w-5 h-5" /> Cancelar Reserva
+                                        </button>
+                                        <p className="text-xs text-center text-eyr-on-variant mt-3">Esta acción liberará el bloque para otros docentes.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-5">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                Curso
-                                            </label>
-                                            <select
-                                                value={course}
-                                                onChange={(e) => setCourse(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-700"
-                                            >
-                                                <option value="">Seleccionar Curso...</option>
-                                                {COURSES.map(c => (
-                                                    <option key={c} value={c}>{c}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                Actividad / Motivo
-                                            </label>
-                                            <select
-                                                value={activityType}
-                                                onChange={(e) => setActivityType(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-700"
-                                            >
-                                                <option value="">Seleccionar Motivo...</option>
-                                                {ACTIVITY_TYPES.map(type => (
-                                                    <option key={type} value={type}>{type}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {activityType === 'Otro' && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                            >
-                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                    Detalle de la Actividad
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={customActivity}
-                                                    onChange={(e) => setCustomActivity(e.target.value)}
-                                                    placeholder="Especifique el motivo..."
-                                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-700"
-                                                    autoFocus
-                                                />
-                                            </motion.div>
-                                        )}
-
-                                        <button
-                                            onClick={handleConfirmReservation}
-                                            disabled={!course || !activityType || (activityType === 'Otro' && !customActivity.trim())}
-                                            className="w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
-                                        >
-                                            <Check className="w-5 h-5" /> Confirmar Reserva
-                                        </button>
+                                    <div className="p-4 bg-eyr-surface-low text-eyr-on-variant text-sm rounded-2xl flex gap-3 items-start border border-eyr-outline-variant/30">
+                                        <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+                                        <p>Este bloque está reservado por otro docente. Si necesitas el espacio urgente, contacta a Dirección.</p>
                                     </div>
                                 )}
                             </div>
-                        </motion.div>
+                        ) : (
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Curso
+                                    </label>
+                                    <select
+                                        value={course}
+                                        onChange={(e) => setCourse(e.target.value)}
+                                        className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                    >
+                                        <option value="">Seleccionar Curso...</option>
+                                        {COURSES.map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                        Actividad / Motivo
+                                    </label>
+                                    <select
+                                        value={activityType}
+                                        onChange={(e) => setActivityType(e.target.value)}
+                                        className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                    >
+                                        <option value="">Seleccionar Motivo...</option>
+                                        {ACTIVITY_TYPES.map(type => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {activityType === 'Otro' && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                    >
+                                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                            Detalle de la Actividad
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={customActivity}
+                                            onChange={(e) => setCustomActivity(e.target.value)}
+                                            placeholder="Especifique el motivo..."
+                                            className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                            autoFocus
+                                        />
+                                    </motion.div>
+                                )}
+
+                                <div className="pt-2 pb-1 flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
+                                    <button
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmReservation}
+                                        disabled={!course || !activityType || (activityType === 'Otro' && !customActivity.trim())}
+                                        className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        <Check className="w-5 h-5" /> Confirmar Reserva
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-            </AnimatePresence>
+                </ModalContainer>
+            )}
         </div>
     );
 }

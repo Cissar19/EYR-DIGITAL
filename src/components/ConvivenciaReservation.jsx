@@ -6,6 +6,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import IncidentsView from './convivencia/IncidentsView';
+import ModalContainer from './ModalContainer';
 
 export default function ConvivenciaReservation() {
 
@@ -1120,220 +1121,227 @@ export default function ConvivenciaReservation() {
             </div>
 
             {/* Reservation Modal */}
-            <AnimatePresence>
-                {isModalOpen && selectedSlot && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100"
+            {isModalOpen && selectedSlot && (
+                <ModalContainer onClose={() => setIsModalOpen(false)} maxWidth="max-w-lg">
+                    {/* Modal Header */}
+                    <div className="px-6 py-5 border-b border-eyr-outline-variant/30 flex justify-between items-start">
+                        <div>
+                            <h3 className="font-headline font-extrabold text-eyr-on-surface text-xl tracking-tight">
+                                {selectedSlot.reservation ? 'Detalle de Reserva' : 'Confirmar Reserva'}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2 text-sm text-eyr-on-variant">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span className="capitalize">{selectedSlot.dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                                <span className="w-1 h-1 bg-eyr-on-variant/40 rounded-full"></span>
+                                <span>{selectedSlot.block.label}</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setIsModalOpen(false)}
+                            className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-eyr-on-variant transition-colors"
                         >
-                            {/* Modal Header */}
-                            <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                                        {selectedSlot.reservation ? 'Detalle de Reserva' : 'Confirmar Reserva'}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-                                        <CalendarIcon className="w-4 h-4" />
-                                        <span className="capitalize">{selectedSlot.dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                                        <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
-                                        <span>{selectedSlot.block.label}</span>
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="p-6">
+                        {selectedSlot.blocked ? (
+                            // ── Blocked slot: show info + unblock ──
+                            <div className="space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-eyr-surface-low flex items-center justify-center text-eyr-on-variant shrink-0">
+                                        <Ban className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-eyr-on-surface">Bloque Bloqueado</h4>
+                                        <p className="text-sm text-eyr-on-variant mt-1">Motivo: <span className="font-semibold text-eyr-on-surface">{selectedSlot.blocked.reason}</span></p>
+                                        {selectedSlot.blocked.blockedByName && (
+                                            <p className="text-xs text-eyr-on-variant mt-1">Bloqueado por: {selectedSlot.blocked.blockedByName}</p>
+                                        )}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="p-2 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="p-6">
-                                {selectedSlot.blocked ? (
-                                    // ── Blocked slot: show info + unblock ──
-                                    <div className="space-y-6">
-                                        <div className="flex gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                                                <Ban className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-slate-800">Bloque Bloqueado</h4>
-                                                <p className="text-sm text-slate-500 mt-1">Motivo: <span className="font-semibold text-slate-700">{selectedSlot.blocked.reason}</span></p>
-                                                {selectedSlot.blocked.blockedByName && (
-                                                    <p className="text-xs text-slate-400 mt-1">Bloqueado por: {selectedSlot.blocked.blockedByName}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {canBlockSlots && (
-                                            <div className="pt-4 border-t border-slate-100">
-                                                <button
-                                                    onClick={handleUnblock}
-                                                    className="w-full py-3.5 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <Unlock className="w-5 h-5" /> Desbloquear
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : selectedSlot.reservation ? (
-                                    // ── Existing reservation ──
-                                    <div className="space-y-6">
-                                        <div className="flex gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-                                                <Info className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-lg font-bold text-slate-800">{selectedSlot.reservation.subject}</h4>
-                                                <p className="text-sm text-slate-500 mt-1">Profesor Jefe: <span className="font-semibold text-slate-700">{selectedSlot.reservation.teacher}</span></p>
-                                            </div>
-                                        </div>
-
-                                        {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director' || user?.role === 'convivencia' || user?.role === 'convivencia_head' || user?.role === 'super_admin') ? (
-                                            <div className="pt-4 border-t border-slate-100">
-                                                <button
-                                                    onClick={handleCancelReservation}
-                                                    className="w-full py-3.5 px-4 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <Trash2 className="w-5 h-5" /> Cancelar Reserva
-                                                </button>
-                                                <p className="text-xs text-center text-slate-400 mt-3">Esta accion liberara el bloque.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 bg-slate-50 text-slate-500 text-sm rounded-xl flex gap-3 items-start border border-slate-100">
-                                                <Lock className="w-5 h-5 shrink-0 mt-0.5" />
-                                                <p>Este bloque esta reservado por otro usuario. Si necesitas el espacio, contacta a Convivencia Escolar.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    // ── Empty slot: reserve or block ──
-                                    <div className="space-y-5">
-                                        {/* Mode toggle for users who can block */}
-                                        {canBlockSlots && (
-                                            <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setModalMode('reserve')}
-                                                    className={cn(
-                                                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
-                                                        modalMode === 'reserve'
-                                                            ? "bg-white text-amber-700 shadow-sm"
-                                                            : "text-slate-500 hover:text-slate-700"
-                                                    )}
-                                                >
-                                                    <Plus className="w-4 h-4" /> Reservar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setModalMode('block')}
-                                                    className={cn(
-                                                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
-                                                        modalMode === 'block'
-                                                            ? "bg-white text-slate-700 shadow-sm"
-                                                            : "text-slate-500 hover:text-slate-700"
-                                                    )}
-                                                >
-                                                    <Ban className="w-4 h-4" /> Bloquear
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {modalMode === 'block' ? (
-                                            // Block form
-                                            <>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                        Motivo del Bloqueo
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={blockReason}
-                                                        onChange={(e) => setBlockReason(e.target.value)}
-                                                        placeholder="Ej: Reunion equipo convivencia, actividad interna..."
-                                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-slate-500 focus:bg-white transition-all font-medium text-slate-700"
-                                                        autoFocus
-                                                    />
-                                                </div>
-                                                <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
-                                                    <Ban className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
-                                                    <span>Al bloquear este bloque, ningun profesor podra reservarlo. Solo un Jefe de Convivencia o administrador puede desbloquearlo.</span>
-                                                </div>
-                                                <button
-                                                    onClick={handleConfirmBlock}
-                                                    disabled={!blockReason.trim()}
-                                                    className="w-full py-4 px-4 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg shadow-slate-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
-                                                >
-                                                    <Ban className="w-5 h-5" /> Confirmar Bloqueo
-                                                </button>
-                                            </>
-                                        ) : (
-                                            // Reserve form
-                                            <>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                        Profesor Jefe
-                                                    </label>
-                                                    {isTeacherRole ? (
-                                                        <div className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/80 font-medium text-slate-700 flex items-center gap-2">
-                                                            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
-                                                                {user?.name?.charAt(0)}
-                                                            </div>
-                                                            {user?.name}
-                                                        </div>
-                                                    ) : (
-                                                        <select
-                                                            value={selectedTeacher}
-                                                            onChange={(e) => setSelectedTeacher(e.target.value)}
-                                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                                                        >
-                                                            <option value="">Seleccionar Profesor...</option>
-                                                            {teachers.map(t => (
-                                                                <option key={t.id} value={t.name}>{t.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    )}
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                        Motivo de la Reunion
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={motivo}
-                                                        onChange={(e) => setMotivo(e.target.value)}
-                                                        placeholder="Ej: Reunion apoderados, mediacion, entrevista..."
-                                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:outline-none focus:border-amber-500 focus:bg-white transition-all font-medium text-slate-700"
-                                                        autoFocus
-                                                    />
-                                                </div>
-
-                                                {/* Hint for teacher about schedule blocks */}
-                                                {isTeacherRole && getTeacherClass(selectedSlot.day, selectedSlot.block.start) && (
-                                                    <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs text-indigo-700">
-                                                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                                        <span>Este bloque coincide con tu hora de clase. Puedes reservar igualmente si necesitas sacar a un alumno de clases.</span>
-                                                    </div>
-                                                )}
-
-                                                <button
-                                                    onClick={handleConfirmReservation}
-                                                    disabled={!selectedTeacher || !motivo.trim()}
-                                                    className="w-full py-4 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg"
-                                                >
-                                                    <Check className="w-5 h-5" /> Confirmar Reserva
-                                                </button>
-                                            </>
-                                        )}
+                                {canBlockSlots && (
+                                    <div className="pt-4 border-t border-eyr-outline-variant/30">
+                                        <button
+                                            onClick={handleUnblock}
+                                            className="w-full py-3.5 px-4 bg-eyr-surface-low text-eyr-on-surface font-bold rounded-2xl border border-eyr-outline-variant/30 hover:bg-eyr-surface-mid transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Unlock className="w-5 h-5" /> Desbloquear
+                                        </button>
                                     </div>
                                 )}
                             </div>
-                        </motion.div>
+                        ) : selectedSlot.reservation ? (
+                            // ── Existing reservation ──
+                            <div className="space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                                        <Info className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-eyr-on-surface">{selectedSlot.reservation.subject}</h4>
+                                        <p className="text-sm text-eyr-on-variant mt-1">Profesor Jefe: <span className="font-semibold text-eyr-on-surface">{selectedSlot.reservation.teacher}</span></p>
+                                    </div>
+                                </div>
+
+                                {(selectedSlot.reservation.userId === user?.id || user?.role === 'admin' || user?.role === 'director' || user?.role === 'convivencia' || user?.role === 'convivencia_head' || user?.role === 'super_admin') ? (
+                                    <div className="pt-4 border-t border-eyr-outline-variant/30">
+                                        <button
+                                            onClick={handleCancelReservation}
+                                            className="w-full py-3.5 px-4 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Trash2 className="w-5 h-5" /> Cancelar Reserva
+                                        </button>
+                                        <p className="text-xs text-center text-eyr-on-variant mt-3">Esta accion liberara el bloque.</p>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 bg-eyr-surface-low text-eyr-on-variant text-sm rounded-2xl flex gap-3 items-start border border-eyr-outline-variant/30">
+                                        <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+                                        <p>Este bloque esta reservado por otro usuario. Si necesitas el espacio, contacta a Convivencia Escolar.</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            // ── Empty slot: reserve or block ──
+                            <div className="space-y-5">
+                                {/* Mode toggle for users who can block */}
+                                {canBlockSlots && (
+                                    <div className="flex bg-eyr-surface-low rounded-xl p-1 gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalMode('reserve')}
+                                            className={cn(
+                                                "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
+                                                modalMode === 'reserve'
+                                                    ? "bg-white text-amber-700 shadow-sm"
+                                                    : "text-eyr-on-variant hover:text-eyr-on-surface"
+                                            )}
+                                        >
+                                            <Plus className="w-4 h-4" /> Reservar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalMode('block')}
+                                            className={cn(
+                                                "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5",
+                                                modalMode === 'block'
+                                                    ? "bg-white text-eyr-on-surface shadow-sm"
+                                                    : "text-eyr-on-variant hover:text-eyr-on-surface"
+                                            )}
+                                        >
+                                            <Ban className="w-4 h-4" /> Bloquear
+                                        </button>
+                                    </div>
+                                )}
+
+                                {modalMode === 'block' ? (
+                                    // Block form
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                                Motivo del Bloqueo
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={blockReason}
+                                                onChange={(e) => setBlockReason(e.target.value)}
+                                                placeholder="Ej: Reunion equipo convivencia, actividad interna..."
+                                                className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex items-start gap-2 p-3 bg-eyr-surface-low rounded-2xl border border-eyr-outline-variant/30 text-xs text-eyr-on-variant">
+                                            <Ban className="w-4 h-4 shrink-0 mt-0.5 text-eyr-on-variant" />
+                                            <span>Al bloquear este bloque, ningun profesor podra reservarlo. Solo un Jefe de Convivencia o administrador puede desbloquearlo.</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
+                                            <button
+                                                onClick={() => setIsModalOpen(false)}
+                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmBlock}
+                                                disabled={!blockReason.trim()}
+                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                            >
+                                                <Ban className="w-5 h-5" /> Confirmar Bloqueo
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    // Reserve form
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                                Profesor Jefe
+                                            </label>
+                                            {isTeacherRole ? (
+                                                <div className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low font-medium text-eyr-on-surface flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
+                                                        {user?.name?.charAt(0)}
+                                                    </div>
+                                                    {user?.name}
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    value={selectedTeacher}
+                                                    onChange={(e) => setSelectedTeacher(e.target.value)}
+                                                    className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                                >
+                                                    <option value="">Seleccionar Profesor...</option>
+                                                    {teachers.map(t => (
+                                                        <option key={t.id} value={t.name}>{t.name}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-2">
+                                                Motivo de la Reunion
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={motivo}
+                                                onChange={(e) => setMotivo(e.target.value)}
+                                                placeholder="Ej: Reunion apoderados, mediacion, entrevista..."
+                                                className="w-full px-5 py-4 rounded-2xl border border-eyr-outline-variant/30 bg-eyr-surface-low focus:outline-none focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 transition-all font-medium text-eyr-on-surface"
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        {/* Hint for teacher about schedule blocks */}
+                                        {isTeacherRole && getTeacherClass(selectedSlot.day, selectedSlot.block.start) && (
+                                            <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-2xl border border-indigo-100 text-xs text-indigo-700">
+                                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                                <span>Este bloque coincide con tu hora de clase. Puedes reservar igualmente si necesitas sacar a un alumno de clases.</span>
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
+                                            <button
+                                                onClick={() => setIsModalOpen(false)}
+                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmReservation}
+                                                disabled={!selectedTeacher || !motivo.trim()}
+                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                            >
+                                                <Check className="w-5 h-5" /> Confirmar Reserva
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
-                )}
-            </AnimatePresence>
+                </ModalContainer>
+            )}
         </div>
     );
 }

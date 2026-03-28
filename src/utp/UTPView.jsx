@@ -1,14 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users } from 'lucide-react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import { ASIGNATURAS, CURSOS } from '../data/objetivosAprendizaje';
+import { toast } from 'sonner';
+import { exportarPrueba } from '../lib/docxExport';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
+import ModalContainer from '../components/ModalContainer';
 import ResultadosGrid from './ResultadosGrid';
 import ResumenOA from './ResumenOA';
 import OAAssignmentPanel from './OAAssignmentPanel';
 import IndicadoresSelectionPanel from './IndicadoresSelectionPanel';
+import PreguntasPanel from './PreguntasPanel';
 
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
@@ -23,7 +27,7 @@ const getAsignaturaName = (code) => ASIGNATURAS.find(a => a.code === code)?.name
 
 export default function UTPView() {
     const { user } = useAuth();
-    const { evaluaciones, loading, addEvaluacion, deleteEvaluacion, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion } = useEvaluaciones();
+    const { evaluaciones, loading, deleteEvaluacion, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion } = useEvaluaciones();
     const userCanEdit = canEdit(user);
     const userIsManagement = isManagement(user);
 
@@ -35,7 +39,7 @@ export default function UTPView() {
 
     // View mode: 'list' or 'detail'
     const [selectedEval, setSelectedEval] = useState(null);
-    const [detailTab, setDetailTab] = useState('grid'); // 'grid' | 'resumen' | 'oas' | 'indicadores'
+    const [detailTab, setDetailTab] = useState('grid'); // 'grid' | 'preguntas' | 'resumen' | 'oas' | 'indicadores'
 
     // Filters
     const [search, setSearch] = useState('');
@@ -45,13 +49,23 @@ export default function UTPView() {
     // Modal
     const [showCreate, setShowCreate] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
+
+    // Navegación post-creación manual: espera a que la eval aparezca en el store
+    const [pendingNavEvalId, setPendingNavEvalId] = useState(null);
+    React.useEffect(() => {
+        if (!pendingNavEvalId) return;
+        const found = evaluaciones.find(e => e.id === pendingNavEvalId);
+        if (found) {
+            setSelectedEval(found);
+            setDetailTab('preguntas');
+            setPendingNavEvalId(null);
+        }
+    }, [evaluaciones, pendingNavEvalId]);
 
     // Reject modal
     const [rejectTarget, setRejectTarget] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
-
-    // Dashboard
-    const [dashboardOpen, setDashboardOpen] = useState(true);
 
     // Filter evaluaciones: teachers see only theirs, management sees all
     const filteredEvaluaciones = useMemo(() => {
@@ -122,6 +136,28 @@ export default function UTPView() {
     // If viewing detail, find the live version from evaluaciones
     const liveEval = selectedEval ? evaluaciones.find(e => e.id === selectedEval.id) || selectedEval : null;
 
+    // Google Docs generation
+    const [generatingDocs, setGeneratingDocs] = useState(false);
+
+    const handleGenerarDocs = async () => {
+        if (!liveEval) return;
+        setGeneratingDocs(true);
+        try {
+            await exportarPrueba({
+                nombre:     liveEval.name,
+                curso:      liveEval.curso,
+                asignatura: getAsignaturaName(liveEval.asignatura),
+                fecha:      liveEval.date,
+                profesor:   liveEval.createdBy?.name || '',
+                preguntas:  (liveEval.questions || []).filter(q => q.enunciado),
+            });
+        } catch (err) {
+            toast.error('No se pudo generar el archivo: ' + err.message);
+        } finally {
+            setGeneratingDocs(false);
+        }
+    };
+
     // Permission to delete: admin can delete any, teacher/utp_head can only delete their own
     const canDeleteEval = (item) => {
         if (userCanEdit) return true;
@@ -164,7 +200,7 @@ export default function UTPView() {
             </span>
         );
         return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#53ddfc]/20 text-[#004b58]">
                 <Clock className="w-3 h-3" /> Pendiente
             </span>
         );
@@ -184,26 +220,38 @@ export default function UTPView() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setSelectedEval(null)}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-2 text-eyr-on-variant hover:text-eyr-on-surface hover:bg-eyr-surface-high rounded-lg transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold text-slate-800 truncate">{liveEval.name}</h1>
+                            <h1 className="text-xl font-bold text-eyr-on-surface font-headline truncate">{liveEval.name}</h1>
                             <StatusBadge status={liveEval.status || 'pending'} />
                         </div>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-eyr-on-variant">
                             {getAsignaturaName(liveEval.asignatura)} — {liveEval.curso} — {formatDate(liveEval.date)} — {liveEval.totalQuestions} preguntas
                             {liveEval.driveLink && (
                                 <>
                                     {' — '}
-                                    <a href={liveEval.driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
+                                    <a href={liveEval.driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-eyr-primary hover:text-eyr-primary-dim font-medium">
                                         Ver prueba <ExternalLink className="w-3 h-3" />
                                     </a>
                                 </>
                             )}
                         </p>
+                        {liveEval.questions?.some(q => q.enunciado) && (
+                            <button
+                                onClick={handleGenerarDocs}
+                                disabled={generatingDocs}
+                                className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-eyr-primary hover:text-eyr-primary-dim disabled:opacity-50 transition-colors"
+                            >
+                                {generatingDocs
+                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
+                                    : <><FileText className="w-3.5 h-3.5" /> Descargar prueba (.docx)</>
+                                }
+                            </button>
+                        )}
                     </div>
                     {/* Approve/Reject buttons for approvers */}
                     {userCanApprove && (liveEval.status === 'pending' || !liveEval.status) && (
@@ -262,51 +310,32 @@ export default function UTPView() {
                 )}
 
                 {/* Tabs */}
-                <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-                    <button
-                        onClick={() => setDetailTab('grid')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            detailTab === 'grid'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <ClipboardList className="w-4 h-4" /> Resultados
-                    </button>
-                    <button
-                        onClick={() => setDetailTab('resumen')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            detailTab === 'resumen'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <BarChart3 className="w-4 h-4" /> Resumen OA
-                    </button>
-                    <button
-                        onClick={() => setDetailTab('oas')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            detailTab === 'oas'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <BookOpen className="w-4 h-4" /> Asignar OAs
-                    </button>
-                    <button
-                        onClick={() => setDetailTab('indicadores')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            detailTab === 'indicadores'
-                                ? 'bg-white text-slate-800 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <ListChecks className="w-4 h-4" /> Indicadores
-                    </button>
+                <div className="flex gap-1 bg-eyr-surface-high rounded-xl p-1 w-fit flex-wrap">
+                    {[
+                        { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
+                        { id: 'preguntas',   icon: FileQuestion,  label: 'Preguntas' },
+                        { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
+                        { id: 'oas',         icon: BookOpen,      label: 'Asignar OAs' },
+                        { id: 'indicadores', icon: ListChecks,    label: 'Indicadores' },
+                    ].map(({ id, icon: Icon, label }) => (
+                        <button
+                            key={id}
+                            onClick={() => setDetailTab(id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                detailTab === id
+                                    ? 'bg-white text-eyr-on-surface shadow-sm'
+                                    : 'text-eyr-on-variant hover:text-eyr-on-surface'
+                            }`}
+                        >
+                            <Icon className="w-4 h-4" /> {label}
+                        </button>
+                    ))}
                 </div>
 
                 {detailTab === 'grid' ? (
                     <ResultadosGrid evaluacion={liveEval} />
+                ) : detailTab === 'preguntas' ? (
+                    <PreguntasPanel evaluacion={liveEval} />
                 ) : detailTab === 'resumen' ? (
                     <ResumenOA evaluacion={liveEval} />
                 ) : detailTab === 'indicadores' ? (
@@ -324,17 +353,17 @@ export default function UTPView() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-                        <GraduationCap className="w-6 h-6 text-indigo-600" />
+                    <div className="p-2.5 bg-eyr-primary-container/40 rounded-xl shrink-0">
+                        <GraduationCap className="w-6 h-6 text-eyr-primary" />
                     </div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Evaluaciones UTP</h1>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-eyr-on-surface font-headline">Evaluaciones UTP</h1>
                 </div>
                 {canCreateEval && (
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-sm text-sm font-semibold shrink-0"
+                        className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold shrink-0"
                     >
-                        <Plus className="w-4 h-4" /> Nueva Evaluacion
+                        <Plus className="w-4 h-4" /> Nueva Evaluación
                     </button>
                 )}
             </div>
@@ -414,19 +443,19 @@ export default function UTPView() {
                                         {item.totalQuestions}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-800">{item.name}</h3>
+                                        <h3 className="font-bold text-eyr-on-surface">{item.name}</h3>
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                            <span className="text-sm text-eyr-on-variant flex items-center gap-1">
                                                 <GraduationCap className="w-3.5 h-3.5" />{item.curso}
                                             </span>
-                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                            <span className="text-sm text-eyr-on-variant flex items-center gap-1">
                                                 <BookOpen className="w-3.5 h-3.5" />{getAsignaturaName(item.asignatura)}
                                             </span>
-                                            <span className="text-sm text-slate-500 flex items-center gap-1">
+                                            <span className="text-sm text-eyr-on-variant flex items-center gap-1">
                                                 <Calendar className="w-3.5 h-3.5" />{formatDate(item.date)}
                                             </span>
                                             {item.createdBy?.name && (
-                                                <span className="text-sm text-slate-500 italic">Por {item.createdBy.name}</span>
+                                                <span className="text-sm text-eyr-on-variant italic">Por {item.createdBy.name}</span>
                                             )}
                                         </div>
                                     </div>
@@ -454,65 +483,107 @@ export default function UTPView() {
             {/* Historial de Evaluaciones */}
             <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h2 className="text-xl font-bold text-slate-800">Historial de Evaluaciones</h2>
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Buscar evaluacion..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-3 py-2 bg-white border border-slate-200/20 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none w-48 transition-all"
-                            />
-                        </div>
-                        <select
-                            value={filterCurso}
-                            onChange={e => setFilterCurso(e.target.value)}
-                            className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all appearance-none bg-no-repeat cursor-pointer ${filterCurso ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200/20 bg-white text-slate-600'}`}
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
-                        >
-                            <option value="">Todos los cursos</option>
-                            {CURSOS.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select
-                            value={filterAsignatura}
-                            onChange={e => setFilterAsignatura(e.target.value)}
-                            className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all appearance-none bg-no-repeat cursor-pointer ${filterAsignatura ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200/20 bg-white text-slate-600'}`}
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
-                        >
-                            <option value="">Todas las asignaturas</option>
-                            {ASIGNATURAS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
-                        </select>
-                    </div>
+                    <h2 className="text-xl font-bold text-eyr-on-surface font-headline">Historial de Evaluaciones</h2>
+                    <button
+                        onClick={() => setShowFilters(f => !f)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                            showFilters || filterCurso || filterAsignatura || search
+                                ? 'border-eyr-primary/30 bg-eyr-surface-mid text-eyr-primary'
+                                : 'border-eyr-outline-variant/20 bg-eyr-surface-low text-eyr-on-variant hover:bg-eyr-surface-high'
+                        }`}
+                    >
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Filtros Avanzados
+                        {(filterCurso || filterAsignatura || search) && (
+                            <span className="w-2 h-2 bg-eyr-primary rounded-full" />
+                        )}
+                    </button>
                 </div>
 
+                {/* Panel de filtros colapsable */}
+                <AnimatePresence>
+                    {showFilters && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex flex-wrap gap-3 p-4 bg-eyr-surface-low rounded-2xl border border-eyr-outline-variant/20"
+                        >
+                            <div className="relative flex-1 min-w-48">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-eyr-on-variant" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar evaluación..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 bg-white border border-eyr-outline-variant/20 rounded-xl text-sm focus:ring-2 focus:ring-eyr-primary/20 focus:border-eyr-primary outline-none transition-all text-eyr-on-surface placeholder:text-eyr-on-variant"
+                                />
+                            </div>
+                            <select
+                                value={filterCurso}
+                                onChange={e => setFilterCurso(e.target.value)}
+                                className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-eyr-primary/20 transition-all appearance-none bg-no-repeat cursor-pointer ${
+                                    filterCurso
+                                        ? 'border-eyr-primary/30 bg-eyr-surface-mid text-eyr-primary'
+                                        : 'border-eyr-outline-variant/20 bg-white text-eyr-on-variant'
+                                }`}
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23635984' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
+                            >
+                                <option value="">Todos los cursos</option>
+                                {CURSOS.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <select
+                                value={filterAsignatura}
+                                onChange={e => setFilterAsignatura(e.target.value)}
+                                className={`py-2 pl-3 pr-8 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-eyr-primary/20 transition-all appearance-none bg-no-repeat cursor-pointer ${
+                                    filterAsignatura
+                                        ? 'border-eyr-primary/30 bg-eyr-surface-mid text-eyr-primary'
+                                        : 'border-eyr-outline-variant/20 bg-white text-eyr-on-variant'
+                                }`}
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23635984' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundPosition: 'right 10px center' }}
+                            >
+                                <option value="">Todas las asignaturas</option>
+                                {ASIGNATURAS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}
+                            </select>
+                            {(filterCurso || filterAsignatura || search) && (
+                                <button
+                                    onClick={() => { setFilterCurso(''); setFilterAsignatura(''); setSearch(''); }}
+                                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-eyr-on-variant hover:text-eyr-on-surface transition-colors rounded-xl hover:bg-eyr-surface-high"
+                                >
+                                    <X className="w-3.5 h-3.5" /> Limpiar
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {loading ? (
-                    <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100/5">
-                        <p className="text-slate-400">Cargando evaluaciones...</p>
+                    <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-eyr-outline-variant/5">
+                        <p className="text-eyr-on-variant">Cargando evaluaciones...</p>
                     </div>
                 ) : filteredEvaluaciones.length === 0 ? (
-                    <div className="bg-white rounded-3xl border border-slate-100/5 p-12 text-center shadow-sm">
-                        <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500 font-medium">No se encontraron evaluaciones</p>
-                        <p className="text-xs text-slate-400 mt-1">
-                            {canCreateEval ? 'Haz clic en "Nueva Evaluacion" para crear una' : 'Aun no tienes evaluaciones registradas'}
+                    <div className="bg-white rounded-3xl border border-eyr-outline-variant/5 p-12 text-center shadow-sm">
+                        <GraduationCap className="w-10 h-10 text-eyr-outline-variant mx-auto mb-3" />
+                        <p className="text-eyr-on-variant font-medium">No se encontraron evaluaciones</p>
+                        <p className="text-xs text-eyr-on-variant/70 mt-1">
+                            {canCreateEval ? 'Haz clic en "Nueva Evaluación" para crear una' : 'Aún no tienes evaluaciones registradas'}
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-hidden bg-white rounded-3xl shadow-sm border border-slate-100/5">
+                    <div className="overflow-hidden bg-white rounded-3xl shadow-sm border border-eyr-outline-variant/5">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-100/50">
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Estado</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Asignatura / Nivel</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Fecha</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Preguntas</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Alumnos</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                                <tr className="bg-eyr-surface-high/50">
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider">Estado</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider">Asignatura / Nivel</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider text-center">Fecha</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider text-center">Preguntas</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider text-center">Alumnos</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eyr-on-variant uppercase tracking-wider text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100/5">
+                            <tbody className="divide-y divide-eyr-outline-variant/10">
                                 {filteredEvaluaciones
                                     .slice()
                                     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -521,7 +592,7 @@ export default function UTPView() {
                                         return (
                                             <tr
                                                 key={item.id}
-                                                className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                                className="hover:bg-eyr-surface-low/50 transition-colors cursor-pointer group"
                                                 onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
                                             >
                                                 <td className="px-6 py-4">
@@ -529,17 +600,17 @@ export default function UTPView() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-800">{item.name}</span>
-                                                        <span className="text-xs text-slate-500 mt-0.5">{getAsignaturaName(item.asignatura)} · {item.curso}</span>
+                                                        <span className="font-bold text-eyr-on-surface">{item.name}</span>
+                                                        <span className="text-xs text-eyr-on-variant mt-0.5">{getAsignaturaName(item.asignatura)} · {item.curso}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-center text-sm font-medium text-slate-600">{formatDate(item.date)}</td>
+                                                <td className="px-6 py-4 text-center text-sm font-medium text-eyr-on-variant">{formatDate(item.date)}</td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <span className="bg-slate-100 px-3 py-1 rounded-lg text-sm font-bold text-slate-700">{item.totalQuestions}</span>
+                                                    <span className="bg-eyr-surface-highest px-3 py-1 rounded-lg text-sm font-bold text-eyr-on-surface">{item.totalQuestions}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <div className="flex items-center justify-center gap-1 text-sm font-medium text-slate-600">
-                                                        <Users className="w-4 h-4 text-slate-400" />
+                                                    <div className="flex items-center justify-center gap-1 text-sm font-medium text-eyr-on-variant">
+                                                        <Users className="w-4 h-4 text-eyr-outline" />
                                                         {answeredCount}
                                                     </div>
                                                 </td>
@@ -547,7 +618,7 @@ export default function UTPView() {
                                                     {canDeleteEval(item) && (
                                                         <button
                                                             onClick={() => setDeleteConfirm(item.id)}
-                                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50/10 rounded-xl transition-all"
+                                                            className="p-2 text-eyr-on-variant hover:text-red-500 hover:bg-red-50/10 rounded-xl transition-all"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -568,9 +639,8 @@ export default function UTPView() {
                 {showCreate && (
                     <CrearEvaluacionModal
                         onClose={() => setShowCreate(false)}
-                        onSave={async (data) => {
-                            const ok = await addEvaluacion(data);
-                            if (ok) setShowCreate(false);
+                        onCreated={(evalId, isManual) => {
+                            if (isManual) setPendingNavEvalId(evalId);
                         }}
                         user={user}
                     />
@@ -580,50 +650,46 @@ export default function UTPView() {
             {/* Delete confirm */}
             <AnimatePresence>
                 {deleteConfirm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setDeleteConfirm(null)}>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40" />
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            onClick={e => e.stopPropagation()} className="relative bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
-                            <h3 className="font-bold text-slate-800 mb-2">Eliminar evaluacion</h3>
-                            <p className="text-sm text-slate-500 mb-5">Se eliminaran todos los resultados asociados. Esta accion no se puede deshacer.</p>
-                            <div className="flex gap-3 justify-end">
-                                <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                                <button onClick={() => handleDelete(deleteConfirm)} className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Eliminar</button>
-                            </div>
-                        </motion.div>
-                    </div>
+                    <ModalContainer onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm">
+                        <div className="px-8 pt-8 pb-4">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface mb-2">Eliminar evaluación</h3>
+                            <p className="text-sm text-eyr-on-variant">Se eliminarán todos los resultados asociados. Esta acción no se puede deshacer.</p>
+                        </div>
+                        <div className="p-6 bg-eyr-surface-mid flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setDeleteConfirm(null)} className="px-5 py-2.5 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-colors">Cancelar</button>
+                            <button onClick={() => handleDelete(deleteConfirm)} className="px-5 py-2.5 rounded-2xl font-bold bg-red-600 text-white hover:bg-red-700 transition-colors">Eliminar</button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
 
             {/* Reject modal */}
             <AnimatePresence>
                 {rejectTarget && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setRejectTarget(null)}>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40" />
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            onClick={e => e.stopPropagation()} className="relative bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
-                            <h3 className="font-bold text-slate-800 mb-2">Rechazar evaluacion</h3>
-                            <p className="text-sm text-slate-500 mb-3">Indica el motivo del rechazo para que el profesor pueda corregir.</p>
+                    <ModalContainer onClose={() => setRejectTarget(null)} maxWidth="max-w-sm">
+                        <div className="px-8 pt-8 pb-4 space-y-3">
+                            <h3 className="text-xl font-headline font-extrabold text-eyr-on-surface">Rechazar evaluación</h3>
+                            <p className="text-sm text-eyr-on-variant">Indica el motivo del rechazo para que el profesor pueda corregir.</p>
                             <textarea
                                 value={rejectReason}
                                 onChange={e => setRejectReason(e.target.value)}
                                 placeholder="Motivo del rechazo..."
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none resize-none"
+                                className="w-full px-4 py-3 rounded-2xl bg-eyr-surface-low border border-transparent focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none resize-none text-sm text-eyr-on-surface"
                                 rows={3}
                                 autoFocus
                             />
-                            <div className="flex gap-3 justify-end mt-4">
-                                <button onClick={() => setRejectTarget(null)} className="px-4 py-2 text-sm rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                                <button
-                                    onClick={handleReject}
-                                    disabled={!rejectReason.trim()}
-                                    className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Rechazar
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
+                        </div>
+                        <div className="p-6 bg-eyr-surface-mid flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setRejectTarget(null)} className="px-5 py-2.5 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-colors">Cancelar</button>
+                            <button
+                                onClick={handleReject}
+                                disabled={!rejectReason.trim()}
+                                className="px-5 py-2.5 rounded-2xl font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Rechazar
+                            </button>
+                        </div>
+                    </ModalContainer>
                 )}
             </AnimatePresence>
         </div>
