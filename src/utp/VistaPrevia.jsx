@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Printer, Download, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { ASIGNATURAS } from '../data/objetivosAprendizaje';
 import { exportarPrueba } from '../lib/docxExport';
+import { exportarConPlantilla } from '../lib/templateExport';
 import { cargarFormato, DEFAULT_FORMATO } from './formatoConfig';
+import { fetchDocument } from '../lib/firestoreService';
 import { toast } from 'sonner';
+
+const PLANTILLA_META_DOC = ['app_config', 'utp_plantilla_meta'];
 
 const TIPOS_CON_ITEMS = ['verdadero_falso', 'unir', 'completar'];
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -17,12 +21,21 @@ function completarTexto(texto) {
 }
 
 export default function VistaPrevia({ evaluacion }) {
-    const [exporting,   setExporting]   = useState(false);
-    const [showAnswers, setShowAnswers] = useState(false);
-    const [formato,     setFormato]     = useState(DEFAULT_FORMATO);
+    const [exporting,     setExporting]     = useState(false);
+    const [showAnswers,   setShowAnswers]   = useState(false);
+    const [formato,       setFormato]       = useState(DEFAULT_FORMATO);
+    const [plantillaMeta, setPlantillaMeta] = useState(null); // null = no cargado aún
 
     useEffect(() => {
-        cargarFormato().then(setFormato);
+        Promise.all([
+            cargarFormato(),
+            fetchDocument(...PLANTILLA_META_DOC),
+        ]).then(([fmt, meta]) => {
+            setFormato(fmt);
+            setPlantillaMeta(meta?.url ? meta : false); // false = no hay plantilla
+        }).catch(() => {
+            setPlantillaMeta(false);
+        });
     }, []);
 
     const preguntas = (evaluacion.questions || []).filter(
@@ -60,15 +73,20 @@ export default function VistaPrevia({ evaluacion }) {
     const handleExport = async () => {
         setExporting(true);
         try {
-            await exportarPrueba({
-                nombre:      evaluacion.name,
-                asignatura:  asignaturaLabel,
-                curso:       evaluacion.curso,
-                fecha:       evaluacion.date,
-                profesor:    evaluacion.createdBy?.name || '',
-                instrucciones: evaluacion.instrucciones,
-                preguntas,
-            });
+            if (plantillaMeta?.url) {
+                await exportarConPlantilla({ templateUrl: plantillaMeta.url, evaluacion });
+            } else {
+                await exportarPrueba({
+                    nombre:        evaluacion.name,
+                    asignatura:    asignaturaLabel,
+                    curso:         evaluacion.curso,
+                    fecha:         evaluacion.date,
+                    profesor:      evaluacion.createdBy?.name || '',
+                    instrucciones: evaluacion.instrucciones,
+                    preguntas,
+                    formato,
+                });
+            }
         } catch {
             toast.error('Error al exportar el documento');
         } finally {

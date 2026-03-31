@@ -29,82 +29,90 @@ function calcTotalPuntos(preguntas) {
     return preguntas.reduce((sum, p) => sum + (p.puntaje || 0), 0);
 }
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+const TIPOS_CON_ITEMS = ['verdadero_falso', 'unir', 'completar'];
+
 // ── Datos para la plantilla ────────────────────────────────────────────────────
 
 /**
  * Construye el objeto de datos para la sustitución de variables en la plantilla.
- * @param {Object} evaluacion - Objeto de evaluación con preguntas, metadatos, etc.
+ *
+ * Las secciones se ordenan según el tipo que aparece primero en la evaluación,
+ * respetando el orden en que el profesor armó la prueba.
+ *
+ * @param {Object} evaluacion
  * @returns {Object}
  */
 export function prepararDatosPlantilla(evaluacion) {
-    const preguntas = (evaluacion.questions || []).filter(q => q.enunciado);
+    const preguntas = (evaluacion.questions || []).filter(
+        q => q.enunciado || TIPOS_CON_ITEMS.includes(q.tipo)
+    );
 
-    return {
-        titulo: evaluacion.name || '',
-        asignatura: ASIGNATURAS.find(a => a.code === evaluacion.asignatura)?.name || evaluacion.asignatura || '',
-        curso: evaluacion.curso || '',
-        fecha: formatFecha(evaluacion.date),
-        profesor: evaluacion.createdBy?.name || '',
-        instrucciones: evaluacion.instrucciones || '',
-        total_puntos: calcTotalPuntos(preguntas),
+    // Agrupar por tipo respetando el orden de primera aparición
+    const tiposEnOrden = [];
+    const gruposPorTipo = {};
+    for (const p of preguntas) {
+        if (!gruposPorTipo[p.tipo]) {
+            gruposPorTipo[p.tipo] = [];
+            tiposEnOrden.push(p.tipo);
+        }
+        gruposPorTipo[p.tipo].push(p);
+    }
 
-        // Preguntas de selección múltiple
-        preguntas_sm: preguntas
-            .filter(p => p.tipo === 'seleccion_multiple')
-            .map((p, i) => ({
-                numero: i + 1,
-                enunciado: p.enunciado,
+    /**
+     * secciones: array ordenado según el orden del profesor.
+     * Cada sección tiene:
+     *  - roman, titulo, count
+     *  - is_sm / is_desarrollo / is_vf / is_unir / is_completar  (condicionales)
+     *  - preguntas: array de preguntas de la sección
+     */
+    const secciones = tiposEnOrden.map((tipo, idx) => {
+        const secPreguntas = gruposPorTipo[tipo];
+        return {
+            roman:         ROMAN[idx] || String(idx + 1),
+            tipo,
+            count:         secPreguntas.length,
+            is_sm:         tipo === 'seleccion_multiple',
+            is_desarrollo: tipo === 'desarrollo',
+            is_vf:         tipo === 'verdadero_falso',
+            is_unir:       tipo === 'unir',
+            is_completar:  tipo === 'completar',
+            preguntas: secPreguntas.map((p, qi) => ({
+                numero:    qi + 1,
+                enunciado: p.enunciado || '',
+                // SM
                 alt_a: p.alternativas?.a || '',
                 alt_b: p.alternativas?.b || '',
                 alt_c: p.alternativas?.c || '',
                 alt_d: p.alternativas?.d || '',
-            })),
-
-        // Preguntas de desarrollo
-        preguntas_desarrollo: preguntas
-            .filter(p => p.tipo === 'desarrollo')
-            .map((p, i) => ({
-                numero: i + 1,
-                enunciado: p.enunciado,
-            })),
-
-        // Bloques verdadero/falso
-        bloques_vf: preguntas
-            .filter(p => p.tipo === 'verdadero_falso')
-            .map((p) => ({
+                // Tipos con ítems (VF, unir, completar)
                 instruccion: p.instruccionItems || '',
-                enunciado: p.enunciado || '',
-                items: (p.items || []).map((item, idx) => ({
-                    numero: idx + 1,
-                    texto: item.texto,
+                items: (p.items || []).map((item, iIdx) => ({
+                    numero:    iIdx + 1,
+                    texto:     item.texto     || '',
+                    izquierda: item.izquierda || '',
+                    derecha:   item.derecha   || '',
+                    letra:     String.fromCharCode(65 + iIdx),
                 })),
             })),
+        };
+    });
 
-        // Bloques unir con flechas
-        bloques_unir: preguntas
-            .filter(p => p.tipo === 'unir')
-            .map((p) => ({
-                instruccion: p.instruccionItems || '',
-                enunciado: p.enunciado || '',
-                pares: (p.items || []).map((item, idx) => ({
-                    numero: idx + 1,
-                    izquierda: item.izquierda,
-                    letra: String.fromCharCode(65 + idx),
-                    derecha: item.derecha,
-                })),
-            })),
+    const totalPuntos = preguntas.reduce((acc, p) => {
+        if (TIPOS_CON_ITEMS.includes(p.tipo)) return acc + (p.items?.length || 1);
+        return acc + 1;
+    }, 0);
 
-        // Bloques completar
-        bloques_completar: preguntas
-            .filter(p => p.tipo === 'completar')
-            .map((p) => ({
-                instruccion: p.instruccionItems || '',
-                enunciado: p.enunciado || '',
-                items: (p.items || []).map((item, idx) => ({
-                    numero: idx + 1,
-                    texto: item.texto,
-                })),
-            })),
+    return {
+        titulo:        evaluacion.name || '',
+        asignatura:    ASIGNATURAS.find(a => a.code === evaluacion.asignatura)?.name || evaluacion.asignatura || '',
+        curso:         evaluacion.curso || '',
+        fecha:         formatFecha(evaluacion.date),
+        profesor:      evaluacion.createdBy?.name || '',
+        instrucciones: evaluacion.instrucciones || '',
+        total_puntos:  totalPuntos,
+        secciones,
     };
 }
 
@@ -291,53 +299,53 @@ export async function descargarPlantillaEjemplo() {
 
                 new Paragraph({ children: [], spacing: { after: 200 } }),
 
-                // ── Selección múltiple loop ───────────────────────────────────
-                sectionTitle('Selección múltiple: {#preguntas_sm} ... {/preguntas_sm}'),
-                p([mono('{#preguntas_sm}')]),
-                p([mono('{numero}. {enunciado}')]),
-                p([mono('   a) {alt_a}')]),
-                p([mono('   b) {alt_b}')]),
-                p([mono('   c) {alt_c}')]),
-                p([mono('   d) {alt_d}')]),
-                p([mono('{/preguntas_sm}')]),
+                // ── Secciones loop ────────────────────────────────────────────
+                sectionTitle('Secciones: {#secciones} ... {/secciones}  (orden del profesor)'),
+                p([normal('Las secciones aparecen en el orden en que el profesor creó los tipos de preguntas.')]),
+                p([normal('Ejemplo: si la primera pregunta es Verdadero/Falso, esa sección va primero.')]),
+                new Paragraph({ children: [], spacing: { after: 80 } }),
 
-                new Paragraph({ children: [], spacing: { after: 120 } }),
+                p([mono('{#secciones}')]),
+                p([bold('  Variables de sección:')]),
+                p([mono('    {roman}        '), normal('→  Número romano (I, II, III…)')]),
+                p([mono('    {count}        '), normal('→  Cantidad de preguntas en la sección')]),
+                p([mono('    {#is_sm}       '), normal('→  Bloque solo para Selección Múltiple')]),
+                p([mono('    {#is_desarrollo}'), normal('→  Bloque solo para Desarrollo')]),
+                p([mono('    {#is_vf}       '), normal('→  Bloque solo para Verdadero o Falso')]),
+                p([mono('    {#is_unir}     '), normal('→  Bloque solo para Unir con Flechas')]),
+                p([mono('    {#is_completar}'), normal('→  Bloque solo para Completar')]),
+                new Paragraph({ children: [], spacing: { after: 80 } }),
 
-                // ── Desarrollo loop ───────────────────────────────────────────
-                sectionTitle('Desarrollo: {#preguntas_desarrollo} ... {/preguntas_desarrollo}'),
-                p([mono('{#preguntas_desarrollo}')]),
-                p([mono('{numero}. {enunciado}')]),
-                p([mono('{/preguntas_desarrollo}')]),
+                p([bold('  Preguntas dentro de cada sección: {#preguntas} ... {/preguntas}')]),
+                p([mono('    {numero}       '), normal('→  Número de la pregunta dentro de la sección')]),
+                p([mono('    {enunciado}    '), normal('→  Texto de la pregunta')]),
+                p([mono('    {instruccion}  '), normal('→  Instrucción del bloque (VF, unir, completar)')]),
+                p([mono('    {alt_a} {alt_b} {alt_c} {alt_d}'), normal('  →  Alternativas (solo SM)')]),
+                new Paragraph({ children: [], spacing: { after: 80 } }),
 
-                new Paragraph({ children: [], spacing: { after: 120 } }),
+                p([bold('  Ítems dentro de preguntas: {#items} ... {/items}')]),
+                p([mono('    {numero}       '), normal('→  Número del ítem')]),
+                p([mono('    {texto}        '), normal('→  Texto del ítem (VF, completar)')]),
+                p([mono('    {izquierda}    '), normal('→  Columna A (unir)')]),
+                p([mono('    {derecha}      '), normal('→  Columna B (unir)')]),
+                p([mono('    {letra}        '), normal('→  Letra columna B: A, B, C… (unir)')]),
+                p([mono('{/secciones}')]),
 
-                // ── Verdadero/Falso loop ──────────────────────────────────────
-                sectionTitle('Verdadero o Falso: {#bloques_vf} ... {/bloques_vf}'),
-                p([mono('{#bloques_vf}')]),
-                p([mono('{instruccion}')]),
-                p([mono('{enunciado}')]),
-                p([mono('{#items}{numero}. {texto}{/items}')]),
-                p([mono('{/bloques_vf}')]),
+                new Paragraph({ children: [], spacing: { after: 200 } }),
 
-                new Paragraph({ children: [], spacing: { after: 120 } }),
-
-                // ── Unir loop ─────────────────────────────────────────────────
-                sectionTitle('Unir con flechas: {#bloques_unir} ... {/bloques_unir}'),
-                p([mono('{#bloques_unir}')]),
-                p([mono('{instruccion}')]),
-                p([mono('{enunciado}')]),
-                p([mono('{#pares}{numero}. {izquierda}   {letra}. {derecha}{/pares}')]),
-                p([mono('{/bloques_unir}')]),
-
-                new Paragraph({ children: [], spacing: { after: 120 } }),
-
-                // ── Completar loop ────────────────────────────────────────────
-                sectionTitle('Completar: {#bloques_completar} ... {/bloques_completar}'),
-                p([mono('{#bloques_completar}')]),
-                p([mono('{instruccion}')]),
-                p([mono('{enunciado}')]),
-                p([mono('{#items}{numero}. {texto}{/items}')]),
-                p([mono('{/bloques_completar}')]),
+                sectionTitle('Ejemplo de uso completo:'),
+                p([mono('{#secciones}')]),
+                p([mono('{roman}. {#is_sm}SELECCIÓN MÚLTIPLE{/is_sm}{#is_desarrollo}DESARROLLO{/is_desarrollo}{#is_vf}VERDADERO O FALSO{/is_vf}{#is_unir}UNIR CON FLECHAS{/is_unir}{#is_completar}COMPLETAR{/is_completar}')]),
+                p([mono('{#preguntas}')]),
+                p([mono('  {numero}. {enunciado}')]),
+                p([mono('  {#is_sm}')]),
+                p([mono('    a) {alt_a}  b) {alt_b}  c) {alt_c}  d) {alt_d}')]),
+                p([mono('  {/is_sm}')]),
+                p([mono('  {#is_vf}{#items}    {numero}. {texto}{/items}{/is_vf}')]),
+                p([mono('  {#is_unir}{#items}    {numero}. {izquierda}   {letra}. {derecha}{/items}{/is_unir}')]),
+                p([mono('  {#is_completar}{#items}    {numero}. {texto}{/items}{/is_completar}')]),
+                p([mono('{/preguntas}')]),
+                p([mono('{/secciones}')]),
             ],
         }],
     });

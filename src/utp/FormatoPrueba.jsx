@@ -40,80 +40,44 @@ const VARIABLES_SIMPLES = [
     { tag: '{total_puntos}',  desc: 'Total de puntos de la prueba' },
 ];
 
+// Loop principal: {#secciones} — respeta el orden en que el profesor creó los tipos
 const VARIABLES_LOOPS = [
     {
-        tag: '{#preguntas_sm}',
-        cierre: '{/preguntas_sm}',
-        desc: 'Preguntas de selección múltiple',
+        tag: '{#secciones}',
+        cierre: '{/secciones}',
+        desc: 'Todas las secciones en el orden del profesor',
+        note: 'Si el profesor empieza con V/F, esa sección aparece primero.',
         sub: [
-            { tag: '{numero}',   desc: 'Número de la pregunta' },
-            { tag: '{enunciado}',desc: 'Texto de la pregunta' },
-            { tag: '{alt_a}',    desc: 'Alternativa A' },
-            { tag: '{alt_b}',    desc: 'Alternativa B' },
-            { tag: '{alt_c}',    desc: 'Alternativa C' },
-            { tag: '{alt_d}',    desc: 'Alternativa D' },
-        ],
-    },
-    {
-        tag: '{#preguntas_desarrollo}',
-        cierre: '{/preguntas_desarrollo}',
-        desc: 'Preguntas de desarrollo',
-        sub: [
-            { tag: '{numero}',    desc: 'Número de la pregunta' },
-            { tag: '{enunciado}', desc: 'Texto de la pregunta' },
-        ],
-    },
-    {
-        tag: '{#bloques_vf}',
-        cierre: '{/bloques_vf}',
-        desc: 'Bloques verdadero o falso',
-        sub: [
-            { tag: '{instruccion}', desc: 'Instrucción del bloque' },
-            { tag: '{enunciado}',   desc: 'Enunciado del bloque' },
+            { tag: '{roman}',          desc: 'Número romano (I, II, III…)' },
+            { tag: '{count}',          desc: 'Cantidad de preguntas en la sección' },
+            { tag: '{#is_sm}',         desc: 'Bloque condicional: solo para Selección Múltiple' },
+            { tag: '{#is_desarrollo}', desc: 'Bloque condicional: solo para Desarrollo' },
+            { tag: '{#is_vf}',         desc: 'Bloque condicional: solo para Verdadero o Falso' },
+            { tag: '{#is_unir}',       desc: 'Bloque condicional: solo para Unir con Flechas' },
+            { tag: '{#is_completar}',  desc: 'Bloque condicional: solo para Completar' },
         ],
         inner: {
-            tag: '{#items}',
-            cierre: '{/items}',
+            tag: '{#preguntas}',
+            cierre: '{/preguntas}',
+            desc: 'Preguntas de la sección',
             sub: [
-                { tag: '{numero}', desc: 'Número del ítem' },
-                { tag: '{texto}',  desc: 'Texto del ítem' },
+                { tag: '{numero}',    desc: 'Número dentro de la sección' },
+                { tag: '{enunciado}', desc: 'Texto de la pregunta' },
+                { tag: '{instruccion}', desc: 'Instrucción del bloque (VF, unir, completar)' },
+                { tag: '{alt_a} {alt_b} {alt_c} {alt_d}', desc: 'Alternativas (solo SM)' },
             ],
-        },
-    },
-    {
-        tag: '{#bloques_unir}',
-        cierre: '{/bloques_unir}',
-        desc: 'Bloques unir con flechas',
-        sub: [
-            { tag: '{instruccion}', desc: 'Instrucción del bloque' },
-            { tag: '{enunciado}',   desc: 'Enunciado del bloque' },
-        ],
-        inner: {
-            tag: '{#pares}',
-            cierre: '{/pares}',
-            sub: [
-                { tag: '{numero}',    desc: 'Número del par' },
-                { tag: '{izquierda}', desc: 'Columna izquierda' },
-                { tag: '{letra}',     desc: 'Letra de la columna derecha (A, B, C…)' },
-                { tag: '{derecha}',   desc: 'Columna derecha' },
-            ],
-        },
-    },
-    {
-        tag: '{#bloques_completar}',
-        cierre: '{/bloques_completar}',
-        desc: 'Bloques completar',
-        sub: [
-            { tag: '{instruccion}', desc: 'Instrucción del bloque' },
-            { tag: '{enunciado}',   desc: 'Enunciado del bloque' },
-        ],
-        inner: {
-            tag: '{#items}',
-            cierre: '{/items}',
-            sub: [
-                { tag: '{numero}', desc: 'Número del ítem' },
-                { tag: '{texto}',  desc: 'Texto del ítem' },
-            ],
+            innerItems: {
+                tag: '{#items}',
+                cierre: '{/items}',
+                desc: 'Ítems (VF, unir, completar)',
+                sub: [
+                    { tag: '{numero}',    desc: 'Número del ítem' },
+                    { tag: '{texto}',     desc: 'Texto del ítem (VF, completar)' },
+                    { tag: '{izquierda}', desc: 'Columna A (unir)' },
+                    { tag: '{derecha}',   desc: 'Columna B (unir)' },
+                    { tag: '{letra}',     desc: 'Letra columna B: A, B, C… (unir)' },
+                ],
+            },
         },
     },
 ];
@@ -393,6 +357,9 @@ export default function FormatoPrueba() {
                                 {VARIABLES_LOOPS.map(loop => (
                                     <div key={loop.tag}>
                                         <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{loop.desc}</p>
+                                        {loop.note && (
+                                            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mb-2">{loop.note}</p>
+                                        )}
                                         <div className="pl-2 border-l-2 border-indigo-100 space-y-1">
                                             <div className="flex items-center gap-1 text-xs">
                                                 <code className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded font-mono text-[11px]">{loop.tag}</code>
@@ -407,6 +374,9 @@ export default function FormatoPrueba() {
                                             ))}
                                             {loop.inner && (
                                                 <div className="pl-3 pt-1 space-y-1">
+                                                    {loop.inner.desc && (
+                                                        <p className="text-[11px] text-slate-400 mb-0.5">{loop.inner.desc}:</p>
+                                                    )}
                                                     <div className="flex items-center gap-1 text-xs">
                                                         <code className="px-1.5 py-0.5 bg-violet-50 text-violet-700 rounded font-mono text-[11px]">{loop.inner.tag}</code>
                                                         <span className="text-slate-400">…</span>
@@ -418,6 +388,24 @@ export default function FormatoPrueba() {
                                                             <span className="text-slate-500">{s.desc}</span>
                                                         </div>
                                                     ))}
+                                                    {loop.inner.innerItems && (
+                                                        <div className="pl-3 pt-1 space-y-1">
+                                                            {loop.inner.innerItems.desc && (
+                                                                <p className="text-[11px] text-slate-400 mb-0.5">{loop.inner.innerItems.desc}:</p>
+                                                            )}
+                                                            <div className="flex items-center gap-1 text-xs">
+                                                                <code className="px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded font-mono text-[11px]">{loop.inner.innerItems.tag}</code>
+                                                                <span className="text-slate-400">…</span>
+                                                                <code className="px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded font-mono text-[11px]">{loop.inner.innerItems.cierre}</code>
+                                                            </div>
+                                                            {loop.inner.innerItems.sub.map(s => (
+                                                                <div key={s.tag} className="flex items-baseline gap-2 text-xs pl-3">
+                                                                    <code className="shrink-0 px-1.5 py-0.5 bg-slate-100 text-emerald-700 rounded font-mono text-[11px]">{s.tag}</code>
+                                                                    <span className="text-slate-500">{s.desc}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
