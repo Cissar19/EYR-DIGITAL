@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList, GraduationCap } from 'lucide-react';
+import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList, GraduationCap, HeartHandshake } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
@@ -43,6 +43,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const groupedItems = roleSpecificItems.filter(m => m.group === 'administracion');
     const inspectoriaItems = roleSpecificItems.filter(m => m.group === 'inspectoria');
     const utpItems = roleSpecificItems.filter(m => m.group === 'utp');
+    const pieItems = roleSpecificItems.filter(m => m.group === 'pie');
 
     // Track which groups are expanded (auto-expand if any child is active)
     const hasActiveChild = groupedItems.some(m => location.pathname === m.path);
@@ -56,6 +57,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const hasActiveUtpChild = utpItems.some(m => location.pathname === m.path);
     const [utpOpen, setUtpOpen] = React.useState(hasActiveUtpChild);
     React.useEffect(() => { if (hasActiveUtpChild) setUtpOpen(true); }, [hasActiveUtpChild]);
+
+    const hasActivePieChild = pieItems.some(m => location.pathname === m.path);
+    const [pieOpen, setPieOpen] = React.useState(hasActivePieChild);
+    React.useEffect(() => { if (hasActivePieChild) setPieOpen(true); }, [hasActivePieChild]);
 
     // Teachers and Convivencia: hide "General" header, show single "Menu" header
     const isMinimalRole = user?.role === ROLES.TEACHER || user?.role === ROLES.CONVIVENCIA;
@@ -320,6 +325,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     isOpen: utpOpen,
                                     setOpen: setUtpOpen,
                                     hasActive: hasActiveUtpChild,
+                                })}
+
+                                {/* PIE folder */}
+                                {renderGroup({
+                                    label: 'PIE',
+                                    icon: HeartHandshake,
+                                    items: pieItems,
+                                    isOpen: pieOpen,
+                                    setOpen: setPieOpen,
+                                    hasActive: hasActivePieChild,
                                 })}
                             </>
                         )}

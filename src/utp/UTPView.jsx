@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2 } from 'lucide-react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -13,6 +13,8 @@ import ResumenOA from './ResumenOA';
 import OAAssignmentPanel from './OAAssignmentPanel';
 import IndicadoresSelectionPanel from './IndicadoresSelectionPanel';
 import PreguntasPanel from './PreguntasPanel';
+import VistaPrevia from './VistaPrevia';
+import FormatoPrueba from './FormatoPrueba';
 
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
@@ -37,9 +39,13 @@ export default function UTPView() {
     // Who can approve: utp_head, super_admin, admin
     const userCanApprove = userCanEdit || user?.role === 'utp_head';
 
-    // View mode: 'list' or 'detail'
+    // Who can configure test format
+    const canConfigFormato = userCanEdit || user?.role === 'utp_head';
+
+    // View mode: 'list' | 'detail' | 'formato'
+    const [viewMode, setViewMode] = useState('list');
     const [selectedEval, setSelectedEval] = useState(null);
-    const [detailTab, setDetailTab] = useState('grid'); // 'grid' | 'preguntas' | 'resumen' | 'oas' | 'indicadores'
+    const [detailTab, setDetailTab] = useState('preguntas'); // 'preguntas' | 'oas' | 'indicadores' | 'grid' | 'resumen'
 
     // Filters
     const [search, setSearch] = useState('');
@@ -312,11 +318,12 @@ export default function UTPView() {
                 {/* Tabs */}
                 <div className="flex gap-1 bg-eyr-surface-high rounded-xl p-1 w-fit flex-wrap">
                     {[
-                        { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
                         { id: 'preguntas',   icon: FileQuestion,  label: 'Preguntas' },
-                        { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
                         { id: 'oas',         icon: BookOpen,      label: 'Asignar OAs' },
                         { id: 'indicadores', icon: ListChecks,    label: 'Indicadores' },
+                        { id: 'preview',     icon: ScanEye,       label: 'Vista previa' },
+                        { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
+                        { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
                     ].map(({ id, icon: Icon, label }) => (
                         <button
                             key={id}
@@ -340,6 +347,8 @@ export default function UTPView() {
                     <ResumenOA evaluacion={liveEval} />
                 ) : detailTab === 'indicadores' ? (
                     <IndicadoresSelectionPanel evaluacion={liveEval} key={liveEval.id + '-indicadores-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
+                ) : detailTab === 'preview' ? (
+                    <VistaPrevia evaluacion={liveEval} />
                 ) : (
                     <OAAssignmentPanel evaluacion={liveEval} key={liveEval.id + '-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
                 )}
@@ -358,15 +367,46 @@ export default function UTPView() {
                     </div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-eyr-on-surface font-headline">Evaluaciones UTP</h1>
                 </div>
-                {canCreateEval && (
-                    <button
-                        onClick={() => setShowCreate(true)}
-                        className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold shrink-0"
-                    >
-                        <Plus className="w-4 h-4" /> Nueva Evaluación
-                    </button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    {canConfigFormato && (
+                        <button
+                            onClick={() => setViewMode(v => v === 'formato' ? 'list' : 'formato')}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all border ${
+                                viewMode === 'formato'
+                                    ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                        >
+                            <FileText className="w-4 h-4" />
+                            Formato de Prueba
+                        </button>
+                    )}
+                    {canCreateEval && viewMode !== 'formato' && (
+                        <button
+                            onClick={() => setShowCreate(true)}
+                            className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold"
+                        >
+                            <Plus className="w-4 h-4" /> Nueva Evaluación
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {/* Formato de Prueba */}
+            {viewMode === 'formato' && (
+                <div className="bg-white border border-amber-200 rounded-3xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-amber-100 rounded-xl">
+                            <FileText className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800">Formato de Prueba</h2>
+                            <p className="text-xs text-slate-500">Configura los títulos e instrucciones predeterminados para todas las evaluaciones.</p>
+                        </div>
+                    </div>
+                    <FormatoPrueba />
+                </div>
+            )}
 
             {/* Bento KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -437,7 +477,7 @@ export default function UTPView() {
                             <div key={item.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 border border-amber-200/50">
                                 <div
                                     className="flex items-center gap-4 cursor-pointer"
-                                    onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
+                                    onClick={() => { setSelectedEval(item); setDetailTab('preguntas'); }}
                                 >
                                     <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xl shrink-0">
                                         {item.totalQuestions}
@@ -593,7 +633,7 @@ export default function UTPView() {
                                             <tr
                                                 key={item.id}
                                                 className="hover:bg-eyr-surface-low/50 transition-colors cursor-pointer group"
-                                                onClick={() => { setSelectedEval(item); setDetailTab('grid'); }}
+                                                onClick={() => { setSelectedEval(item); setDetailTab('preguntas'); }}
                                             >
                                                 <td className="px-6 py-4">
                                                     <StatusBadge status={item.status || 'pending'} />

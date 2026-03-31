@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake
 } from 'lucide-react';
 
 /**
@@ -16,7 +16,7 @@ import {
  *                 (null = everyone, array = only listed roles)
  */
 
-const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer'];
+const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer', 'pie'];
 const MANAGEMENT = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
 
 export const MODULE_REGISTRY = [
@@ -146,6 +146,15 @@ export const MODULE_REGISTRY = [
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
     },
     {
+        key: 'pie',
+        name: 'PIE',
+        icon: HeartHandshake,
+        path: '/pie',
+        category: 'role_specific',
+        group: 'pie',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'pie'],
+    },
+    {
         key: 'stats',
         name: 'Estadisticas',
         icon: BarChart3,
@@ -174,4 +183,4 @@ export const getModuleByPath = (path) => MODULE_REGISTRY.find(m => m.path === pa
 export const ALL_MODULE_KEYS = MODULE_REGISTRY.map(m => m.key);
 
 /** Configurable roles (excludes super_admin and admin which always have full access) */
-export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer'];
+export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer', 'pie'];

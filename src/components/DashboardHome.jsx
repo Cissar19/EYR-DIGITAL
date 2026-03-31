@@ -202,6 +202,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
     const { logs } = useReplacementLogs();
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDay, setSelectedDay] = useState(null);
+    const [showConsolidado, setShowConsolidado] = useState(false);
 
     const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'];
     const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -300,6 +301,24 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
         if (!grouped[a.typeLabel]) grouped[a.typeLabel] = [];
         grouped[a.typeLabel].push(a);
     });
+
+    // Weekly consolidado: all persons with absences this week grouped by userId
+    const weekConsolidado = useMemo(() => {
+        const days = getWeekDays(weekOffset);
+        const byUser = new Map();
+        days.forEach(day => {
+            const absences = getAbsencesForDate(day.dateStr);
+            absences.forEach(a => {
+                if (!byUser.has(a.userId)) {
+                    byUser.set(a.userId, { userId: a.userId, userName: a.userName, roleLabel: a.roleLabel, days: {}, hasMedical: false });
+                }
+                const entry = byUser.get(a.userId);
+                entry.days[day.dateStr] = a;
+                if (a.typeLabel === 'Licencia Médica') entry.hasMedical = true;
+            });
+        });
+        return Array.from(byUser.values()).sort((a, b) => a.userName.localeCompare(b.userName));
+    }, [weekOffset, requests, leaves, users]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Compute replacement data for PDF export (mirrors ReplacementsCard logic)
     const pdfReplacementData = useMemo(() => {
@@ -400,24 +419,35 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                         <UserX className="w-5 h-5" />
                     </div>
                     <h3 className="font-bold text-slate-700">Ausencias de la Semana</h3>
+                    <button
+                        onClick={() => { setShowConsolidado(v => !v); setSelectedDay(null); onDayChange?.(null); }}
+                        className={cn(
+                            'text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors',
+                            showConsolidado
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'text-indigo-600 bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
+                        )}
+                    >
+                        {showConsolidado ? 'Ver por día' : 'Ver consolidado semanal'}
+                    </button>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); onDayChange?.(null); }}
+                        onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); setShowConsolidado(false); onDayChange?.(null); }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                     <span className="text-xs md:text-sm font-semibold text-slate-600 min-w-0 md:min-w-[240px] text-center">{weekLabel}</span>
                     <button
-                        onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); onDayChange?.(null); }}
+                        onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); setShowConsolidado(false); onDayChange?.(null); }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <ChevronRight className="w-5 h-5" />
                     </button>
                     {weekOffset !== 0 && (
                         <button
-                            onClick={() => { setWeekOffset(0); setSelectedDay(null); onDayChange?.(null); }}
+                            onClick={() => { setWeekOffset(0); setSelectedDay(null); setShowConsolidado(false); onDayChange?.(null); }}
                             className="ml-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded-md hover:bg-indigo-50 transition-colors"
                         >
                             Hoy
@@ -437,7 +467,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                     return (
                         <button
                             key={day.dateStr}
-                            onClick={() => { const next = isSelected ? null : day.dateStr; setSelectedDay(next); onDayChange?.(next); }}
+                            onClick={() => { const next = isSelected ? null : day.dateStr; setSelectedDay(next); setShowConsolidado(false); onDayChange?.(next); }}
                             className={cn(
                                 "flex flex-col items-center py-2 md:py-3 px-1 md:px-2 rounded-lg md:rounded-xl border-2 transition-all duration-200",
                                 isSelected
@@ -484,6 +514,87 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                     );
                 })}
             </div>
+
+            {/* Consolidado semanal */}
+            {showConsolidado && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Consolidado semanal
+                            {weekConsolidado.length > 0 && (
+                                <span className="ml-2 text-slate-500 normal-case tracking-normal font-semibold">
+                                    — {weekConsolidado.length} {weekConsolidado.length === 1 ? 'persona ausente' : 'personas ausentes'}
+                                </span>
+                            )}
+                        </h3>
+                    </div>
+                    {weekConsolidado.length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center py-4">Sin ausencias registradas esta semana.</p>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {weekConsolidado.map(person => {
+                                const initials = person.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+                                const totalDays = Object.keys(person.days).length;
+                                const avatarColor = person.hasMedical ? 'from-rose-500 to-red-600' : 'from-indigo-500 to-indigo-600';
+                                return (
+                                    <div key={person.userId} className="flex items-center gap-2 md:gap-3 py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <div className={cn('w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white text-[11px] font-bold shrink-0', avatarColor)}>
+                                            {initials}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-sm font-semibold text-slate-700 truncate">{person.userName}</span>
+                                                <span className={cn(
+                                                    'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0',
+                                                    person.roleLabel === 'Asistente' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                                                )}>
+                                                    {person.roleLabel}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {/* Day indicators */}
+                                        <div className="flex gap-1 shrink-0">
+                                            {weekDays.map(day => {
+                                                const absence = person.days[day.dateStr];
+                                                const isToday2 = day.dateStr === todayStr;
+                                                if (!absence) {
+                                                    return (
+                                                        <div key={day.dateStr} className="flex flex-col items-center w-7">
+                                                            <span className={cn('text-[9px] font-bold uppercase', isToday2 ? 'text-indigo-400' : 'text-slate-300')}>{day.dayName}</span>
+                                                            <div className={cn('w-6 h-5 rounded mt-0.5', isToday2 ? 'bg-slate-100 border border-indigo-100' : 'bg-transparent')} />
+                                                        </div>
+                                                    );
+                                                }
+                                                const isMedical = absence.typeLabel === 'Licencia Médica';
+                                                const isHalfAm = absence.isHalfDay === 'am';
+                                                const isHalfPm = absence.isHalfDay === 'pm';
+                                                const isHalf = isHalfAm || isHalfPm || absence.isHalfDay === true;
+                                                const dotColor = isMedical ? 'bg-rose-500' : isHalf ? 'bg-amber-400' : 'bg-indigo-500';
+                                                const bgColor = isMedical ? 'bg-rose-50 border-rose-200' : isHalf ? 'bg-amber-50 border-amber-200' : 'bg-indigo-50 border-indigo-200';
+                                                const title = isMedical ? 'Licencia Médica' : isHalfAm ? '½ Mañana' : isHalfPm ? '½ Tarde' : 'Día Completo';
+                                                return (
+                                                    <div key={day.dateStr} className="flex flex-col items-center w-7" title={title}>
+                                                        <span className={cn('text-[9px] font-bold uppercase', isToday2 ? 'text-indigo-600' : 'text-slate-500')}>{day.dayName}</span>
+                                                        <div className={cn('w-6 h-5 rounded mt-0.5 border flex items-center justify-center', bgColor)}>
+                                                            <div className={cn('w-2 h-2 rounded-full', dotColor)} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <span className={cn(
+                                            'text-xs font-bold px-2 py-1 rounded-lg shrink-0',
+                                            totalDays >= 3 ? 'bg-red-100 text-red-700' : totalDays >= 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                        )}>
+                                            {totalDays}d
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Detail Panel */}
             {selectedDay && (

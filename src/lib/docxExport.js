@@ -218,7 +218,7 @@ function piePagina() {
  *   preguntas: Array<{ number, enunciado, alternativas, tipo }>
  * }} params
  */
-export async function exportarPrueba({ nombre, asignatura, curso, fecha, profesor, preguntas }) {
+export async function exportarPrueba({ nombre, asignatura, curso, fecha, profesor, instrucciones, preguntas }) {
   // Formatear fecha
   let fechaLabel = fecha;
   try {
@@ -251,7 +251,9 @@ export async function exportarPrueba({ nombre, asignatura, curso, fecha, profeso
     ...encabezadoEscuela(),
     ...tituloPrueba(nombre, asignatura, curso, profesor),
     tablaDatosAlumno(fechaLabel, curso, totalPuntos),
-    instruccionGeneral(),
+    instrucciones?.trim()
+      ? instruccionSeccion(instrucciones.trim())
+      : instruccionGeneral(),
   ];
 
   let qNum = 0;

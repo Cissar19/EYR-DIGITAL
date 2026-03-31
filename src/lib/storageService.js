@@ -43,3 +43,40 @@ export function getImageAspectRatio(src) {
         img.src = src;
     });
 }
+
+// ── Plantilla de prueba ────────────────────────────────────────────────────────
+
+const PLANTILLA_PATH = 'app_config/plantilla_prueba.docx';
+
+/**
+ * Sube una plantilla .docx a Firebase Storage y devuelve su URL de descarga.
+ * @param {File} file
+ * @returns {Promise<string>} URL de descarga
+ */
+export async function uploadPlantilla(file) {
+    const storageRef = ref(storage, PLANTILLA_PATH);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    return url;
+}
+
+/**
+ * Devuelve la URL de descarga de la plantilla activa, o null si no existe.
+ * @returns {Promise<string|null>}
+ */
+export async function getPlantillaUrl() {
+    try {
+        const storageRef = ref(storage, PLANTILLA_PATH);
+        return await getDownloadURL(storageRef);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Elimina la plantilla activa de Firebase Storage.
+ */
+export async function deletePlantilla() {
+    const storageRef = ref(storage, PLANTILLA_PATH);
+    await deleteObject(storageRef);
+}

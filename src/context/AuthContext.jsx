@@ -54,7 +54,8 @@ export const ROLES = {
     CONVIVENCIA: 'convivencia',
     TEACHER: 'teacher',
     STAFF: 'staff',
-    PRINTER: 'printer'
+    PRINTER: 'printer',
+    PIE: 'pie'
 };
 
 /**
@@ -70,7 +71,8 @@ export const ROLE_LABELS = {
     [ROLES.CONVIVENCIA]: 'Convivencia Escolar',
     [ROLES.TEACHER]: 'Docente',
     [ROLES.STAFF]: 'Asistente',
-    [ROLES.PRINTER]: 'Encargado Impresiones'
+    [ROLES.PRINTER]: 'Encargado Impresiones',
+    [ROLES.PIE]: 'PIE'
 };
 
 /**
@@ -94,6 +96,7 @@ export const isManagement = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES
 export const isTeacher = (user) => hasRole(user, ROLES.TEACHER);
 export const isStaff = (user) => hasRole(user, ROLES.STAFF);
 export const isPrinter = (user) => hasRole(user, ROLES.PRINTER);
+export const isPie = (user) => hasRole(user, ROLES.PIE);
 export const isSuperAdmin = (user) => hasRole(user, ROLES.SUPER_ADMIN);
 export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN]) || user?.accessLevel === 'edit';
 
@@ -475,6 +478,7 @@ export const AuthProvider = ({ children }) => {
         isTeacher: () => isTeacher(user),
         isStaff: () => isStaff(user),
         isPrinter: () => isPrinter(user),
+        isPie: () => isPie(user),
         isSuperAdmin: () => isSuperAdmin(user),
         isUtpHead: () => isUtpHead(user),
         isInspector: () => isInspector(user),

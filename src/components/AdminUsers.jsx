@@ -3,7 +3,7 @@ import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ModalContainer from './ModalContainer';
@@ -221,6 +221,13 @@ export default function AdminUsers() {
                     label: 'Convivencia Escolar',
                     icon: Heart
                 };
+            case ROLES.PIE:
+                return {
+                    bgColor: 'bg-cyan-100',
+                    textColor: 'text-cyan-600',
+                    label: 'PIE',
+                    icon: HeartHandshake
+                };
             default:
                 return {
                     bgColor: 'bg-slate-100',
@@ -257,6 +264,7 @@ export default function AdminUsers() {
         { value: ROLES.INSPECTOR, label: 'Inspectoría', icon: Eye, color: 'orange' },
         { value: ROLES.CONVIVENCIA_HEAD, label: 'Jefe Conv.', icon: ShieldAlert, color: 'fuchsia' },
         { value: ROLES.CONVIVENCIA, label: 'Convivencia', icon: Heart, color: 'rose' },
+        { value: ROLES.PIE, label: 'PIE', icon: HeartHandshake, color: 'cyan' },
     ];
 
     // Only show filter options for roles that exist in the team
@@ -358,6 +366,7 @@ export default function AdminUsers() {
                         orange: 'bg-orange-100 text-orange-700 border-orange-200',
                         fuchsia: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
                         rose: 'bg-rose-100 text-rose-700 border-rose-200',
+                        cyan: 'bg-cyan-100 text-cyan-700 border-cyan-200',
                     };
                     const activeClass = rf.value === 'all'
                         ? 'bg-slate-800 text-white border-slate-800'
@@ -721,6 +730,17 @@ export default function AdminUsers() {
                                         >
                                             <Heart className="w-4 h-4" />
                                             Convivencia
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'pie' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'pie'
+                                                    ? 'bg-cyan-600 border-cyan-600 text-white shadow-lg shadow-cyan-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <HeartHandshake className="w-4 h-4" />
+                                            PIE
                                         </button>
                                     </div>
                                 </div>
