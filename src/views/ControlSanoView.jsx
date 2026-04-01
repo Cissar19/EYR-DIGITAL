@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle,
-    FileDown, Pencil, ChevronDown, ChevronUp, History
+    FileDown, Pencil, ChevronDown, ChevronUp, History, UserPlus
 } from 'lucide-react';
 import { exportControlSanoPDF } from '../lib/pdfExport';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -63,18 +63,24 @@ function registroToForm(r) {
 
 export default function ControlSanoView() {
     const { user } = useAuth();
-    const { students } = useStudents();
+    const { students, addStudent } = useStudents();
 
     const [registros, setRegistros] = useState([]);
     const [search, setSearch] = useState('');
     const [filterCurso, setFilterCurso] = useState('');
     const [expandedStudent, setExpandedStudent] = useState(null);
 
-    // Modal state
+    // Modal state — control sano
     const [modalStudent, setModalStudent] = useState(null);
-    const [editingRegistro, setEditingRegistro] = useState(null); // null = new, object = edit
+    const [editingRegistro, setEditingRegistro] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
+
+    // Modal state — agregar estudiante
+    const EMPTY_STUDENT = { primerNombre: '', segundoNombre: '', primerApellido: '', segundoApellido: '', rut: '', curso: '' };
+    const [showAddStudent, setShowAddStudent] = useState(false);
+    const [studentForm, setStudentForm] = useState(EMPTY_STUDENT);
+    const [savingStudent, setSavingStudent] = useState(false);
 
     useEffect(() => {
         const unsub = subscribeToCollection('control_sano', setRegistros, orderBy('createdAt', 'desc'));
@@ -198,6 +204,30 @@ export default function ControlSanoView() {
 
     const isEditing = !!editingRegistro;
 
+    const handleAddStudent = async () => {
+        if (!studentForm.primerNombre.trim()) { toast.error('Ingresa el primer nombre'); return; }
+        if (!studentForm.primerApellido.trim()) { toast.error('Ingresa el primer apellido'); return; }
+        if (!studentForm.rut.trim()) { toast.error('Ingresa el RUT'); return; }
+        if (!studentForm.curso) { toast.error('Selecciona el curso'); return; }
+        setSavingStudent(true);
+        try {
+            const firstName = [studentForm.primerNombre.trim(), studentForm.segundoNombre.trim()].filter(Boolean).join(' ');
+            await addStudent({
+                firstName,
+                paternalLastName: studentForm.primerApellido.trim(),
+                maternalLastName: studentForm.segundoApellido.trim(),
+                rut: studentForm.rut.trim(),
+                curso: studentForm.curso,
+            });
+            setShowAddStudent(false);
+            setStudentForm(EMPTY_STUDENT);
+        } catch (err) {
+            toast.error(err?.message || 'Error al agregar estudiante');
+        } finally {
+            setSavingStudent(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -263,9 +293,19 @@ export default function ControlSanoView() {
             {/* Student list */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 {filteredStudents.length === 0 ? (
-                    <div className="py-16 text-center text-slate-400">
-                        <Stethoscope className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                        <p className="font-medium">No se encontraron estudiantes</p>
+                    <div className="py-14 text-center space-y-3">
+                        <Stethoscope className="w-10 h-10 mx-auto text-slate-300" />
+                        <p className="font-medium text-slate-500">No se encontraron estudiantes</p>
+                        <p className="text-sm text-slate-400">
+                            {search.trim() ? `"${search}" no está en el registro` : 'No hay estudiantes en este curso'}
+                        </p>
+                        <button
+                            onClick={() => { setStudentForm(EMPTY_STUDENT); setShowAddStudent(true); }}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl transition-colors mt-2"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            Agregar Estudiante
+                        </button>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
@@ -562,6 +602,129 @@ export default function ControlSanoView() {
                                 }`}
                             >
                                 {saving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Guardar Control'}
+                            </button>
+                        </div>
+                    </ModalContainer>
+                )}
+            </AnimatePresence>
+            {/* Modal — Agregar Estudiante */}
+            <AnimatePresence>
+                {showAddStudent && (
+                    <ModalContainer onClose={() => setShowAddStudent(false)} maxWidth="max-w-md">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-8 pt-7 pb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                                    <UserPlus className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-slate-800">Agregar Estudiante</h2>
+                                    <p className="text-xs text-slate-500">Pre-Kinder a 4° Básico</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowAddStudent(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-8 pb-6 space-y-4 overflow-y-auto">
+                            {/* Nombres */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 mb-2">Primer Nombre <span className="text-red-400">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={studentForm.primerNombre}
+                                        onChange={e => setStudentForm(f => ({ ...f, primerNombre: e.target.value }))}
+                                        placeholder="ej. Juan"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-teal-400 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 mb-2">Segundo Nombre</label>
+                                    <input
+                                        type="text"
+                                        value={studentForm.segundoNombre}
+                                        onChange={e => setStudentForm(f => ({ ...f, segundoNombre: e.target.value }))}
+                                        placeholder="ej. Carlos"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-teal-400 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Apellidos */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 mb-2">Primer Apellido <span className="text-red-400">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={studentForm.primerApellido}
+                                        onChange={e => setStudentForm(f => ({ ...f, primerApellido: e.target.value }))}
+                                        placeholder="ej. González"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-teal-400 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-600 mb-2">Segundo Apellido</label>
+                                    <input
+                                        type="text"
+                                        value={studentForm.segundoApellido}
+                                        onChange={e => setStudentForm(f => ({ ...f, segundoApellido: e.target.value }))}
+                                        placeholder="ej. Pérez"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-teal-400 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* RUT */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-2">RUT <span className="text-red-400">*</span></label>
+                                <input
+                                    type="text"
+                                    value={studentForm.rut}
+                                    onChange={e => setStudentForm(f => ({ ...f, rut: e.target.value }))}
+                                    placeholder="ej. 12.345.678-9"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-teal-400 focus:ring-4 focus:ring-teal-100 outline-none transition-all text-sm"
+                                />
+                            </div>
+
+                            {/* Curso */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-2">Curso <span className="text-red-400">*</span></label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {CURSOS_ENFERMERIA.map(c => (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            onClick={() => setStudentForm(f => ({ ...f, curso: c }))}
+                                            className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
+                                                studentForm.curso === c
+                                                    ? 'border-teal-500 bg-teal-50 text-teal-800'
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            {c}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex gap-3 px-8 pb-7">
+                            <button
+                                onClick={() => setShowAddStudent(false)}
+                                className="flex-1 px-6 py-3 border border-slate-200 text-slate-600 rounded-2xl font-semibold hover:bg-slate-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAddStudent}
+                                disabled={savingStudent}
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+                            >
+                                {savingStudent ? 'Guardando...' : 'Agregar Estudiante'}
                             </button>
                         </div>
                     </ModalContainer>
