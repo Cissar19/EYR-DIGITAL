@@ -33,6 +33,7 @@ import AttendanceMonitorView from './views/AttendanceMonitorView';
 import JustificativesView from './views/JustificativesView';
 import EntrevistasView from './views/EntrevistasView';
 import UTPView from './utp/UTPView';
+import ControlSanoView from './views/ControlSanoView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -224,6 +225,7 @@ export default function App() {
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
           <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
           <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
+          <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>

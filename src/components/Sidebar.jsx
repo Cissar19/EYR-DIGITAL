@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList, GraduationCap, HeartHandshake } from 'lucide-react';
+import { LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FolderOpen, Folder, ClipboardList, GraduationCap, HeartHandshake, Stethoscope } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
@@ -44,6 +44,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const inspectoriaItems = roleSpecificItems.filter(m => m.group === 'inspectoria');
     const utpItems = roleSpecificItems.filter(m => m.group === 'utp');
     const pieItems = roleSpecificItems.filter(m => m.group === 'pie');
+    const enfermeriaItems = roleSpecificItems.filter(m => m.group === 'enfermeria');
 
     // Track which groups are expanded (auto-expand if any child is active)
     const hasActiveChild = groupedItems.some(m => location.pathname === m.path);
@@ -61,6 +62,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const hasActivePieChild = pieItems.some(m => location.pathname === m.path);
     const [pieOpen, setPieOpen] = React.useState(hasActivePieChild);
     React.useEffect(() => { if (hasActivePieChild) setPieOpen(true); }, [hasActivePieChild]);
+
+    const hasActiveEnfermeriaChild = enfermeriaItems.some(m => location.pathname === m.path);
+    const [enfermeriaOpen, setEnfermeriaOpen] = React.useState(hasActiveEnfermeriaChild);
+    React.useEffect(() => { if (hasActiveEnfermeriaChild) setEnfermeriaOpen(true); }, [hasActiveEnfermeriaChild]);
 
     // Teachers and Convivencia: hide "General" header, show single "Menu" header
     const isMinimalRole = user?.role === ROLES.TEACHER || user?.role === ROLES.CONVIVENCIA;
@@ -335,6 +340,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     isOpen: pieOpen,
                                     setOpen: setPieOpen,
                                     hasActive: hasActivePieChild,
+                                })}
+
+                                {/* Enfermería folder */}
+                                {renderGroup({
+                                    label: 'Enfermería',
+                                    icon: Stethoscope,
+                                    items: enfermeriaItems,
+                                    isOpen: enfermeriaOpen,
+                                    setOpen: setEnfermeriaOpen,
+                                    hasActive: hasActiveEnfermeriaChild,
                                 })}
                             </>
                         )}

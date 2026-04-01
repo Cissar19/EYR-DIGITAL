@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck
 } from 'lucide-react';
 
 /**
@@ -153,6 +153,15 @@ export const MODULE_REGISTRY = [
         category: 'role_specific',
         group: 'pie',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'pie'],
+    },
+    {
+        key: 'control_sano',
+        name: 'Control Sano',
+        icon: ClipboardCheck,
+        path: '/enfermeria/control-sano',
+        category: 'role_specific',
+        group: 'enfermeria',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
     },
     {
         key: 'stats',

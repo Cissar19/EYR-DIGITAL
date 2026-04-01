@@ -236,5 +236,32 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update, delete: if isManagement();
     }
+
+    // ============================================
+    // EVALUACIONES UTP
+    // ============================================
+    match /evaluaciones/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isManagement();
+      allow update: if isAuthenticated() && isManagement();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ============================================
+    // CONTROL SANO (Enfermería)
+    // ============================================
+    match /control_sano/{docId} {
+      allow read: if isAuthenticated() && isManagement();
+      allow create: if isAuthenticated() && isManagement();
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ============================================
+    // APP CONFIG (formato de prueba, plantilla UTP)
+    // ============================================
+    match /app_config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'utp_head'];
+    }
   }
 }
