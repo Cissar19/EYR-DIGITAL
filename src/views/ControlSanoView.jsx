@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-    Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle
+    Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle, FileDown
 } from 'lucide-react';
+import { exportControlSanoPDF } from '../lib/pdfExport';
 import { AnimatePresence } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
 import { useAuth } from '../context/AuthContext';
@@ -74,6 +75,16 @@ export default function ControlSanoView() {
         return map;
     }, [registros]);
 
+    // All controls per student (for PDF)
+    const allRegistrosByStudent = useMemo(() => {
+        const map = {};
+        registros.forEach(r => {
+            if (!map[r.studentId]) map[r.studentId] = [];
+            map[r.studentId].push(r);
+        });
+        return map;
+    }, [registros]);
+
     const filteredStudents = useMemo(() => {
         let list = estudiantesBase;
         if (search.trim()) {
@@ -135,8 +146,9 @@ export default function ControlSanoView() {
             });
             toast.success(`Control sano registrado para ${modalStudent.fullName}`);
             closeModal();
-        } catch {
-            toast.error('Error al guardar el control');
+        } catch (err) {
+            console.error('Error control_sano:', err);
+            toast.error(err?.message || 'Error al guardar el control');
         } finally {
             setSaving(false);
         }
@@ -255,6 +267,20 @@ export default function ControlSanoView() {
                                             <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Sin control</span>
                                         )}
                                     </div>
+
+                                    {/* PDF export (solo si tiene registros) */}
+                                    {allRegistrosByStudent[student.id]?.length > 0 && (
+                                        <button
+                                            onClick={() => exportControlSanoPDF({
+                                                student,
+                                                registros: allRegistrosByStudent[student.id],
+                                            })}
+                                            title="Exportar PDF"
+                                            className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors shrink-0"
+                                        >
+                                            <FileDown className="w-4 h-4" />
+                                        </button>
+                                    )}
 
                                     {/* CTA */}
                                     <button
