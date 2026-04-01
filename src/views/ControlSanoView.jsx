@@ -12,7 +12,7 @@ import { subscribeToCollection, createDocument, updateDocument } from '../lib/fi
 import { orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 
-const CURSOS_ENFERMERIA = ['4° Básico', '5° Básico', '6° Básico', '7° Básico', '8° Básico'];
+const CURSOS_ENFERMERIA = ['Pre-Kinder', 'Kinder', '1° Básico', '2° Básico', '3° Básico', '4° Básico'];
 
 const DERIVACIONES = [
     { key: 'dental',        label: 'Dental' },
@@ -207,7 +207,7 @@ export default function ControlSanoView() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Control Sano</h1>
-                    <p className="text-sm text-slate-500">4° a 8° Básico · {stats.conControl}/{stats.total} con control registrado</p>
+                    <p className="text-sm text-slate-500">Pre-Kinder a 4° Básico · {stats.conControl}/{stats.total} con control registrado</p>
                 </div>
             </div>
 
