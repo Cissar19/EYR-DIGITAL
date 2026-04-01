@@ -318,146 +318,362 @@ export function exportAttendancePDF({ dateRange, summary, records, fileName }) {
 }
 
 /**
- * Exports all Control Sano records for a single student as a PDF.
+ * Exports all Control Sano records for a single student as a clinical record (ficha clínica).
  *
- * @param {Object} student  - { fullName, rut, curso }
- * @param {Array}  registros - all control_sano docs for this student, sorted desc by fecha
+ * @param {Object} student   - { fullName, rut, curso }
+ * @param {Array}  registros - all control_sano docs for this student
  */
 export function exportControlSanoPDF({ student, registros }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const marginL = 14;
-    const marginR = 14;
-    const contentW = pageW - marginL - marginR;
-    const teal = [13, 148, 136];   // teal-600
-    const tealLight = [240, 253, 250]; // teal-50
-    let y = 16;
+    const pageW  = doc.internal.pageSize.getWidth();
+    const pageH  = doc.internal.pageSize.getHeight();
+    const mL = 14, mR = 14, mBot = 14;
+    const cW = pageW - mL - mR;
 
-    // ─── HEADER ───
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...teal);
-    doc.text('Centro Educacional Ernesto Yañez Rivera', pageW / 2, y, { align: 'center' });
-    y += 6;
+    // ── Palette ──
+    const TEAL       = [13, 148, 136];
+    const TEAL_LIGHT = [204, 251, 241];
+    const TEAL_MED   = [94, 234, 212];
+    const AMBER      = [180, 83, 9];
+    const AMBER_BG   = [255, 251, 235];
+    const AMBER_BD   = [217, 119, 6];
+    const S900 = [15, 23, 42];
+    const S700 = [51, 65, 85];
+    const S500 = [100, 116, 139];
+    const S300 = [148, 163, 184];
+    const S100 = [241, 245, 249];
+    const S050 = [248, 250, 252];
+    const WHITE = [255, 255, 255];
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('Ficha de Control Sano — Enfermería', pageW / 2, y, { align: 'center' });
-    y += 10;
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
-    // ─── STUDENT INFO BOX ───
-    doc.setFillColor(...tealLight);
-    doc.roundedRect(marginL, y, contentW, 20, 3, 3, 'F');
-    doc.setDrawColor(...teal);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(marginL, y, contentW, 20, 3, 3, 'S');
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 41, 59);
-    doc.text(student.fullName || '', marginL + 5, y + 7);
-
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`RUT: ${student.rut || '—'}`, marginL + 5, y + 13.5);
-    doc.text(`Curso: ${student.curso || '—'}`, marginL + 5, y + 19);
-
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...teal);
-    doc.text(`${registros.length} control${registros.length !== 1 ? 'es' : ''} registrado${registros.length !== 1 ? 's' : ''}`, pageW - marginR - 2, y + 13.5, { align: 'right' });
-    y += 25;
-
-    // ─── TABLE ───
-    const DERIVACIONES_LABELS = {
-        dental: 'Dental',
-        nutricionista: 'Nutricionista',
-        pediatra: 'Pediatra',
-        psicologia: 'Psicologia',
-        saludMental: 'Salud Mental',
-    };
-
-    const formatDatePDF = (dateStr) => {
-        if (!dateStr) return '—';
-        const [yy, mm, dd] = dateStr.split('-');
+    const fmtDate = (d) => {
+        if (!d) return '—';
+        const [yy, mm, dd] = d.split('-');
         return `${dd}/${mm}/${yy}`;
     };
 
-    const rows = registros
-        .slice()
-        .sort((a, b) => (a.fecha > b.fecha ? -1 : 1))
-        .map(r => {
-            const derivaciones = Object.entries(DERIVACIONES_LABELS)
-                .filter(([k]) => r.derivaciones?.[k])
-                .map(([, label]) => label)
-                .join(', ') || '—';
-            return [
-                formatDatePDF(r.fecha),
-                r.peso != null ? `${r.peso} kg` : '—',
-                r.talla != null ? `${r.talla} cm` : '—',
-                r.circunferenciaAbdominal != null ? `${r.circunferenciaAbdominal} cm` : '—',
-                r.diagnostico || '—',
-                derivaciones,
-                r.observaciones || '—',
-            ];
-        });
+    const DERIV_MAP = {
+        dental: 'Dental', nutricionista: 'Nutricionista',
+        pediatra: 'Pediatra', psicologia: 'Psicología', saludMental: 'Salud Mental',
+    };
 
-    autoTable(doc, {
-        startY: y,
-        head: [['Fecha', 'Peso', 'Talla', 'Circ. Abd.', 'Diagnóstico', 'Derivaciones', 'Observaciones']],
-        body: rows,
-        theme: 'grid',
-        headStyles: {
-            fillColor: teal,
-            textColor: 255,
-            fontSize: 8,
-            fontStyle: 'bold',
-            halign: 'center',
-        },
-        bodyStyles: {
-            fontSize: 7.5,
-            textColor: [30, 41, 59],
-            valign: 'top',
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-            0: { cellWidth: 22, halign: 'center' },
-            1: { cellWidth: 18, halign: 'center' },
-            2: { cellWidth: 18, halign: 'center' },
-            3: { cellWidth: 22, halign: 'center' },
-            4: { cellWidth: 36 },
-            5: { cellWidth: 36 },
-            6: { cellWidth: contentW - 22 - 18 - 18 - 22 - 36 - 36 },
-        },
-        didParseCell(data) {
-            if (data.section === 'body' && data.column.index === 5 && data.cell.raw !== '—') {
-                data.cell.styles.textColor = [180, 83, 9]; // amber
-                data.cell.styles.fontStyle = 'bold';
-            }
-        },
-        margin: { left: marginL, right: marginR },
+    let y = 14;
+
+    // ────────────────────────────────────────
+    // PAGE BREAK HELPER
+    // ────────────────────────────────────────
+    const addPage = () => {
+        doc.addPage();
+        y = 10;
+        // Running header on continuation pages
+        doc.setFillColor(...TEAL);
+        doc.rect(mL, y, cW, 0.8, 'F');
+        y += 4;
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...TEAL);
+        doc.text('FICHA CLÍNICA · CONTROL SANO', mL, y + 3);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S500);
+        doc.text(student.fullName || '', pageW - mR, y + 3, { align: 'right' });
+        y += 8;
+    };
+
+    const checkBreak = (needed) => {
+        if (y + needed > pageH - mBot - 10) addPage();
+    };
+
+    // ────────────────────────────────────────
+    // HEADER
+    // ────────────────────────────────────────
+
+    // Top accent bar (full width gradient simulation — two rects)
+    doc.setFillColor(...TEAL);
+    doc.rect(0, 0, pageW * 0.6, 5, 'F');
+    doc.setFillColor(...TEAL_MED);
+    doc.rect(pageW * 0.6, 0, pageW * 0.4, 5, 'F');
+    y = 10;
+
+    // Left: institution
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...TEAL);
+    doc.text('Centro Educacional', mL, y);
+    doc.text('Ernesto Yañez Rivera', mL, y + 7);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('Escuela Huechuraba · Enfermería', mL, y + 13);
+
+    // Right: document type
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...S900);
+    doc.text('FICHA CLÍNICA', pageW - mR, y + 5, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('Control Sano', pageW - mR, y + 11, { align: 'right' });
+    doc.text(`Emitido: ${timestamp}`, pageW - mR, y + 16, { align: 'right' });
+
+    y += 22;
+
+    // Divider
+    doc.setDrawColor(...TEAL);
+    doc.setLineWidth(0.5);
+    doc.line(mL, y, pageW - mR, y);
+    y += 8;
+
+    // ────────────────────────────────────────
+    // PATIENT IDENTIFICATION
+    // ────────────────────────────────────────
+    const patH = 26;
+    doc.setFillColor(...TEAL_LIGHT);
+    doc.roundedRect(mL, y, cW, patH, 3, 3, 'F');
+    doc.setDrawColor(...TEAL);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(mL, y, cW, patH, 3, 3, 'S');
+
+    // "PACIENTE" label vertical bar
+    doc.setFillColor(...TEAL);
+    doc.roundedRect(mL, y, 5, patH, 2, 2, 'F');
+    doc.rect(mL + 2, y, 3, patH, 'F');
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...S900);
+    doc.text(student.fullName || '—', mL + 10, y + 9);
+
+    doc.setFontSize(8.5);
+    const patFields = [
+        { label: 'RUT',   val: student.rut || '—' },
+        { label: 'Curso', val: student.curso || '—' },
+        { label: 'N° controles', val: String(registros.length) },
+    ];
+    let px = mL + 10;
+    patFields.forEach(f => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...S500);
+        doc.text(f.label + ':', px, y + 18);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S900);
+        doc.text(f.val, px + doc.getTextWidth(f.label + ':') + 1.5, y + 18);
+        px += 58;
     });
 
-    // ─── FOOTER ───
-    const totalPages = doc.internal.getNumberOfPages();
-    const now = new Date();
-    const timestamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    y += patH + 10;
 
+    // ────────────────────────────────────────
+    // SECTION TITLE
+    // ────────────────────────────────────────
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...S500);
+    doc.text('HISTORIAL DE CONTROLES', mL, y);
+    doc.setDrawColor(...S300);
+    doc.setLineWidth(0.2);
+    doc.line(mL + doc.getTextWidth('HISTORIAL DE CONTROLES') + 3, y - 1, pageW - mR, y - 1);
+    y += 6;
+
+    // ────────────────────────────────────────
+    // CONTROL CARDS
+    // ────────────────────────────────────────
+    const sorted = registros.slice().sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
+
+    sorted.forEach((r, idx) => {
+        const derivList = Object.entries(DERIV_MAP).filter(([k]) => r.derivaciones?.[k]).map(([, v]) => v);
+        const hasDiag  = !!r.diagnostico?.trim();
+        const hasObs   = !!r.observaciones?.trim();
+        const hasDeriv = derivList.length > 0;
+
+        // ── Pre-calculate text heights ──
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        const diagLines = hasDiag  ? doc.splitTextToSize(r.diagnostico.trim(), cW - 18) : [];
+        const obsLines  = hasObs   ? doc.splitTextToSize(r.observaciones.trim(), cW - 18) : [];
+        const lineH = 4.5;
+
+        let cardH = 10;       // top pad + date row
+        cardH += 6;           // separator line gap
+        cardH += 24;          // metric boxes (box 16 + label 5 + gap 3)
+        if (hasDiag)  cardH += 5 + diagLines.length * lineH + 3;
+        if (hasDeriv) cardH += 5 + 8 + 3;
+        if (hasObs)   cardH += 5 + obsLines.length * lineH + 3;
+        cardH += 6;           // footer padding
+
+        checkBreak(cardH + 4);
+
+        // ── Card shell ──
+        doc.setFillColor(...S050);
+        doc.roundedRect(mL, y, cW, cardH, 3, 3, 'F');
+        doc.setDrawColor(...S100);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(mL, y, cW, cardH, 3, 3, 'S');
+
+        // Left accent strip
+        doc.setFillColor(...TEAL);
+        doc.roundedRect(mL, y, 4, cardH, 2, 2, 'F');
+        doc.rect(mL + 2, y, 2, cardH, 'F');
+
+        const cx  = mL + 8;
+        const ccW = cW - 12;
+        let cy = y + 7;
+
+        // ── Date + control index ──
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...TEAL);
+        doc.text(fmtDate(r.fecha), cx, cy);
+
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S500);
+        doc.text(`Control N° ${idx + 1}`, cx + doc.getTextWidth(fmtDate(r.fecha)) + 4, cy);
+
+        if (r.registradoPor) {
+            doc.setFontSize(7);
+            doc.setTextColor(...S300);
+            doc.text(`Registrado por: ${r.registradoPor}`, mL + cW - 3, cy, { align: 'right' });
+        }
+
+        cy += 3;
+        doc.setDrawColor(...S100);
+        doc.setLineWidth(0.2);
+        doc.line(cx, cy, mL + cW - 3, cy);
+        cy += 5;
+
+        // ── Metric boxes ──
+        const metrics = [];
+        metrics.push({ label: 'PESO',          value: r.peso != null ? String(r.peso) : null,                     unit: 'kg'    });
+        metrics.push({ label: 'TALLA',         value: r.talla != null ? String(r.talla) : null,                   unit: 'cm'    });
+        metrics.push({ label: 'CIRC. ABD.',    value: r.circunferenciaAbdominal != null ? String(r.circunferenciaAbdominal) : null, unit: 'cm' });
+
+        if (r.peso != null && r.talla != null && r.talla > 0) {
+            const imc = (r.peso / Math.pow(r.talla / 100, 2)).toFixed(1);
+            metrics.push({ label: 'IMC', value: imc, unit: 'kg/m²' });
+        }
+
+        const boxW = 32;
+        const boxH = 16;
+        metrics.forEach((m, mi) => {
+            const bx = cx + mi * (boxW + 4);
+            doc.setFillColor(...WHITE);
+            doc.setDrawColor(...S100);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(bx, cy, boxW, boxH, 2, 2, 'FD');
+
+            if (m.value != null) {
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...S900);
+                doc.text(m.value, bx + boxW / 2, cy + 8.5, { align: 'center' });
+                doc.setFontSize(6);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...TEAL);
+                doc.text(m.unit, bx + boxW / 2, cy + 13, { align: 'center' });
+            } else {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...S300);
+                doc.text('—', bx + boxW / 2, cy + 9, { align: 'center' });
+            }
+
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...S500);
+            doc.text(m.label, bx + boxW / 2, cy + boxH + 4, { align: 'center' });
+        });
+
+        cy += boxH + 8;
+
+        // ── Diagnóstico ──
+        if (hasDiag) {
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...S700);
+            doc.text('DIAGNÓSTICO', cx, cy);
+            cy += 4.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(...S900);
+            doc.text(diagLines, cx, cy);
+            cy += diagLines.length * lineH + 4;
+        }
+
+        // ── Derivaciones ──
+        if (hasDeriv) {
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...S700);
+            doc.text('DERIVACIONES', cx, cy);
+            cy += 4;
+
+            let dx = cx;
+            derivList.forEach(d => {
+                const pillW = doc.getTextWidth(d) + 7;
+                doc.setFillColor(...AMBER_BG);
+                doc.setDrawColor(...AMBER_BD);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(dx, cy, pillW, 6.5, 1.5, 1.5, 'FD');
+                doc.setFontSize(6.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...AMBER);
+                doc.text(d, dx + 3.5, cy + 4.5);
+                dx += pillW + 3;
+            });
+            cy += 10;
+        }
+
+        // ── Observaciones ──
+        if (hasObs) {
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...S700);
+            doc.text('OBSERVACIONES', cx, cy);
+            cy += 4.5;
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.setTextColor(...S500);
+            doc.text(obsLines, cx, cy);
+            cy += obsLines.length * lineH + 3;
+        }
+
+        y += cardH + 4;
+    });
+
+    // ────────────────────────────────────────
+    // SIGNATURE AREA
+    // ────────────────────────────────────────
+    checkBreak(28);
+    y += 6;
+
+    doc.setDrawColor(...S300);
+    doc.setLineWidth(0.3);
+    const sigW = 65;
+    doc.line(mL, y + 18, mL + sigW, y + 18);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('Firma y Timbre Enfermera(o)', mL, y + 23);
+
+    // ────────────────────────────────────────
+    // FOOTER — all pages
+    // ────────────────────────────────────────
+    const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        const pageH = doc.internal.pageSize.getHeight();
+        const ph = doc.internal.pageSize.getHeight();
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(148, 163, 184);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 6);
-        doc.text(`Página ${i} de ${totalPages}`, pageW - marginR, pageH - 6, { align: 'right' });
+        doc.setTextColor(...S300);
+        doc.text(`Generado ${timestamp} — EYR Huechuraba`, mL, ph - 6);
+        doc.text(`Página ${i} de ${totalPages}`, pageW - mR, ph - 6, { align: 'right' });
     }
 
-    // ─── SAVE ───
     const safeName = (student.fullName || 'alumno').replace(/\s+/g, '_');
-    doc.save(`ControlSano_${safeName}.pdf`);
+    doc.save(`FichaControlSano_${safeName}.pdf`);
 }
 
 /**
