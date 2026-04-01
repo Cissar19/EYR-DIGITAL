@@ -330,7 +330,7 @@ export default function ControlSanoView() {
                                         {/* PDF */}
                                         {allControls.length > 0 && (
                                             <button
-                                                onClick={() => exportControlSanoPDF({ student, registros: allControls })}
+                                                onClick={() => exportControlSanoPDF({ student, registros: allControls }).catch(err => console.error('PDF error:', err))}
                                                 title="Exportar PDF"
                                                 className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors shrink-0"
                                             >

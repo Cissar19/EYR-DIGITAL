@@ -1,5 +1,17 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logoEyrUrl from '../assets/logo_eyr_pdf.jpeg';
+
+/** Load an image URL and return a base64 data URL */
+async function loadImageAsDataUrl(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
+}
 
 /** Parse "HH:MM" to total minutes (local helper for PDF export) */
 function timeToMinutes(t) {
@@ -323,7 +335,8 @@ export function exportAttendancePDF({ dateRange, summary, records, fileName }) {
  * @param {Object} student   - { fullName, rut, curso }
  * @param {Array}  registros - all control_sano docs for this student
  */
-export function exportControlSanoPDF({ student, registros }) {
+export async function exportControlSanoPDF({ student, registros }) {
+    const logoDataUrl = await loadImageAsDataUrl(logoEyrUrl);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW  = doc.internal.pageSize.getWidth();
     const pageH  = doc.internal.pageSize.getHeight();
@@ -366,19 +379,22 @@ export function exportControlSanoPDF({ student, registros }) {
     // ────────────────────────────────────────
     const addPage = () => {
         doc.addPage();
-        y = 10;
-        // Running header on continuation pages
-        doc.setFillColor(...TEAL);
-        doc.rect(mL, y, cW, 0.8, 'F');
-        y += 4;
+        y = 8;
+        // Mini logo
+        doc.addImage(logoDataUrl, 'JPEG', mL, y, 10, 10);
+        // Running header
         doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...TEAL);
-        doc.text('FICHA CLÍNICA · CONTROL SANO', mL, y + 3);
+        doc.text('FICHA CLÍNICA · CONTROL SANO', mL + 13, y + 5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...S500);
-        doc.text(student.fullName || '', pageW - mR, y + 3, { align: 'right' });
-        y += 8;
+        doc.text(student.fullName || '', pageW - mR, y + 5, { align: 'right' });
+        // Divider
+        doc.setDrawColor(...TEAL);
+        doc.setLineWidth(0.3);
+        doc.line(mL, y + 12, pageW - mR, y + 12);
+        y += 17;
     };
 
     const checkBreak = (needed) => {
@@ -389,36 +405,41 @@ export function exportControlSanoPDF({ student, registros }) {
     // HEADER
     // ────────────────────────────────────────
 
-    // Top accent bar (full width gradient simulation — two rects)
+    // Top accent bar
     doc.setFillColor(...TEAL);
     doc.rect(0, 0, pageW * 0.6, 5, 'F');
     doc.setFillColor(...TEAL_MED);
     doc.rect(pageW * 0.6, 0, pageW * 0.4, 5, 'F');
     y = 10;
 
-    // Left: institution
+    // Logo (square shield, 26×26 mm)
+    const logoSize = 26;
+    doc.addImage(logoDataUrl, 'JPEG', mL, y, logoSize, logoSize);
+
+    // Institution text — to the right of the logo
+    const textX = mL + logoSize + 5;
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...TEAL);
-    doc.text('Centro Educacional', mL, y);
-    doc.text('Ernesto Yañez Rivera', mL, y + 7);
+    doc.text('Centro Educacional', textX, y + 7);
+    doc.text('Ernesto Yañez Rivera', textX, y + 14);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...S500);
-    doc.text('Escuela Huechuraba · Enfermería', mL, y + 13);
+    doc.text('Escuela Huechuraba · Enfermería', textX, y + 20);
 
     // Right: document type
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...S900);
-    doc.text('FICHA CLÍNICA', pageW - mR, y + 5, { align: 'right' });
+    doc.text('FICHA CLÍNICA', pageW - mR, y + 7, { align: 'right' });
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...S500);
-    doc.text('Control Sano', pageW - mR, y + 11, { align: 'right' });
-    doc.text(`Emitido: ${timestamp}`, pageW - mR, y + 16, { align: 'right' });
+    doc.text('Control Sano', pageW - mR, y + 13, { align: 'right' });
+    doc.text(`Emitido: ${timestamp}`, pageW - mR, y + 19, { align: 'right' });
 
-    y += 22;
+    y += logoSize + 4;
 
     // Divider
     doc.setDrawColor(...TEAL);
