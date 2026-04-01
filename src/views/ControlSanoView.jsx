@@ -293,17 +293,21 @@ export default function ControlSanoView() {
             {/* Student list */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 {filteredStudents.length === 0 ? (
-                    <div className="py-14 text-center space-y-3">
-                        <Stethoscope className="w-10 h-10 mx-auto text-slate-300" />
-                        <p className="font-medium text-slate-500">No se encontraron estudiantes</p>
-                        <p className="text-sm text-slate-400">
-                            {search.trim() ? `"${search}" no está en el registro` : 'No hay estudiantes en este curso'}
-                        </p>
+                    <div className="py-14 flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center">
+                            <Stethoscope className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <div className="text-center">
+                            <p className="font-semibold text-slate-600">No se encontraron estudiantes</p>
+                            <p className="text-sm text-slate-400 mt-1">
+                                {search.trim() ? `"${search}" no está en el registro` : 'No hay estudiantes en este curso'}
+                            </p>
+                        </div>
                         <button
                             onClick={() => { setStudentForm(EMPTY_STUDENT); setShowAddStudent(true); }}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl transition-colors mt-2"
+                            className="flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-teal-200 transition-all hover:shadow-teal-300 hover:-translate-y-0.5 active:translate-y-0"
                         >
-                            <UserPlus className="w-4 h-4" />
+                            <UserPlus className="w-5 h-5" />
                             Agregar Estudiante
                         </button>
                     </div>
