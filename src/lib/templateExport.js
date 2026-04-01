@@ -11,6 +11,7 @@ import {
     Packer, AlignmentType, WidthType, BorderStyle,
 } from 'docx';
 import { ASIGNATURAS } from '../data/objetivosAprendizaje';
+import { getPlantillaBase64 } from './storageService';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -119,19 +120,16 @@ export function prepararDatosPlantilla(evaluacion) {
 // ── Exportar con plantilla ─────────────────────────────────────────────────────
 
 /**
- * Descarga la prueba usando la plantilla .docx subida.
+ * Descarga la prueba usando la plantilla .docx guardada en Firestore (base64).
  * @param {Object} params
- * @param {string} params.templateUrl - URL de la plantilla en Firebase Storage
- * @param {Object} params.evaluacion  - Objeto de evaluación
+ * @param {Object} params.evaluacion - Objeto de evaluación
  */
-export async function exportarConPlantilla({ templateUrl, evaluacion }) {
-    const response = await fetch(templateUrl);
-    if (!response.ok) {
-        throw new Error('No se pudo descargar la plantilla del servidor');
+export async function exportarConPlantilla({ evaluacion }) {
+    const base64 = await getPlantillaBase64();
+    if (!base64) {
+        throw new Error('No se encontró la plantilla. Vuelve a subirla en Formato de Prueba.');
     }
-    const buffer = await response.arrayBuffer();
-
-    const zip = new PizZip(buffer);
+    const zip = new PizZip(base64, { base64: true });
     let doc;
     try {
         doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });

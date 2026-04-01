@@ -32,7 +32,7 @@ export default function VistaPrevia({ evaluacion }) {
             fetchDocument(...PLANTILLA_META_DOC),
         ]).then(([fmt, meta]) => {
             setFormato(fmt);
-            setPlantillaMeta(meta?.url ? meta : false); // false = no hay plantilla
+            setPlantillaMeta(meta?.hasPlantilla ? meta : false);
         }).catch(() => {
             setPlantillaMeta(false);
         });
@@ -73,8 +73,8 @@ export default function VistaPrevia({ evaluacion }) {
     const handleExport = async () => {
         setExporting(true);
         try {
-            if (plantillaMeta?.url) {
-                await exportarConPlantilla({ templateUrl: plantillaMeta.url, evaluacion });
+            if (plantillaMeta?.hasPlantilla) {
+                await exportarConPlantilla({ evaluacion });
             } else {
                 await exportarPrueba({
                     nombre:        evaluacion.name,

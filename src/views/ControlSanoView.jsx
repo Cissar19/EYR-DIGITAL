@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle,
-    FileDown, Pencil, ChevronDown, ChevronUp, History, UserPlus
+    FileDown, Pencil, ChevronDown, ChevronUp, History, UserPlus, Trash2
 } from 'lucide-react';
 import { exportControlSanoPDF } from '../lib/pdfExport';
 import { AnimatePresence, motion } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
 import { useAuth } from '../context/AuthContext';
 import { useStudents } from '../context/StudentsContext';
-import { subscribeToCollection, createDocument, updateDocument } from '../lib/firestoreService';
+import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -81,6 +81,9 @@ export default function ControlSanoView() {
     const [showAddStudent, setShowAddStudent] = useState(false);
     const [studentForm, setStudentForm] = useState(EMPTY_STUDENT);
     const [savingStudent, setSavingStudent] = useState(false);
+
+    // Confirmación de eliminación
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, studentName, fecha }
 
     useEffect(() => {
         const unsub = subscribeToCollection('control_sano', setRegistros, orderBy('createdAt', 'desc'));
@@ -203,6 +206,18 @@ export default function ControlSanoView() {
     };
 
     const isEditing = !!editingRegistro;
+
+    const handleDelete = async () => {
+        if (!deleteConfirm) return;
+        try {
+            await removeDocument('control_sano', deleteConfirm.id);
+            toast.success('Ficha eliminada');
+        } catch (err) {
+            toast.error(err?.message || 'Error al eliminar');
+        } finally {
+            setDeleteConfirm(null);
+        }
+    };
 
     const handleAddStudent = async () => {
         if (!studentForm.primerNombre.trim()) { toast.error('Ingresa el primer nombre'); return; }
@@ -445,6 +460,14 @@ export default function ControlSanoView() {
                                                                 >
                                                                     <Pencil className="w-3.5 h-3.5" />
                                                                 </button>
+                                                                {/* Delete button */}
+                                                                <button
+                                                                    onClick={() => setDeleteConfirm({ id: r.id, studentName: student.fullName, fecha: r.fecha })}
+                                                                    title="Eliminar ficha"
+                                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                             </div>
                                                         );
                                                     })}
@@ -605,6 +628,37 @@ export default function ControlSanoView() {
                     </ModalContainer>
                 )}
             </AnimatePresence>
+            {/* Modal — Confirmar eliminación */}
+            <AnimatePresence>
+                {deleteConfirm && (
+                    <ModalContainer onClose={() => setDeleteConfirm(null)} maxWidth="max-w-sm" noGradient>
+                        <div className="p-7">
+                            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                                <Trash2 className="w-6 h-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-extrabold text-slate-800 mb-1">Eliminar ficha</h3>
+                            <p className="text-sm text-slate-500">
+                                ¿Eliminar el control del <strong>{formatDate(deleteConfirm.fecha)}</strong> de <strong>{deleteConfirm.studentName}</strong>? Esta acción no se puede deshacer.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 px-7 pb-7">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 rounded-2xl font-semibold hover:bg-slate-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-semibold transition-colors"
+                            >
+                                Eliminar
+                            </button>
+                        </div>
+                    </ModalContainer>
+                )}
+            </AnimatePresence>
+
             {/* Modal — Agregar Estudiante */}
             <AnimatePresence>
                 {showAddStudent && (

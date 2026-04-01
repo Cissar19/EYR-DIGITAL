@@ -7,7 +7,7 @@ import {
 import { DEFAULT_FORMATO, mergeWithDefaults, cargarFormato, guardarFormato } from './formatoConfig';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
-import { uploadPlantilla, getPlantillaUrl, deletePlantilla } from '../lib/storageService';
+import { uploadPlantilla, deletePlantilla } from '../lib/storageService';
 import { descargarPlantillaEjemplo } from '../lib/templateExport';
 import { setDocument, fetchDocument } from '../lib/firestoreService';
 
@@ -113,7 +113,7 @@ export default function FormatoPrueba() {
             fetchDocument(...PLANTILLA_META_DOC),
         ]).then(([formato, meta]) => {
             setConfig(formato);
-            if (meta?.url) {
+            if (meta?.hasPlantilla) {
                 setPlantillaMeta(meta);
                 setFormatoOpen(false); // colapsar formato si hay plantilla activa
             }
@@ -149,9 +149,9 @@ export default function FormatoPrueba() {
         }
         setUploading(true);
         try {
-            const url = await uploadPlantilla(file);
+            await uploadPlantilla(file); // guarda base64 en Firestore
             const meta = {
-                url,
+                hasPlantilla: true,
                 uploadedAt: new Date().toISOString(),
                 uploadedBy: { id: user?.uid, name: user?.displayName || user?.name || '' },
                 fileName: file.name,
@@ -217,7 +217,7 @@ export default function FormatoPrueba() {
         );
     }
 
-    const plantillaActiva = Boolean(plantillaMeta?.url);
+    const plantillaActiva = Boolean(plantillaMeta?.hasPlantilla);
 
     return (
         <div className="space-y-6 max-w-2xl">

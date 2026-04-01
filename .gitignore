@@ -16,6 +16,9 @@ dist-ssr
 .env
 .env.local
 serviceAccountKey.json
+scripts/print-agent/serviceAccount.json
+scripts/print-agent/.env
+scripts/print-agent/.printed_ids.json
 
 # MCP (contains API keys)
 .mcp.json

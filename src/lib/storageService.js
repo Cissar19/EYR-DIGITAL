@@ -1,5 +1,6 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
+import { fetchDocument, setDocument } from './firestoreService';
 
 /**
  * Sube una imagen de pregunta a Firebase Storage.
@@ -44,39 +45,57 @@ export function getImageAspectRatio(src) {
     });
 }
 
-// ── Plantilla de prueba ────────────────────────────────────────────────────────
+// ── Plantilla de prueba (guardada en Firestore como base64) ───────────────────
+// Firebase Storage no está disponible en este proyecto, así que guardamos el
+// .docx directamente en Firestore. Los archivos de plantilla son pequeños
+// (~20-60 KB), dentro del límite de 1 MB por documento de Firestore.
 
-const PLANTILLA_PATH = 'app_config/plantilla_prueba.docx';
+const PLANTILLA_DOC = ['app_config', 'utp_plantilla_docx'];
 
 /**
- * Sube una plantilla .docx a Firebase Storage y devuelve su URL de descarga.
- * @param {File} file
- * @returns {Promise<string>} URL de descarga
+ * Convierte un File a string base64.
  */
-export async function uploadPlantilla(file) {
-    const storageRef = ref(storage, PLANTILLA_PATH);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return url;
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]); // quitar "data:...;base64,"
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 }
 
 /**
- * Devuelve la URL de descarga de la plantilla activa, o null si no existe.
+ * Sube una plantilla .docx guardándola como base64 en Firestore.
+ * Devuelve el string base64 (lo usamos directamente al exportar).
+ * @param {File} file
+ * @returns {Promise<string>} base64
+ */
+export async function uploadPlantilla(file) {
+    const base64 = await fileToBase64(file);
+    const sizeKB = Math.round((base64.length * 3) / 4 / 1024);
+    if (sizeKB > 900) {
+        throw new Error(`El archivo pesa ~${sizeKB} KB y supera el límite de 900 KB. Usa una plantilla más simple.`);
+    }
+    await setDocument(...PLANTILLA_DOC, { base64 }, { merge: false });
+    return base64;
+}
+
+/**
+ * Recupera el base64 de la plantilla activa, o null si no existe.
  * @returns {Promise<string|null>}
  */
-export async function getPlantillaUrl() {
+export async function getPlantillaBase64() {
     try {
-        const storageRef = ref(storage, PLANTILLA_PATH);
-        return await getDownloadURL(storageRef);
+        const doc = await fetchDocument(...PLANTILLA_DOC);
+        return doc?.base64 || null;
     } catch {
         return null;
     }
 }
 
 /**
- * Elimina la plantilla activa de Firebase Storage.
+ * Elimina la plantilla activa de Firestore.
  */
 export async function deletePlantilla() {
-    const storageRef = ref(storage, PLANTILLA_PATH);
-    await deleteObject(storageRef);
+    await setDocument(...PLANTILLA_DOC, { base64: null }, { merge: false });
 }
