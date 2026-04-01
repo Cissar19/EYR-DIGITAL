@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-    Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle, FileDown
+    Stethoscope, Search, X, ClipboardCheck, CheckCircle2, Circle,
+    FileDown, Pencil, ChevronDown, ChevronUp, History
 } from 'lucide-react';
 import { exportControlSanoPDF } from '../lib/pdfExport';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
 import { useAuth } from '../context/AuthContext';
 import { useStudents } from '../context/StudentsContext';
-import { subscribeToCollection, createDocument } from '../lib/firestoreService';
+import { subscribeToCollection, createDocument, updateDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -42,6 +43,24 @@ function formatDate(dateStr) {
     return `${d}/${m}/${y}`;
 }
 
+function registroToForm(r) {
+    return {
+        fecha: r.fecha || todayStr(),
+        peso: r.peso != null ? String(r.peso) : '',
+        talla: r.talla != null ? String(r.talla) : '',
+        circunferenciaAbdominal: r.circunferenciaAbdominal != null ? String(r.circunferenciaAbdominal) : '',
+        diagnostico: r.diagnostico || '',
+        derivaciones: {
+            dental: !!r.derivaciones?.dental,
+            nutricionista: !!r.derivaciones?.nutricionista,
+            pediatra: !!r.derivaciones?.pediatra,
+            psicologia: !!r.derivaciones?.psicologia,
+            saludMental: !!r.derivaciones?.saludMental,
+        },
+        observaciones: r.observaciones || '',
+    };
+}
+
 export default function ControlSanoView() {
     const { user } = useAuth();
     const { students } = useStudents();
@@ -49,7 +68,11 @@ export default function ControlSanoView() {
     const [registros, setRegistros] = useState([]);
     const [search, setSearch] = useState('');
     const [filterCurso, setFilterCurso] = useState('');
+    const [expandedStudent, setExpandedStudent] = useState(null);
+
+    // Modal state
     const [modalStudent, setModalStudent] = useState(null);
+    const [editingRegistro, setEditingRegistro] = useState(null); // null = new, object = edit
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
 
@@ -75,13 +98,14 @@ export default function ControlSanoView() {
         return map;
     }, [registros]);
 
-    // All controls per student (for PDF)
+    // All controls per student sorted desc
     const allRegistrosByStudent = useMemo(() => {
         const map = {};
         registros.forEach(r => {
             if (!map[r.studentId]) map[r.studentId] = [];
             map[r.studentId].push(r);
         });
+        Object.values(map).forEach(list => list.sort((a, b) => b.fecha > a.fecha ? 1 : -1));
         return map;
     }, [registros]);
 
@@ -110,13 +134,23 @@ export default function ControlSanoView() {
         return { total: estudiantesBase.length, conControl, derivCount };
     }, [estudiantesBase, registros, registrosByStudent]);
 
-    const openModal = (student) => {
+    // ── Open modal for new registro ──
+    const openNewModal = (student) => {
         setModalStudent(student);
+        setEditingRegistro(null);
         setForm({ ...EMPTY_FORM, fecha: todayStr() });
+    };
+
+    // ── Open modal to edit existing registro ──
+    const openEditModal = (student, registro) => {
+        setModalStudent(student);
+        setEditingRegistro(registro);
+        setForm(registroToForm(registro));
     };
 
     const closeModal = () => {
         setModalStudent(null);
+        setEditingRegistro(null);
         setForm(EMPTY_FORM);
     };
 
@@ -129,22 +163,30 @@ export default function ControlSanoView() {
             return;
         }
         setSaving(true);
+        const payload = {
+            fecha: form.fecha,
+            peso: form.peso ? parseFloat(form.peso) : null,
+            talla: form.talla ? parseFloat(form.talla) : null,
+            circunferenciaAbdominal: form.circunferenciaAbdominal ? parseFloat(form.circunferenciaAbdominal) : null,
+            diagnostico: form.diagnostico.trim(),
+            derivaciones: form.derivaciones,
+            observaciones: form.observaciones.trim(),
+            registradoPor: user?.name || '',
+        };
         try {
-            await createDocument('control_sano', {
-                studentId: modalStudent.id,
-                studentName: modalStudent.fullName,
-                studentRut: modalStudent.rut,
-                studentCurso: modalStudent.curso,
-                fecha: form.fecha,
-                peso: form.peso ? parseFloat(form.peso) : null,
-                talla: form.talla ? parseFloat(form.talla) : null,
-                circunferenciaAbdominal: form.circunferenciaAbdominal ? parseFloat(form.circunferenciaAbdominal) : null,
-                diagnostico: form.diagnostico.trim(),
-                derivaciones: form.derivaciones,
-                observaciones: form.observaciones.trim(),
-                registradoPor: user?.name || '',
-            });
-            toast.success(`Control sano registrado para ${modalStudent.fullName}`);
+            if (editingRegistro) {
+                await updateDocument('control_sano', editingRegistro.id, payload);
+                toast.success('Control actualizado');
+            } else {
+                await createDocument('control_sano', {
+                    ...payload,
+                    studentId: modalStudent.id,
+                    studentName: modalStudent.fullName,
+                    studentRut: modalStudent.rut,
+                    studentCurso: modalStudent.curso,
+                });
+                toast.success(`Control registrado para ${modalStudent.fullName}`);
+            }
             closeModal();
         } catch (err) {
             console.error('Error control_sano:', err);
@@ -153,6 +195,8 @@ export default function ControlSanoView() {
             setSaving(false);
         }
     };
+
+    const isEditing = !!editingRegistro;
 
     return (
         <div className="space-y-6">
@@ -193,7 +237,7 @@ export default function ControlSanoView() {
                         type="text"
                         placeholder="Buscar alumno por nombre o RUT..."
                         value={search}
-                        onChange={e => { setSearch(e.target.value); }}
+                        onChange={e => setSearch(e.target.value)}
                         className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-200 focus:border-teal-400 outline-none"
                     />
                 </div>
@@ -227,70 +271,149 @@ export default function ControlSanoView() {
                     <div className="divide-y divide-slate-100">
                         {filteredStudents.map(student => {
                             const last = registrosByStudent[student.id];
+                            const allControls = allRegistrosByStudent[student.id] || [];
                             const activeDerivaciones = last
                                 ? DERIVACIONES.filter(d => last.derivaciones?.[d.key])
                                 : [];
+                            const isExpanded = expandedStudent === student.id;
 
                             return (
-                                <div key={student.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
-                                    {/* Avatar */}
-                                    <div className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center shrink-0">
-                                        <span className="text-teal-700 font-bold text-sm">
-                                            {student.fullName.charAt(0)}
-                                        </span>
-                                    </div>
-
-                                    {/* Name + info */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-800 truncate">{student.fullName}</p>
-                                        <p className="text-xs text-slate-500">{student.rut} · {student.curso}</p>
-                                    </div>
-
-                                    {/* Last control badge */}
-                                    <div className="hidden sm:flex flex-col items-end gap-1 mr-3">
-                                        {last ? (
-                                            <>
-                                                <span className="text-xs text-teal-700 font-medium bg-teal-50 px-2.5 py-0.5 rounded-full">
-                                                    {formatDate(last.fecha)}
-                                                </span>
-                                                {activeDerivaciones.length > 0 && (
-                                                    <div className="flex gap-1 flex-wrap justify-end">
-                                                        {activeDerivaciones.map(d => (
-                                                            <span key={d.key} className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                                                                {d.label}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Sin control</span>
-                                        )}
-                                    </div>
-
-                                    {/* PDF export (solo si tiene registros) */}
-                                    {allRegistrosByStudent[student.id]?.length > 0 && (
+                                <div key={student.id}>
+                                    {/* Main row */}
+                                    <div className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                                        {/* Expand toggle (only if has controls) */}
                                         <button
-                                            onClick={() => exportControlSanoPDF({
-                                                student,
-                                                registros: allRegistrosByStudent[student.id],
-                                            })}
-                                            title="Exportar PDF"
-                                            className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors shrink-0"
+                                            onClick={() => setExpandedStudent(isExpanded ? null : student.id)}
+                                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                                                allControls.length > 0
+                                                    ? 'bg-teal-50 hover:bg-teal-100 cursor-pointer'
+                                                    : 'bg-teal-50 cursor-default'
+                                            }`}
                                         >
-                                            <FileDown className="w-4 h-4" />
+                                            {allControls.length > 0 ? (
+                                                isExpanded
+                                                    ? <ChevronUp className="w-4 h-4 text-teal-600" />
+                                                    : <ChevronDown className="w-4 h-4 text-teal-600" />
+                                            ) : (
+                                                <span className="text-teal-700 font-bold text-sm">{student.fullName.charAt(0)}</span>
+                                            )}
                                         </button>
-                                    )}
 
-                                    {/* CTA */}
-                                    <button
-                                        onClick={() => openModal(student)}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
-                                    >
-                                        <ClipboardCheck className="w-4 h-4" />
-                                        <span className="hidden sm:inline">Registrar Control Sano</span>
-                                        <span className="sm:hidden">Registrar</span>
-                                    </button>
+                                        {/* Name + info */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-slate-800 truncate">{student.fullName}</p>
+                                            <p className="text-xs text-slate-500">{student.rut} · {student.curso}</p>
+                                        </div>
+
+                                        {/* Last control badge */}
+                                        <div className="hidden sm:flex flex-col items-end gap-1 mr-3">
+                                            {last ? (
+                                                <>
+                                                    <span className="text-xs text-teal-700 font-medium bg-teal-50 px-2.5 py-0.5 rounded-full">
+                                                        {formatDate(last.fecha)}
+                                                    </span>
+                                                    {activeDerivaciones.length > 0 && (
+                                                        <div className="flex gap-1 flex-wrap justify-end">
+                                                            {activeDerivaciones.map(d => (
+                                                                <span key={d.key} className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                                    {d.label}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">Sin control</span>
+                                            )}
+                                        </div>
+
+                                        {/* PDF */}
+                                        {allControls.length > 0 && (
+                                            <button
+                                                onClick={() => exportControlSanoPDF({ student, registros: allControls })}
+                                                title="Exportar PDF"
+                                                className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors shrink-0"
+                                            >
+                                                <FileDown className="w-4 h-4" />
+                                            </button>
+                                        )}
+
+                                        {/* New control */}
+                                        <button
+                                            onClick={() => openNewModal(student)}
+                                            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
+                                        >
+                                            <ClipboardCheck className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Registrar Control Sano</span>
+                                            <span className="sm:hidden">Registrar</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Expanded: history of controls */}
+                                    <AnimatePresence>
+                                        {isExpanded && allControls.length > 0 && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="bg-slate-50 border-t border-slate-100 px-6 py-3 space-y-2">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <History className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                                            Historial · {allControls.length} control{allControls.length !== 1 ? 'es' : ''}
+                                                        </span>
+                                                    </div>
+                                                    {allControls.map(r => {
+                                                        const deriv = DERIVACIONES.filter(d => r.derivaciones?.[d.key]);
+                                                        return (
+                                                            <div key={r.id} className="flex items-start gap-3 bg-white rounded-2xl px-4 py-3 border border-slate-100">
+                                                                {/* Date */}
+                                                                <div className="shrink-0 text-center min-w-[52px]">
+                                                                    <p className="text-sm font-bold text-teal-700">{formatDate(r.fecha)}</p>
+                                                                </div>
+
+                                                                {/* Measurements */}
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                                                                        {r.peso != null && <span className="bg-slate-100 px-2 py-0.5 rounded-lg">Peso: <strong>{r.peso} kg</strong></span>}
+                                                                        {r.talla != null && <span className="bg-slate-100 px-2 py-0.5 rounded-lg">Talla: <strong>{r.talla} cm</strong></span>}
+                                                                        {r.circunferenciaAbdominal != null && <span className="bg-slate-100 px-2 py-0.5 rounded-lg">C. Abd.: <strong>{r.circunferenciaAbdominal} cm</strong></span>}
+                                                                    </div>
+                                                                    {r.diagnostico && (
+                                                                        <p className="text-xs text-slate-500 truncate">Dx: {r.diagnostico}</p>
+                                                                    )}
+                                                                    {deriv.length > 0 && (
+                                                                        <div className="flex gap-1 flex-wrap">
+                                                                            {deriv.map(d => (
+                                                                                <span key={d.key} className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                                                    {d.label}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                    {r.observaciones && (
+                                                                        <p className="text-xs text-slate-400 truncate">{r.observaciones}</p>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Edit button */}
+                                                                <button
+                                                                    onClick={() => openEditModal(student, r)}
+                                                                    title="Editar control"
+                                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors shrink-0"
+                                                                >
+                                                                    <Pencil className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             );
                         })}
@@ -298,18 +421,27 @@ export default function ControlSanoView() {
                 )}
             </div>
 
-            {/* Modal */}
+            {/* Modal (create / edit) */}
             <AnimatePresence>
                 {modalStudent && (
                     <ModalContainer onClose={closeModal} maxWidth="max-w-lg">
                         {/* Header */}
                         <div className="flex items-center justify-between px-8 pt-7 pb-5">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-                                    <Stethoscope className="w-5 h-5 text-white" />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                    isEditing
+                                        ? 'bg-gradient-to-br from-indigo-500 to-violet-600'
+                                        : 'bg-gradient-to-br from-teal-500 to-emerald-600'
+                                }`}>
+                                    {isEditing
+                                        ? <Pencil className="w-5 h-5 text-white" />
+                                        : <Stethoscope className="w-5 h-5 text-white" />
+                                    }
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-extrabold text-slate-800">Registrar Control Sano</h2>
+                                    <h2 className="text-xl font-extrabold text-slate-800">
+                                        {isEditing ? 'Editar Control Sano' : 'Registrar Control Sano'}
+                                    </h2>
                                     <p className="text-xs text-slate-500 truncate max-w-56">
                                         {modalStudent.fullName} · {modalStudent.curso}
                                     </p>
@@ -423,9 +555,13 @@ export default function ControlSanoView() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+                                className={`flex-1 px-6 py-3 text-white rounded-2xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 ${
+                                    isEditing
+                                        ? 'bg-gradient-to-r from-indigo-500 to-violet-600'
+                                        : 'bg-gradient-to-r from-teal-500 to-emerald-600'
+                                }`}
                             >
-                                {saving ? 'Guardando...' : 'Guardar Control'}
+                                {saving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Guardar Control'}
                             </button>
                         </div>
                     </ModalContainer>

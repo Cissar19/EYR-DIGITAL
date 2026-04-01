@@ -252,8 +252,8 @@ service cloud.firestore {
     // ============================================
     match /control_sano/{docId} {
       allow read: if isAuthenticated() && isManagement();
-      allow create: if isAuthenticated() && isManagement();
-      allow update, delete: if isAuthenticated() && isAdmin();
+      allow create, update: if isAuthenticated() && isManagement();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ============================================
