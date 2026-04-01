@@ -235,10 +235,17 @@ export default function ControlSanoView() {
                 <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center shrink-0">
                     <Stethoscope className="w-6 h-6 text-teal-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                     <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Control Sano</h1>
                     <p className="text-sm text-slate-500">Pre-Kinder a 4° Básico · {stats.conControl}/{stats.total} con control registrado</p>
                 </div>
+                <button
+                    onClick={() => { setStudentForm(EMPTY_STUDENT); setShowAddStudent(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-teal-200 transition-all hover:-translate-y-0.5 shrink-0"
+                >
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Agregar Estudiante</span>
+                </button>
             </div>
 
             {/* Stats */}
@@ -293,23 +300,10 @@ export default function ControlSanoView() {
             {/* Student list */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 {filteredStudents.length === 0 ? (
-                    <div className="py-14 flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center">
-                            <Stethoscope className="w-8 h-8 text-slate-300" />
-                        </div>
-                        <div className="text-center">
-                            <p className="font-semibold text-slate-600">No se encontraron estudiantes</p>
-                            <p className="text-sm text-slate-400 mt-1">
-                                {search.trim() ? `"${search}" no está en el registro` : 'No hay estudiantes en este curso'}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => { setStudentForm(EMPTY_STUDENT); setShowAddStudent(true); }}
-                            className="flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-teal-200 transition-all hover:shadow-teal-300 hover:-translate-y-0.5 active:translate-y-0"
-                        >
-                            <UserPlus className="w-5 h-5" />
-                            Agregar Estudiante
-                        </button>
+                    <div className="py-14 text-center text-slate-400">
+                        <Stethoscope className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="font-medium">No se encontraron estudiantes</p>
+                        {search.trim() && <p className="text-sm mt-1">Puedes agregar a "{search}" con el botón de arriba</p>}
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
