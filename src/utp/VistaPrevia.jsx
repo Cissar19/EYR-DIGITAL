@@ -150,28 +150,65 @@ export default function VistaPrevia({ evaluacion }) {
                 logging: false,
                 backgroundColor: '#ffffff',
                 onclone: (_doc, clone) => {
-                    // Solo limpiar estilos visuales; NO cambiar width/maxWidth
-                    // (maxWidth:none causa que el elemento se expanda al ancho del viewport
-                    //  → imagen 3x más ancha → texto diminuto al comprimir a A4)
                     clone.style.borderRadius = '0';
                     clone.style.boxShadow = 'none';
                     clone.style.border = 'none';
                 },
             });
 
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const margin = 8;
-            const pageW = 210;
-            const pageH = 297;
-            const contentW = pageW - 2 * margin;
-            const contentH = (canvas.height / canvas.width) * contentW;
-            const sliceH = pageH - 2 * margin;
-            const pages = Math.ceil(contentH / sliceH);
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const margin = 8;                     // mm
+            const pageW  = 210;                   // A4 mm
+            const pageH  = 297;
+            const contentW = pageW - 2 * margin;  // 194 mm
+            const sliceH_mm = pageH - 2 * margin; // 281 mm por página
 
-            for (let i = 0; i < pages; i++) {
+            // Pixeles de canvas equivalentes a una página de contenido
+            const sliceH_px = Math.round(sliceH_mm * canvas.width / contentW);
+
+            // Detecta el corte más blanco dentro de ±15% del sliceH
+            // para evitar cortar en medio de una pregunta
+            const findWhiteRow = (targetY) => {
+                const ctx    = canvas.getContext('2d');
+                const search = Math.round(sliceH_px * 0.15);
+                const from   = Math.max(targetY - search, 0);
+                const to     = Math.min(targetY + search, canvas.height - 1);
+                let best = targetY, bestScore = -1;
+                for (let y = from; y <= to; y += 2) {
+                    const data = ctx.getImageData(0, y, canvas.width, 1).data;
+                    let white = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) white++;
+                    }
+                    if (white > bestScore) { bestScore = white; best = y; }
+                }
+                return best;
+            };
+
+            // Calcular todos los puntos de corte
+            const cuts = [];
+            let pos = 0;
+            while (pos + sliceH_px < canvas.height) {
+                const cut = findWhiteRow(pos + sliceH_px);
+                cuts.push(cut);
+                pos = cut;
+            }
+
+            // Generar páginas con segmentos individuales
+            const segments = [0, ...cuts, canvas.height];
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            for (let i = 0; i < segments.length - 1; i++) {
+                const y0 = segments[i];
+                const y1 = segments[i + 1];
+
+                const slice = document.createElement('canvas');
+                slice.width  = canvas.width;
+                slice.height = y1 - y0;
+                slice.getContext('2d').drawImage(canvas, 0, y0, canvas.width, y1 - y0, 0, 0, canvas.width, y1 - y0);
+
+                const h_mm = (y1 - y0) * contentW / canvas.width;
                 if (i > 0) pdf.addPage();
-                pdf.addImage(imgData, 'JPEG', margin, margin - i * sliceH, contentW, contentH);
+                pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, contentW, h_mm);
             }
 
             const name = (evaluacion.name || 'prueba')
