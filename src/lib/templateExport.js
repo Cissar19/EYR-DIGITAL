@@ -177,7 +177,7 @@ export async function generarPlantillaDesdeBlocks({ blocks, nombreArchivo = 'pla
     const hp  = (pt) => pt * 2;                             // puntos → half-points
     const hx  = (c)  => (c || '#000000').replace('#', '');  // hex sin #
     const nb  = () => ({ top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } });
-    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' } });
+    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, bottom: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, left: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, right: { style: BorderStyle.SINGLE, size: 8, color: '64748B' } });
     const cp  = (ch) => new Paragraph({ children: ch, spacing: { after: 60, before: 60 } });
     const tag = (text) => new Paragraph({ children: [new TextRun({ text, size: hp(10) })], spacing: { after: 0, before: 0 } });
 
@@ -213,7 +213,7 @@ export async function generarPlantillaDesdeBlocks({ blocks, nombreArchivo = 'pla
             const snT = tg(block.typo, 'schoolName', TD.schoolName);
             const stT = tg(block.typo, 'subtitle',   TD.subtitle);
             const showCalif = block.showCalificacion ?? true;
-            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' } });
+            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, bottom: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, left: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, right: { style: BorderStyle.SINGLE, size: 8, color: '64748B' } });
             const logoChildren = block.logoBase64
                 ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new ImageRun({ data: block.logoBase64.split(',')[1], type: block.logoType || 'png', transformation: { width: 55, height: 55 } })] })]
                 : [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: '[ LOGO ]', size: hp(9), color: 'AAAAAA' })] })];
@@ -967,7 +967,7 @@ export async function exportarConFormato({ bloques, evaluacion }) {
     const hp  = (pt) => pt * 2;
     const hx  = (c)  => (c || '#000000').replace('#', '');
     const nb  = () => ({ top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } });
-    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' } });
+    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, bottom: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, left: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, right: { style: BorderStyle.SINGLE, size: 8, color: '64748B' } });
     const cp  = (ch) => new Paragraph({ children: ch, spacing: { after: 60, before: 60 } });
 
     const tg = (typo, key, defaults) => ({
@@ -1023,7 +1023,7 @@ export async function exportarConFormato({ bloques, evaluacion }) {
             const snT = tg(block.typo, 'schoolName', TD.schoolName);
             const stT = tg(block.typo, 'subtitle',   TD.subtitle);
             const showCalif = block.showCalificacion ?? true;
-            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' } });
+            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, bottom: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, left: { style: BorderStyle.SINGLE, size: 8, color: '64748B' }, right: { style: BorderStyle.SINGLE, size: 8, color: '64748B' } });
             const logoChildren = block.logoBase64
                 ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new ImageRun({ data: block.logoBase64.split(',')[1], type: block.logoType || 'png', transformation: { width: 55, height: 55 } })] })]
                 : [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: '[ LOGO ]', size: hp(9), color: 'AAAAAA' })] })];
