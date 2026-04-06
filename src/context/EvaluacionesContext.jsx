@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { arrayUnion } from 'firebase/firestore';
 import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
 import { toast } from 'sonner';
 import { validateDate, validateRequiredString, sanitizeText } from '../lib/validation';
@@ -34,6 +35,7 @@ export const EvaluacionesProvider = ({ children }) => {
             asignatura: data.asignatura,
             date: data.date,
             totalQuestions: data.questions.length,
+            totalPoints: data.questions.reduce((s, q) => s + (q.puntaje ?? 1), 0),
             questions: data.questions,
             results: {},
             driveLink: data.driveLink || '',
@@ -61,12 +63,19 @@ export const EvaluacionesProvider = ({ children }) => {
             if (data.questions !== undefined) {
                 updates.questions = data.questions;
                 updates.totalQuestions = data.questions.length;
+                updates.totalPoints = data.questions.reduce((s, q) => s + (q.puntaje ?? 1), 0);
             }
             if (data.selectedIndicadores !== undefined) {
                 updates.selectedIndicadores = data.selectedIndicadores;
             }
             if (data.driveLink !== undefined) {
                 updates.driveLink = data.driveLink;
+            }
+            if (data.exigencia !== undefined) {
+                updates.exigencia = data.exigencia;
+            }
+            if (data.oa !== undefined) {
+                updates.oa = data.oa;
             }
 
             await updateDocument(COLLECTION, id, updates);
@@ -138,6 +147,48 @@ export const EvaluacionesProvider = ({ children }) => {
         }
     }, []);
 
+    const duplicateEvaluacion = useCallback(async (id, userInfo) => {
+        const original = evaluaciones.find(e => e.id === id);
+        if (!original) return null;
+        const doc = {
+            name: `[Copia] ${original.name}`,
+            curso: original.curso,
+            asignatura: original.asignatura,
+            date: '',
+            totalQuestions: original.totalQuestions,
+            totalPoints: original.totalPoints,
+            questions: (original.questions || []).map(q => ({ ...q })),
+            results: {},
+            driveLink: '',
+            createdBy: userInfo,
+            createdAt: new Date().toISOString(),
+            status: 'pending',
+            copiedFrom: id,
+            exigencia: original.exigencia ?? 60,
+            oa: original.oa ?? '',
+            selectedIndicadores: original.selectedIndicadores ?? {},
+        };
+        try {
+            const created = await createDocument(COLLECTION, doc);
+            toast.success('Evaluación duplicada');
+            return created.id;
+        } catch (error) {
+            console.error('Error duplicando evaluacion:', error);
+            toast.error('Error al duplicar evaluación');
+            return null;
+        }
+    }, [evaluaciones]);
+
+    const addComment = useCallback(async (evalId, comment) => {
+        try {
+            await updateDocument(COLLECTION, evalId, { comments: arrayUnion(comment) });
+            return true;
+        } catch {
+            toast.error('Error al guardar comentario');
+            return false;
+        }
+    }, []);
+
     const resubmitEvaluacion = useCallback(async (id) => {
         try {
             await updateDocument(COLLECTION, id, {
@@ -160,11 +211,13 @@ export const EvaluacionesProvider = ({ children }) => {
         addEvaluacion,
         updateEvaluacion,
         deleteEvaluacion,
+        duplicateEvaluacion,
         saveResults,
         approveEvaluacion,
         rejectEvaluacion,
         resubmitEvaluacion,
-    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, saveResults, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion]);
+        addComment,
+    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, duplicateEvaluacion, saveResults, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion, addComment]);
 
     return (
         <EvaluacionesContext.Provider value={value}>

@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye } from 'lucide-react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye, Copy, Table2, Map } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import { ASIGNATURAS, CURSOS } from '../data/objetivosAprendizaje';
 import { toast } from 'sonner';
-import { exportarPrueba } from '../lib/docxExport';
+import { exportarConFormato } from '../lib/templateExport';
+import { DEFAULT_FORMAT_BLOCKS } from './formatoConfig';
+import { fetchCollection } from '../lib/firestoreService';
+import { orderBy } from 'firebase/firestore';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
 import ModalContainer from '../components/ModalContainer';
 import ResultadosGrid from './ResultadosGrid';
@@ -14,7 +17,9 @@ import OAAssignmentPanel from './OAAssignmentPanel';
 import IndicadoresSelectionPanel from './IndicadoresSelectionPanel';
 import PreguntasPanel from './PreguntasPanel';
 import VistaPrevia from './VistaPrevia';
-import FormatoPrueba from './FormatoPrueba';
+import TablaEspecificaciones from './TablaEspecificaciones';
+import CoberturaOA from './CoberturaOA';
+import ComentariosPanel from './ComentariosPanel';
 
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
@@ -29,7 +34,7 @@ const getAsignaturaName = (code) => ASIGNATURAS.find(a => a.code === code)?.name
 
 export default function UTPView() {
     const { user } = useAuth();
-    const { evaluaciones, loading, deleteEvaluacion, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion } = useEvaluaciones();
+    const { evaluaciones, loading, deleteEvaluacion, duplicateEvaluacion, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion, updateEvaluacion } = useEvaluaciones();
     const userCanEdit = canEdit(user);
     const userIsManagement = isManagement(user);
 
@@ -39,10 +44,7 @@ export default function UTPView() {
     // Who can approve: utp_head, super_admin, admin
     const userCanApprove = userCanEdit || user?.role === 'utp_head';
 
-    // Who can configure test format
-    const canConfigFormato = userCanEdit || user?.role === 'utp_head';
-
-    // View mode: 'list' | 'detail' | 'formato'
+    // View mode: 'list' | 'detail'
     const [viewMode, setViewMode] = useState('list');
     const [selectedEval, setSelectedEval] = useState(null);
     const [detailTab, setDetailTab] = useState('preguntas'); // 'preguntas' | 'oas' | 'indicadores' | 'grid' | 'resumen'
@@ -142,21 +144,49 @@ export default function UTPView() {
     // If viewing detail, find the live version from evaluaciones
     const liveEval = selectedEval ? evaluaciones.find(e => e.id === selectedEval.id) || selectedEval : null;
 
+    // Exigencia + OA inline editing
+    const [evalExigencia, setEvalExigencia] = React.useState('');
+    const [evalOA, setEvalOA] = React.useState('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    React.useEffect(() => {
+        if (liveEval) {
+            setEvalExigencia(liveEval.exigencia ?? 60);
+            setEvalOA(liveEval.oa ?? '');
+        }
+    }, [liveEval?.id]); // intentional: only reset when switching evals, not on every update
+
+    const handleSaveExigencia = async () => {
+        if (!liveEval) return;
+        const val = evalExigencia !== '' ? Number(evalExigencia) : null;
+        if (val === (liveEval.exigencia ?? null)) return;
+        await updateEvaluacion(liveEval.id, { exigencia: val });
+    };
+    const handleSaveOA = async () => {
+        if (!liveEval) return;
+        if (evalOA === (liveEval.oa ?? '')) return;
+        await updateEvaluacion(liveEval.id, { oa: evalOA });
+    };
+
     // Google Docs generation
     const [generatingDocs, setGeneratingDocs] = useState(false);
+
+    const [formatos, setFormatos]         = useState([]);
+    const [selectedFormatoId, setSelectedFormatoId] = useState('__default__');
+
+    React.useEffect(() => {
+        fetchCollection('formatos_prueba', orderBy('updatedAt', 'desc'))
+            .then(setFormatos)
+            .catch(() => {});
+    }, []);
 
     const handleGenerarDocs = async () => {
         if (!liveEval) return;
         setGeneratingDocs(true);
         try {
-            await exportarPrueba({
-                nombre:     liveEval.name,
-                curso:      liveEval.curso,
-                asignatura: getAsignaturaName(liveEval.asignatura),
-                fecha:      liveEval.date,
-                profesor:   liveEval.createdBy?.name || '',
-                preguntas:  (liveEval.questions || []).filter(q => q.enunciado),
-            });
+            const formato = selectedFormatoId !== '__default__'
+                ? formatos.find(f => f.id === selectedFormatoId)
+                : formatos[0];
+            await exportarConFormato({ bloques: formato?.bloques ?? DEFAULT_FORMAT_BLOCKS, evaluacion: liveEval });
         } catch (err) {
             toast.error('No se pudo generar el archivo: ' + err.message);
         } finally {
@@ -174,6 +204,12 @@ export default function UTPView() {
     const handleDelete = async (id) => {
         await deleteEvaluacion(id);
         setDeleteConfirm(null);
+    };
+
+    const handleDuplicate = async (id) => {
+        const userInfo = { id: user?.uid, name: user?.displayName || user?.name || '' };
+        const newId = await duplicateEvaluacion(id, userInfo);
+        if (newId) setPendingNavEvalId(newId);
     };
 
     const approverInfo = { id: user?.uid, name: user?.displayName || user?.name || '' };
@@ -246,17 +282,59 @@ export default function UTPView() {
                                 </>
                             )}
                         </p>
+                        <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+                            <label className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-500">Exigencia:</span>
+                                <div className="flex items-center gap-0.5">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={evalExigencia}
+                                        onChange={e => setEvalExigencia(e.target.value)}
+                                        onBlur={handleSaveExigencia}
+                                        placeholder="60"
+                                        className="w-14 px-1.5 py-0.5 border border-transparent hover:border-slate-200 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 rounded-lg text-xs text-center outline-none bg-transparent hover:bg-white focus:bg-white transition-all"
+                                    />
+                                    <span className="text-xs text-slate-400">%</span>
+                                </div>
+                            </label>
+                            <label className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                                <span className="text-xs text-slate-500 shrink-0">OA:</span>
+                                <input
+                                    type="text"
+                                    value={evalOA}
+                                    onChange={e => setEvalOA(e.target.value)}
+                                    onBlur={handleSaveOA}
+                                    placeholder="Objetivo de aprendizaje trabajado…"
+                                    className="flex-1 min-w-0 px-1.5 py-0.5 border border-transparent hover:border-slate-200 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 rounded-lg text-xs outline-none bg-transparent hover:bg-white focus:bg-white transition-all"
+                                />
+                            </label>
+                        </div>
                         {liveEval.questions?.some(q => q.enunciado) && (
+                            <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            {formatos.length > 1 && (
+                                <select
+                                    value={selectedFormatoId}
+                                    onChange={e => setSelectedFormatoId(e.target.value)}
+                                    className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:ring-2 focus:ring-violet-200 outline-none">
+                                    <option value="__default__">{formatos[0]?.nombre || 'Formato por defecto'}</option>
+                                    {formatos.slice(1).map(f => (
+                                        <option key={f.id} value={f.id}>{f.nombre}</option>
+                                    ))}
+                                </select>
+                            )}
                             <button
                                 onClick={handleGenerarDocs}
                                 disabled={generatingDocs}
-                                className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-eyr-primary hover:text-eyr-primary-dim disabled:opacity-50 transition-colors"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-eyr-primary hover:text-eyr-primary-dim disabled:opacity-50 transition-colors"
                             >
                                 {generatingDocs
                                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
                                     : <><FileText className="w-3.5 h-3.5" /> Descargar prueba (.docx)</>
                                 }
                             </button>
+                            </div>
                         )}
                     </div>
                     {/* Approve/Reject buttons for approvers */}
@@ -324,6 +402,8 @@ export default function UTPView() {
                         { id: 'preview',     icon: ScanEye,       label: 'Vista previa' },
                         { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
                         { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
+                        { id: 'tabla',       icon: Table2,        label: 'Tabla espec.' },
+                        { id: 'comentarios', icon: MessageSquare, label: 'Comentarios' },
                     ].map(({ id, icon: Icon, label }) => (
                         <button
                             key={id}
@@ -349,11 +429,20 @@ export default function UTPView() {
                     <IndicadoresSelectionPanel evaluacion={liveEval} key={liveEval.id + '-indicadores-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
                 ) : detailTab === 'preview' ? (
                     <VistaPrevia evaluacion={liveEval} />
+                ) : detailTab === 'tabla' ? (
+                    <TablaEspecificaciones evaluacion={liveEval} />
+                ) : detailTab === 'comentarios' ? (
+                    <ComentariosPanel evaluacion={liveEval} />
                 ) : (
                     <OAAssignmentPanel evaluacion={liveEval} key={liveEval.id + '-' + liveEval.questions?.map(q => q.oaCode).join(',')} />
                 )}
             </div>
         );
+    }
+
+    // ── Cobertura View ──
+    if (viewMode === 'cobertura') {
+        return <CoberturaOA onBack={() => setViewMode('list')} />;
     }
 
     // ── List View ──
@@ -368,20 +457,13 @@ export default function UTPView() {
                     <h1 className="text-2xl font-extrabold tracking-tight text-eyr-on-surface font-headline">Evaluaciones UTP</h1>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    {canConfigFormato && (
-                        <button
-                            onClick={() => setViewMode(v => v === 'formato' ? 'list' : 'formato')}
-                            className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all border ${
-                                viewMode === 'formato'
-                                    ? 'bg-amber-50 border-amber-200 text-amber-700'
-                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            <FileText className="w-4 h-4" />
-                            Formato de Prueba
-                        </button>
-                    )}
-                    {canCreateEval && viewMode !== 'formato' && (
+                    <button
+                        onClick={() => setViewMode('cobertura')}
+                        className="flex items-center gap-2 px-4 py-3 rounded-xl border border-eyr-outline-variant/20 bg-eyr-surface-low text-eyr-on-variant hover:bg-eyr-surface-high text-sm font-semibold transition-all"
+                    >
+                        <Map className="w-4 h-4" /> Cobertura OA
+                    </button>
+                    {canCreateEval && (
                         <button
                             onClick={() => setShowCreate(true)}
                             className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold"
@@ -391,22 +473,6 @@ export default function UTPView() {
                     )}
                 </div>
             </div>
-
-            {/* Formato de Prueba */}
-            {viewMode === 'formato' && (
-                <div className="bg-white border border-amber-200 rounded-3xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-amber-100 rounded-xl">
-                            <FileText className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-800">Formato de Prueba</h2>
-                            <p className="text-xs text-slate-500">Configura los títulos e instrucciones predeterminados para todas las evaluaciones.</p>
-                        </div>
-                    </div>
-                    <FormatoPrueba />
-                </div>
-            )}
 
             {/* Bento KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -655,14 +721,25 @@ export default function UTPView() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                                                    {canDeleteEval(item) && (
-                                                        <button
-                                                            onClick={() => setDeleteConfirm(item.id)}
-                                                            className="p-2 text-eyr-on-variant hover:text-red-500 hover:bg-red-50/10 rounded-xl transition-all"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    )}
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {canCreateEval && (
+                                                            <button
+                                                                onClick={() => handleDuplicate(item.id)}
+                                                                title="Duplicar evaluación"
+                                                                className="p-2 text-eyr-on-variant hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                            >
+                                                                <Copy className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        {canDeleteEval(item) && (
+                                                            <button
+                                                                onClick={() => setDeleteConfirm(item.id)}
+                                                                className="p-2 text-eyr-on-variant hover:text-red-500 hover:bg-red-50/10 rounded-xl transition-all"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

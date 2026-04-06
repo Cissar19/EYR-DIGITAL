@@ -2,6 +2,38 @@ import { fetchDocument, setDocument } from '../lib/firestoreService';
 
 export const FORMATO_DOC = ['app_config', 'utp_formato'];
 
+/**
+ * Bloques por defecto que replican la estructura de DEFAULT_BLOCKS en EditorFormato.
+ * Se usan cuando no hay ningún formato guardado en Firestore, para que el .docx
+ * generado coincida con lo que muestra VistaPrevia.
+ */
+export const DEFAULT_FORMAT_BLOCKS = [
+    {
+        id: 'header', type: 'header',
+        schoolName: 'Centro Educacional Ernesto Yáñez Rivera',
+        schoolSubtitle: 'Huechuraba · Santiago',
+        showLogo: true, logoSide: 'left',
+        logoBase64: null, logoType: null,
+        showUTP: true,
+        showAsignaturaInHeader: true,
+        showProfesorInHeader: true,
+        showCalificacion: true,
+        calificacionLabel: 'CALIFICACIÓN',
+    },
+    {
+        id: 'eval_title', type: 'eval_title',
+        showAsignatura: false, showCurso: false, showProfesor: false, align: 'center',
+    },
+    {
+        id: 'info_table', type: 'info_table',
+        layout: 'n-c-f', showCursoRow: false,
+        showExigenciaRow: true,
+        exigenciaLabel: 'Exigencia:', puntajeIdealLabel: 'Puntaje Ideal:', puntajeObtenidoLabel: 'Puntaje Obtenido:',
+        showOARow: true, oaLabel: 'Objetivo de Aprendizaje:',
+        showInstruccionesInTable: true, instrTableLabel: 'Instrucciones:',
+    },
+];
+
 export const DEFAULT_FORMATO = {
     instruccionesGenerales: 'Lee atentamente cada pregunta. Responde con letra clara y ordenada.',
     titulosPorTipo: {

@@ -21,6 +21,7 @@ import { PermissionsProvider } from './context/PermissionsContext.jsx'
 import { JustificativesProvider } from './context/JustificativesContext.jsx'
 import { EntrevistasProvider } from './context/EntrevistasContext.jsx'
 import { EvaluacionesProvider } from './context/EvaluacionesContext.jsx'
+import { QuestionBankProvider } from './context/QuestionBankContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -48,7 +49,9 @@ const DataProviders = ({ children }) => {
                             <JustificativesProvider>
                               <EntrevistasProvider>
                                 <EvaluacionesProvider>
-                                  {children}
+                                  <QuestionBankProvider>
+                                    {children}
+                                  </QuestionBankProvider>
                                 </EvaluacionesProvider>
                               </EntrevistasProvider>
                             </JustificativesProvider>

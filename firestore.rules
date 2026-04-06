@@ -242,8 +242,8 @@ service cloud.firestore {
     // ============================================
     match /evaluaciones/{docId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isManagement();
-      allow update: if isAuthenticated() && isManagement();
+      allow create: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
+      allow update: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
       allow delete: if isAuthenticated() && isAdmin();
     }
 
@@ -257,11 +257,51 @@ service cloud.firestore {
     }
 
     // ============================================
+    // ATENCIONES DIARIAS (Enfermería)
+    // ============================================
+    match /atenciones_diarias/{docId} {
+      allow read: if isAuthenticated() && isManagement();
+      allow create, update: if isAuthenticated() && isManagement();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ============================================
+    // FICHA CLAP (Enfermería - 4° a 8° Básico)
+    // ============================================
+    match /ficha_clap/{docId} {
+      allow read: if isAuthenticated() && isManagement();
+      allow create, update: if isAuthenticated() && isManagement();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ============================================
     // APP CONFIG (formato de prueba, plantilla UTP)
     // ============================================
     match /app_config/{docId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'utp_head'];
+    }
+
+    // ============================================
+    // FORMATOS PRUEBA (UTP)
+    // ============================================
+    match /formatos_prueba/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'utp_head'];
+    }
+
+    // ============================================
+    // BANCO DE PREGUNTAS (UTP)
+    // ============================================
+    match /question_bank/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy.id == request.auth.uid || isManagement()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.createdBy.id == request.auth.uid || isAdmin()
+      );
     }
   }
 }

@@ -23,6 +23,12 @@ scripts/print-agent/.printed_ids.json
 # MCP (contains API keys)
 .mcp.json
 
+# Archive scripts (local only)
+scripts/archive/
+
+# Backups locales (no subir a git)
+backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

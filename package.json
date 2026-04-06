@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "seed": "node --env-file=.env scripts/seedUsers.js",
-    "test:parser": "node scripts/testEvaluacionParser.js"
+    "test:parser": "node scripts/testEvaluacionParser.js",
+    "backup": "node --env-file=.env scripts/backup.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

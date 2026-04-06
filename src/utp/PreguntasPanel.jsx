@@ -1,10 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { CheckSquare, AlignLeft, ChevronDown, ChevronUp, Pencil, X, Save, Check, Image as ImageIcon, Plus, Trash2, ToggleLeft, Link2, Type } from 'lucide-react';
+import { CheckSquare, AlignLeft, ChevronDown, ChevronUp, Pencil, X, Save, Check, Image as ImageIcon, Plus, Trash2, ToggleLeft, Link2, Type, Archive } from 'lucide-react';
 import { useAuth, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
-import { uploadPreguntaImagen, deletePreguntaImagen, getImageAspectRatio } from '../lib/storageService';
+import { useQuestionBank } from '../context/QuestionBankContext';
+import { uploadPreguntaImagen } from '../lib/storageService';
 import { toast } from 'sonner';
 import MathKeyboard from './MathKeyboard';
+import BancoPreguntasModal from './BancoPreguntasModal';
 
 const LETRAS = ['a', 'b', 'c', 'd'];
 const TIPOS_CON_ITEMS = ['verdadero_falso', 'unir', 'completar'];
@@ -233,7 +235,8 @@ function ItemsEditor({ pregunta, editMode, onSetInstruccion, onAddItem, onUpdate
 function PreguntaCard({
     pregunta, editMode,
     onSetCorrect, onSetPauta, onSetEnunciado, onSetAlternativa, onFieldFocus, onSetImagen, onDelete,
-    onSetInstruccionItems, onAddItem, onUpdateItem, onDeleteItem,
+    onSetInstruccionItems, onAddItem, onUpdateItem, onDeleteItem, onMoveUp, onMoveDown, onSetPuntaje,
+    onSaveToBanco,
 }) {
     const [open, setOpen] = useState(true);
     const imageInputRef = useRef(null);
@@ -292,6 +295,25 @@ function PreguntaCard({
 
                 {/* Badges + chevron */}
                 <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                    {/* Puntaje */}
+                    {editMode && onSetPuntaje ? (
+                        <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                            <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={pregunta.puntaje ?? 1}
+                                onChange={e => onSetPuntaje(pregunta.number, Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-10 px-1 py-0.5 text-[11px] font-semibold text-center border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-200 outline-none bg-white"
+                                title="Puntaje de esta pregunta"
+                            />
+                            <span className="text-[10px] text-slate-400">pt</span>
+                        </div>
+                    ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">
+                            {pregunta.puntaje ?? 1} pt
+                        </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 ${tipoConf.classes}`}>
                         <tipoConf.Icon className="w-3 h-3" />
                         {tipoConf.label}
@@ -312,6 +334,26 @@ function PreguntaCard({
                             <ImageIcon className="w-3 h-3" />
                         </span>
                     )}
+                    {editMode && onMoveUp && (
+                        <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); onMoveUp(pregunta.number); }}
+                            className="p-0.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-500 transition-colors"
+                            title="Mover arriba"
+                        >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {editMode && onMoveDown && (
+                        <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); onMoveDown(pregunta.number); }}
+                            className="p-0.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-500 transition-colors"
+                            title="Mover abajo"
+                        >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                    )}
                     {editMode && onDelete && (
                         <button
                             type="button"
@@ -320,6 +362,16 @@ function PreguntaCard({
                             title="Eliminar pregunta"
                         >
                             <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {!editMode && onSaveToBanco && (
+                        <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); onSaveToBanco(pregunta); }}
+                            className="p-0.5 rounded hover:bg-indigo-50 text-slate-300 hover:text-indigo-500 transition-colors"
+                            title="Guardar en banco de preguntas"
+                        >
+                            <Archive className="w-3.5 h-3.5" />
                         </button>
                     )}
                     <button
@@ -497,6 +549,7 @@ function PreguntaCard({
 export default function PreguntasPanel({ evaluacion }) {
     const { user } = useAuth();
     const { updateEvaluacion } = useEvaluaciones();
+    const { addQuestion } = useQuestionBank();
 
     const preguntas = (evaluacion.questions || []).filter(q => q.enunciado || TIPOS_CON_ITEMS.includes(q.tipo));
     const puedeEditar = evaluacion.createdBy?.id === user?.uid || isManagement(user);
@@ -509,6 +562,7 @@ export default function PreguntasPanel({ evaluacion }) {
     );
     const [saving, setSaving] = useState(false);
     const [localInstrucciones, setLocalInstrucciones] = useState('');
+    const [showBancoModal, setShowBancoModal] = useState(false);
     const nextNumRef = useRef(preguntas.length + 1);
 
     useEffect(() => {
@@ -663,12 +717,49 @@ export default function PreguntasPanel({ evaluacion }) {
         nextNumRef.current = (localQuestions?.length ?? 1) - 1 + 1;
     };
 
+    const handleSetPuntaje = (questionNumber, value) =>
+        updateQuestion(questionNumber, q => ({ ...q, puntaje: value }));
+
+    const handleMoveUp = (questionNumber) => {
+        setLocalQuestions(prev => {
+            const idx = prev.findIndex(q => q.number === questionNumber);
+            if (idx <= 0) return prev;
+            const next = [...prev];
+            [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+            return next.map((q, i) => ({ ...q, number: i + 1 }));
+        });
+    };
+
+    const handleMoveDown = (questionNumber) => {
+        setLocalQuestions(prev => {
+            const idx = prev.findIndex(q => q.number === questionNumber);
+            if (idx < 0 || idx >= prev.length - 1) return prev;
+            const next = [...prev];
+            [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+            return next.map((q, i) => ({ ...q, number: i + 1 }));
+        });
+    };
+
     const handleSetImagen = (questionNumber, value) => {
         updateQuestion(questionNumber, q => {
             if (q.imagen?.previewUrl) URL.revokeObjectURL(q.imagen.previewUrl);
             return { ...q, imagen: value };
         });
     };
+
+    const handleSaveToBanco = useCallback(async (pregunta) => {
+        const userInfo = { id: user.uid, name: user.displayName || user.name || '' };
+        await addQuestion(pregunta, evaluacion.asignatura, evaluacion.curso, userInfo);
+    }, [addQuestion, user, evaluacion.asignatura, evaluacion.curso]);
+
+    const handleAddFromBanco = useCallback((copia) => {
+        const num = nextNumRef.current;
+        nextNumRef.current += 1;
+        setLocalQuestions(prev => [
+            ...(prev || []),
+            { ...copia, number: num },
+        ]);
+    }, []);
 
     const handleSave = async () => {
         setSaving(true);
@@ -686,24 +777,12 @@ export default function PreguntasPanel({ evaluacion }) {
 
                 if (q.imagen?.file) {
                     try {
-                        if (original?.imagen?.storagePath) {
-                            await deletePreguntaImagen(original.imagen.storagePath);
-                        }
-                        const ar = await getImageAspectRatio(q.imagen.previewUrl);
-                        const { url, storagePath } = await uploadPreguntaImagen(evaluacion.id, q.number, q.imagen.file);
-                        finalQuestions[i] = { ...finalQuestions[i], imagen: { url, storagePath, aspectRatio: ar } };
+                        const { url, storagePath, aspectRatio } = await uploadPreguntaImagen(evaluacion.id, q.number, q.imagen.file);
+                        finalQuestions[i] = { ...finalQuestions[i], imagen: { url, storagePath, aspectRatio } };
                         URL.revokeObjectURL(q.imagen.previewUrl);
-                    } catch {
-                        toast.error(`Error al subir imagen de pregunta ${q.number}`);
+                    } catch (err) {
+                        toast.error(`Error al procesar imagen ${q.number}: ${err.message}`);
                         finalQuestions[i] = { ...finalQuestions[i], imagen: original?.imagen || null };
-                    }
-                }
-
-                if (q.imagen === null && original?.imagen?.storagePath) {
-                    try {
-                        await deletePreguntaImagen(original.imagen.storagePath);
-                    } catch {
-                        // No bloquear el guardado si el delete falla
                     }
                 }
             }
@@ -725,6 +804,7 @@ export default function PreguntasPanel({ evaluacion }) {
     const completarCount = preguntas.filter(q => q.tipo === 'completar').length;
     const conClave      = preguntas.filter(q => q.respuestaCorrecta).length;
     const conImg        = preguntas.filter(q => q.imagen?.url).length;
+    const totalPts      = displayQuestions.reduce((s, q) => s + (q.puntaje ?? 1), 0);
 
     return (
         <div className="space-y-3">
@@ -732,6 +812,9 @@ export default function PreguntasPanel({ evaluacion }) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                     <span className="font-semibold text-slate-700">{preguntas.length} preguntas</span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full font-semibold">
+                        {totalPts} pts totales
+                    </span>
                     {smCount > 0 && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">
                             <CheckSquare className="w-3 h-3" /> {smCount} SM
@@ -834,7 +917,7 @@ export default function PreguntasPanel({ evaluacion }) {
             {/* Lista de preguntas */}
             {displayQuestions.length > 0 ? (
                 <div className="space-y-2">
-                    {displayQuestions.map(p => (
+                    {displayQuestions.map((p, idx) => (
                         <PreguntaCard
                             key={p.number}
                             pregunta={p}
@@ -850,6 +933,10 @@ export default function PreguntasPanel({ evaluacion }) {
                             onAddItem={handleAddItem}
                             onUpdateItem={handleUpdateItem}
                             onDeleteItem={handleDeleteItem}
+                            onMoveUp={editMode && idx > 0 ? handleMoveUp : undefined}
+                            onMoveDown={editMode && idx < displayQuestions.length - 1 ? handleMoveDown : undefined}
+                            onSetPuntaje={editMode ? handleSetPuntaje : undefined}
+                            onSaveToBanco={!editMode && puedeEditar ? handleSaveToBanco : undefined}
                         />
                     ))}
                 </div>
@@ -867,6 +954,14 @@ export default function PreguntasPanel({ evaluacion }) {
                 <div className="space-y-2 pt-1">
                     <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Agregar pregunta</p>
                     <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowBancoModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                            <Archive className="w-3.5 h-3.5" />
+                            Desde banco
+                        </button>
                         <button
                             type="button"
                             onClick={() => handleAddQuestion('seleccion_multiple')}
@@ -914,6 +1009,14 @@ export default function PreguntasPanel({ evaluacion }) {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {showBancoModal && (
+                <BancoPreguntasModal
+                    onClose={() => setShowBancoModal(false)}
+                    onSelect={handleAddFromBanco}
+                    asignatura={evaluacion.asignatura}
+                />
             )}
         </div>
     );

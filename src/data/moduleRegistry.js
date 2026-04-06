@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate
 } from 'lucide-react';
 
 /**
@@ -146,6 +146,15 @@ export const MODULE_REGISTRY = [
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
     },
     {
+        key: 'utp_formatos',
+        name: 'Crear formatos',
+        icon: LayoutTemplate,
+        path: '/utp/formatos',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head'],
+    },
+    {
         key: 'pie',
         name: 'PIE',
         icon: HeartHandshake,
@@ -159,6 +168,33 @@ export const MODULE_REGISTRY = [
         name: 'Control Sano',
         icon: ClipboardCheck,
         path: '/enfermeria/control-sano',
+        category: 'role_specific',
+        group: 'enfermeria',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+    },
+    {
+        key: 'ficha_clap',
+        name: 'Ficha CLAP',
+        icon: Heart,
+        path: '/enfermeria/ficha-clap',
+        category: 'role_specific',
+        group: 'enfermeria',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+    },
+    {
+        key: 'atenciones_diarias',
+        name: 'Atenciones Diarias',
+        icon: BookOpen,
+        path: '/enfermeria/atenciones-diarias',
+        category: 'role_specific',
+        group: 'enfermeria',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+    },
+    {
+        key: 'enfermeria_resumen',
+        name: 'Resumen',
+        icon: PieChart,
+        path: '/enfermeria/resumen',
         category: 'role_specific',
         group: 'enfermeria',
         defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],

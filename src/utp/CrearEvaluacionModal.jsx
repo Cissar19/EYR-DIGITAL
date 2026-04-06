@@ -133,8 +133,8 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user }) {
                         <input
                             type="text"
                             value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="Ej: Control de Lectura Mensual"
+                            onChange={e => setName(e.target.value.toUpperCase())}
+                            placeholder="Ej: CONTROL DE LECTURA MENSUAL"
                             className={inputCls}
                             autoFocus
                         />

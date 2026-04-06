@@ -1,38 +1,39 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from './firebase';
 import { fetchDocument, setDocument } from './firestoreService';
 
+const MAX_IMG_WIDTH = 900;
+const IMG_QUALITY   = 0.75;
+
 /**
- * Sube una imagen de pregunta a Firebase Storage.
- * Ruta: evaluaciones/{evalId}/preguntas/q{qNum}.{ext}
- * @returns {{ url: string, storagePath: string }}
+ * Redimensiona y comprime una imagen client-side, devuelve dataURL base64.
+ * No usa Firebase Storage — la imagen se almacena directamente en Firestore.
+ * @returns {{ url: string, storagePath: null, aspectRatio: number }}
  */
-export async function uploadPreguntaImagen(evaluacionId, questionNumber, file) {
-    const raw = file.name.split('.').pop().toLowerCase();
-    const ext = /^(jpg|jpeg|png|gif|webp)$/.test(raw) ? raw : 'jpg';
-    const path = `evaluaciones/${evaluacionId}/preguntas/q${questionNumber}.${ext}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    return { url, storagePath: path };
+export function uploadPreguntaImagen(_evalId, _qNum, file) {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            let w = img.naturalWidth, h = img.naturalHeight;
+            if (w > MAX_IMG_WIDTH) { h = Math.round(h * MAX_IMG_WIDTH / w); w = MAX_IMG_WIDTH; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve({ url: canvas.toDataURL('image/jpeg', IMG_QUALITY), storagePath: null, aspectRatio: w / h });
+        };
+        img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('No se pudo leer la imagen')); };
+        img.src = objectUrl;
+    });
 }
 
 /**
- * Elimina una imagen de pregunta de Firebase Storage.
- * @param {string} storagePath
+ * No-op: las imágenes base64 no requieren borrado en Storage.
  */
-export async function deletePreguntaImagen(storagePath) {
-    try {
-        const storageRef = ref(storage, storagePath);
-        await deleteObject(storageRef);
-    } catch (e) {
-        // Ignorar si el archivo ya no existe
-        if (e.code !== 'storage/object-not-found') throw e;
-    }
-}
+// eslint-disable-next-line no-unused-vars
+export async function deletePreguntaImagen(_storagePath) { /* noop — imágenes en base64 no requieren borrado */ }
 
 /**
- * Devuelve el aspect ratio (width/height) de una imagen dado su src (URL o dataURL).
+ * Devuelve el aspect ratio (width/height) de una imagen dado su src.
  * @param {string} src
  * @returns {Promise<number>}
  */

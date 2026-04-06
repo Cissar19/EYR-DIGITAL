@@ -8,10 +8,11 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import {
     Document, Paragraph, TextRun, Table, TableRow, TableCell,
-    Packer, AlignmentType, WidthType, BorderStyle,
+    Packer, AlignmentType, WidthType, BorderStyle, ImageRun,
 } from 'docx';
 import { ASIGNATURAS } from '../data/objetivosAprendizaje';
 import { getPlantillaBase64 } from './storageService';
+import { generarSeccionesPreguntas } from './docxExport';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -163,93 +164,602 @@ export async function exportarConPlantilla({ evaluacion }) {
     URL.revokeObjectURL(link.href);
 }
 
+// ── Generador desde bloques (EditorFormato) ────────────────────────────────────
+
+import { INFO_LAYOUTS } from '../utp/formatoLayouts';
+
+/**
+ * Genera y descarga una plantilla .docx a partir del array de bloques del editor visual.
+ * @param {{ blocks: Array, nombreArchivo: string }} params
+ */
+export async function generarPlantillaDesdeBlocks({ blocks, nombreArchivo = 'plantilla_prueba' }) {
+    // Helpers
+    const hp  = (pt) => pt * 2;                             // puntos → half-points
+    const hx  = (c)  => (c || '#000000').replace('#', '');  // hex sin #
+    const nb  = () => ({ top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } });
+    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' } });
+    const cp  = (ch) => new Paragraph({ children: ch, spacing: { after: 60, before: 60 } });
+    const tag = (text) => new Paragraph({ children: [new TextRun({ text, size: hp(10) })], spacing: { after: 0, before: 0 } });
+
+    // Obtener valores de tipografía con fallback
+    const tg = (typo, key, defaults) => ({
+        color:     hx(typo?.[key]?.color     ?? defaults.color),
+        size:      hp(typo?.[key]?.size      ?? defaults.size),
+        bold:      typo?.[key]?.bold         ?? defaults.bold,
+        italic:    typo?.[key]?.italic       ?? false,
+        underline: typo?.[key]?.underline    ?? defaults.underline ?? false,
+    });
+
+    // Defaults tipográficos (mirrors EditorFormato.jsx T object)
+    const TD = {
+        schoolName:   { color: '#1B3A8C', size: 12, bold: true  },
+        subtitle:     { color: '#888888', size:  9, bold: false },
+        evalAsig:     { color: '#1B3A8C', size: 13, bold: true  },
+        evalTitulo:   { color: '#333333', size: 12, bold: true,  underline: true },
+        evalInfo:     { color: '#666666', size: 10, bold: false },
+        tableLabel:   { color: '#888888', size: 10, bold: false },
+        tableValue:   { color: '#4A4A4A', size: 10, bold: false },
+        instrLabel:   { color: '#4A4A4A', size: 10, bold: true  },
+        freeText:     { color: '#4A4A4A', size: 10, bold: false },
+        sectionTitle: { color: '#1B3A8C', size: 11, bold: true  },
+        question:     { color: '#4A4A4A', size: 10, bold: false },
+    };
+
+    const LGRAY = '888888';
+    const children = [];
+
+    for (const block of blocks) {
+        if (block.type === 'header') {
+            const snT = tg(block.typo, 'schoolName', TD.schoolName);
+            const stT = tg(block.typo, 'subtitle',   TD.subtitle);
+            const showCalif = block.showCalificacion ?? true;
+            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' } });
+            const logoChildren = block.logoBase64
+                ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new ImageRun({ data: block.logoBase64.split(',')[1], type: block.logoType || 'png', transformation: { width: 55, height: 55 } })] })]
+                : [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: '[ LOGO ]', size: hp(9), color: 'AAAAAA' })] })];
+            const infoChildren = [
+                new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: (block.schoolName || '').toUpperCase(), bold: snT.bold, size: snT.size, color: snT.color })] }),
+                ...(block.schoolSubtitle ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: block.schoolSubtitle, bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showUTP ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: 'Unidad Técnica Pedagógica', bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showAsignaturaInHeader ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: 'Asignatura: {asignatura}', bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showProfesorInHeader ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: 'Profesor: {profesor}', bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+            ];
+            const cells = [];
+            if (block.showLogo) cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), children: logoChildren }));
+            cells.push(new TableCell({ width: { size: (block.showLogo ? 70 : showCalif ? 85 : 100), type: WidthType.PERCENTAGE }, borders: sb(), children: infoChildren }));
+            if (showCalif) {
+                cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), verticalAlign: 'center', children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: block.calificacionLabel || 'CALIFICACIÓN', bold: true, size: hp(10), color: '333333' })] })] }));
+            } else if (block.showLogo && block.logoSide === 'both') {
+                cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), children: logoChildren }));
+            }
+            children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } }, rows: [new TableRow({ children: cells })] }), new Paragraph({ children: [], spacing: { after: 80 } }));
+        }
+
+        else if (block.type === 'divider') {
+            children.push(new Paragraph({ spacing: { before: 80, after: 80 }, border: { bottom: { style: BorderStyle.SINGLE, size: (block.thickness || 2) * 4, color: hx(block.color) } }, children: [] }));
+        }
+
+        else if (block.type === 'eval_title') {
+            const aT = tg(block.typo, 'asignatura', TD.evalAsig);
+            const tT = tg(block.typo, 'titulo',     TD.evalTitulo);
+            const iT = tg(block.typo, 'info',       TD.evalInfo);
+            const align = block.align === 'left' ? AlignmentType.LEFT : AlignmentType.CENTER;
+            children.push(
+                ...(block.showAsignatura ? [new Paragraph({ alignment: align, spacing: { after: 40 }, children: [new TextRun({ text: 'EVALUACIÓN DE {asignatura}', bold: aT.bold, size: aT.size, color: aT.color })] })] : []),
+                new Paragraph({ alignment: align, spacing: { after: 40 }, children: [new TextRun({ text: '{titulo}', bold: tT.bold, size: tT.size, color: tT.color, underline: tT.underline ? {} : undefined })] }),
+                new Paragraph({ alignment: align, spacing: { after: 120 }, children: [
+                    ...(block.showCurso ? [new TextRun({ text: '{curso}', bold: iT.bold, size: iT.size, color: iT.color })] : []),
+                    ...(block.showCurso && block.showProfesor ? [new TextRun({ text: '   ·   ', size: iT.size, color: iT.color })] : []),
+                    ...(block.showProfesor ? [new TextRun({ text: 'Profesor(a): {profesor}', bold: iT.bold, size: iT.size, color: iT.color })] : []),
+                ] }),
+            );
+        }
+
+        else if (block.type === 'info_table') {
+            const layout = INFO_LAYOUTS[block.layout] || INFO_LAYOUTS['n-f-p'];
+            const labels = block.customLabels || {};
+            const lT = tg(block.typo, 'label', TD.tableLabel);
+            const vT = tg(block.typo, 'value', TD.tableValue);
+            const nCols = layout.cols.length;
+            const getCells = (cols) => cols.map(col => {
+                const label = labels[col.field] ?? col.label;
+                let valueRun;
+                if (col.field === 'nombre')  valueRun = new TextRun({ text: '_______________________________', bold: vT.bold, size: vT.size, color: vT.color });
+                else if (col.field === 'fecha')   valueRun = new TextRun({ text: '{fecha}',              bold: vT.bold, size: vT.size, color: vT.color });
+                else if (col.field === 'puntaje') valueRun = new TextRun({ text: '____ / {total_puntos}', bold: vT.bold, size: vT.size, color: vT.color });
+                else valueRun = new TextRun({ text: '_______________', bold: vT.bold, size: vT.size, color: vT.color });
+                return new TableCell({ width: { size: col.w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${label}: `, bold: lT.bold, size: lT.size, color: lT.color }), valueRun])] });
+            });
+            const rows = [new TableRow({ children: getCells(layout.cols) })];
+            if (block.showCursoRow) rows.push(new TableRow({ children: [new TableCell({ columnSpan: nCols, borders: cb(), children: [cp([new TextRun({ text: 'Curso: ', bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: '___________________', bold: vT.bold, size: vT.size, color: vT.color })])] })] }));
+            if (block.showExigenciaRow && nCols >= 2) {
+                const exCells = [
+                    new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${block.exigenciaLabel || 'Exigencia:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: '____________', bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                    new TableCell({ width: { size: layout.cols[1].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${block.puntajeIdealLabel || 'Puntaje Ideal:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: '____________', bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                ];
+                if (nCols >= 3) exCells.push(new TableCell({ columnSpan: nCols - 2, borders: cb(), children: [cp([new TextRun({ text: `${block.puntajeObtenidoLabel || 'Puntaje Obtenido:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: '____________', bold: vT.bold, size: vT.size, color: vT.color })])] }));
+                rows.push(new TableRow({ children: exCells }));
+            }
+            if (block.showOARow) {
+                rows.push(new TableRow({ children: [
+                    new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: block.oaLabel || 'Objetivo de Aprendizaje:', bold: lT.bold, size: lT.size, color: lT.color })])] }),
+                    new TableCell({ columnSpan: nCols - 1, borders: cb(), children: [cp([new TextRun({ text: '{oa}', bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                ] }));
+            }
+            if (block.showInstruccionesInTable) {
+                rows.push(new TableRow({ children: [
+                    new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: block.instrTableLabel || 'Instrucciones:', bold: lT.bold, size: lT.size, color: lT.color })])] }),
+                    new TableCell({ columnSpan: nCols - 1, borders: cb(), children: [cp([new TextRun({ text: '{instrucciones}', bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                ] }));
+            }
+            children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), new Paragraph({ children: [], spacing: { after: 120 } }));
+        }
+
+        else if (block.type === 'free_text') {
+            const fT = tg(block.typo, 'text', TD.freeText);
+            const align = block.align === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT;
+            children.push(new Paragraph({ alignment: align, spacing: { after: 80 }, children: [new TextRun({ text: block.content || '', bold: fT.bold, italics: fT.italic, size: fT.size, color: fT.color })] }));
+        }
+
+        else if (block.type === 'instructions') {
+            const lT = tg(block.typo, 'label', TD.instrLabel);
+            children.push(new Paragraph({ spacing: { after: 160 }, children: [
+                new TextRun({ text: `${block.labelText || 'Instrucciones:'} `, bold: lT.bold, size: lT.size, color: lT.color }),
+                new TextRun({ text: '{instrucciones}', size: lT.size, color: lT.color }),
+            ] }));
+        }
+
+        else if (block.type === 'questions') {
+            const sT = tg(block.typo, 'sectionTitle', TD.sectionTitle);
+            const qT = tg(block.typo, 'question',     TD.question);
+            children.push(
+                tag('{#secciones}'),
+                new Paragraph({ spacing: { before: 200, after: 80 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D8F0' } }, children: [
+                    new TextRun({ text: '{roman}. ', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '{#is_sm}SELECCIÓN MÚLTIPLE{/is_sm}', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '{#is_desarrollo}DESARROLLO{/is_desarrollo}', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '{#is_vf}VERDADERO O FALSO{/is_vf}', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '{#is_unir}UNIR CON FLECHAS{/is_unir}', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '{#is_completar}COMPLETAR{/is_completar}', bold: sT.bold, size: sT.size, color: sT.color }),
+                    new TextRun({ text: '  ({count} preguntas)', size: hp(9), color: LGRAY }),
+                ] }),
+                tag('{#preguntas}'),
+                new Paragraph({ spacing: { before: 120, after: 60 }, children: [new TextRun({ text: '{numero}. ', bold: true, size: qT.size, color: qT.color }), new TextRun({ text: '{enunciado}', bold: qT.bold, size: qT.size, color: qT.color })] }),
+                tag('{#is_sm}'),
+                new Paragraph({ spacing: { after: 60 }, indent: { left: 360 }, children: [new TextRun({ text: 'a) {alt_a}   b) {alt_b}   c) {alt_c}   d) {alt_d}', size: qT.size, color: qT.color })] }),
+                tag('{/is_sm}'),
+                tag('{#is_vf}'), tag('{#items}'),
+                new Paragraph({ spacing: { after: 40 }, indent: { left: 360 }, children: [new TextRun({ text: '{numero}. {texto}', size: qT.size, color: qT.color }), new TextRun({ text: '    [   ]', size: qT.size, color: LGRAY })] }),
+                tag('{/items}'), tag('{/is_vf}'),
+                tag('{#is_unir}'),
+                new Table({ width: { size: 80, type: WidthType.PERCENTAGE }, borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } }, rows: [new TableRow({ children: [new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: 'Columna A', bold: true, size: hp(9), color: LGRAY })], spacing: { after: 40 } })] }), new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: 'Columna B', bold: true, size: hp(9), color: LGRAY })], spacing: { after: 40 } })] })] })] }),
+                tag('{#items}'),
+                new Table({ width: { size: 80, type: WidthType.PERCENTAGE }, borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } }, rows: [new TableRow({ children: [new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: '{numero}. {izquierda}', size: qT.size, color: qT.color })], spacing: { after: 60 } })] }), new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: '{letra}. {derecha}', size: qT.size, color: qT.color })], spacing: { after: 60 } })] })] })] }),
+                tag('{/items}'), tag('{/is_unir}'),
+                tag('{#is_completar}'), tag('{#items}'),
+                new Paragraph({ spacing: { after: 40 }, indent: { left: 360 }, children: [new TextRun({ text: '{numero}. {texto}', size: qT.size, color: qT.color })] }),
+                tag('{/items}'), tag('{/is_completar}'),
+                tag('{#is_desarrollo}'),
+                new Paragraph({ spacing: { before: 40, after: 120 }, indent: { left: 360 }, children: [new TextRun({ text: '_______________________________________________________________________________', size: qT.size, color: 'CCCCCC' })] }),
+                tag('{/is_desarrollo}'),
+                tag('{/preguntas}'), tag('{/secciones}'),
+            );
+        }
+    }
+
+    const doc = new Document({
+        sections: [{
+            properties: { page: { size: { width: 12240, height: 18720 }, margin: { top: 720, bottom: 720, left: 900, right: 900 } } },
+            children,
+        }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(nombreArchivo || 'plantilla').replace(/[^a-zA-Z0-9_\-]/g, '_')}.docx`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// ── Generador configurable ─────────────────────────────────────────────────────
+
+/**
+ * Genera y descarga una plantilla .docx a partir de un objeto de configuración.
+ * @param {Object} config - Configuración del editor visual (EditorFormato)
+ */
+export async function generarPlantillaDesdeConfig(config) {
+    const {
+        schoolName    = 'Centro Educacional Ernesto Yáñez Rivera',
+        schoolSubtitle = 'Huechuraba · Santiago',
+        showLogo      = true,
+        showEvalTitle = true,
+        showAsignatura = true,
+        showCurso     = true,
+        showProfesor  = true,
+        infoNombre    = true,
+        infoFecha     = true,
+        infoPuntaje   = true,
+        infoCurso     = true,
+        showInstructions = true,
+        nombreArchivo = 'plantilla_prueba',
+    } = config;
+
+    const b = (pt) => pt * 2; // half-points → points
+    const BLUE  = '1B3A8C';
+    const GRAY  = '4A4A4A';
+    const LGRAY = '888888';
+
+    const nb = () => ({
+        top:    { style: BorderStyle.NONE, size: 0 },
+        bottom: { style: BorderStyle.NONE, size: 0 },
+        left:   { style: BorderStyle.NONE, size: 0 },
+        right:  { style: BorderStyle.NONE, size: 0 },
+    });
+
+    const cb = () => ({
+        top:    { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        left:   { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        right:  { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+    });
+
+    const cp = (children) => new Paragraph({ children, spacing: { after: 60, before: 60 } });
+
+    const tag = (text) => new Paragraph({
+        children: [new TextRun({ text, size: b(10) })],
+        spacing: { after: 0, before: 0 },
+    });
+
+    const children = [];
+
+    // ── Encabezado ───────────────────────────────────────────────────────────
+    const headerCells = [];
+    if (showLogo) {
+        headerCells.push(
+            new TableCell({
+                width: { size: 18, type: WidthType.PERCENTAGE },
+                borders: nb(),
+                children: [
+                    new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 0 },
+                        children: [new TextRun({ text: '[ LOGO ]', size: b(9), color: 'AAAAAA' })],
+                    }),
+                ],
+            })
+        );
+    }
+    headerCells.push(
+        new TableCell({
+            width: { size: showLogo ? 64 : 100, type: WidthType.PERCENTAGE },
+            borders: nb(),
+            children: [
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 20 },
+                    children: [new TextRun({ text: schoolName.toUpperCase(), bold: true, size: b(11), color: BLUE })],
+                }),
+                ...(schoolSubtitle ? [new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 0 },
+                    children: [new TextRun({ text: schoolSubtitle, size: b(9), color: LGRAY })],
+                })] : []),
+            ],
+        })
+    );
+    if (showLogo) {
+        headerCells.push(
+            new TableCell({
+                width: { size: 18, type: WidthType.PERCENTAGE },
+                borders: nb(),
+                children: [new Paragraph({ children: [] })],
+            })
+        );
+    }
+
+    children.push(
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+            rows: [new TableRow({ children: headerCells })],
+        }),
+        new Paragraph({
+            spacing: { before: 120, after: 120 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BLUE } },
+            children: [],
+        })
+    );
+
+    // ── Título evaluación ────────────────────────────────────────────────────
+    if (showEvalTitle) {
+        children.push(
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 40 },
+                children: [
+                    new TextRun({ text: showAsignatura ? 'EVALUACIÓN DE {asignatura}' : 'EVALUACIÓN', bold: true, size: b(13), color: BLUE }),
+                ],
+            }),
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 40 },
+                children: [new TextRun({ text: '{titulo}', bold: true, size: b(12), color: GRAY })],
+            }),
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 160 },
+                children: [
+                    ...(showCurso ? [new TextRun({ text: '{curso}', size: b(10), color: LGRAY })] : []),
+                    ...(showCurso && showProfesor ? [new TextRun({ text: '   ·   ', size: b(10), color: LGRAY })] : []),
+                    ...(showProfesor ? [new TextRun({ text: 'Profesor(a): {profesor}', size: b(10), color: LGRAY })] : []),
+                ],
+            })
+        );
+    }
+
+    // ── Tabla alumno ─────────────────────────────────────────────────────────
+    const infoRow1Cells = [];
+    if (infoNombre) infoRow1Cells.push(new TableCell({
+        width: { size: 50, type: WidthType.PERCENTAGE }, borders: cb(),
+        children: [cp([new TextRun({ text: 'Nombre: ', size: b(10), color: LGRAY }), new TextRun({ text: '_______________________________', size: b(10), color: GRAY })])],
+    }));
+    if (infoFecha) infoRow1Cells.push(new TableCell({
+        width: { size: 25, type: WidthType.PERCENTAGE }, borders: cb(),
+        children: [cp([new TextRun({ text: 'Fecha: ', size: b(10), color: LGRAY }), new TextRun({ text: '{fecha}', size: b(10), color: GRAY })])],
+    }));
+    if (infoPuntaje) infoRow1Cells.push(new TableCell({
+        width: { size: 25, type: WidthType.PERCENTAGE }, borders: cb(),
+        children: [cp([new TextRun({ text: 'Puntaje: ', size: b(10), color: LGRAY }), new TextRun({ text: '____ / {total_puntos}', size: b(10), color: GRAY })])],
+    }));
+
+    const tableRows = [];
+    if (infoRow1Cells.length) tableRows.push(new TableRow({ children: infoRow1Cells }));
+    if (infoCurso) tableRows.push(new TableRow({
+        children: [new TableCell({
+            columnSpan: infoRow1Cells.length || 1, borders: cb(),
+            children: [cp([new TextRun({ text: 'Curso: ', size: b(10), color: LGRAY }), new TextRun({ text: '___________________', size: b(10), color: GRAY })])],
+        })],
+    }));
+
+    if (tableRows.length) {
+        children.push(
+            new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }),
+            new Paragraph({ children: [], spacing: { after: 160 } })
+        );
+    }
+
+    // ── Instrucciones ────────────────────────────────────────────────────────
+    if (showInstructions) {
+        children.push(
+            new Paragraph({
+                spacing: { after: 200 },
+                children: [
+                    new TextRun({ text: 'Instrucciones: ', bold: true, size: b(10), color: GRAY }),
+                    new TextRun({ text: '{instrucciones}', size: b(10), color: GRAY }),
+                ],
+            })
+        );
+    }
+
+    // ── Secciones (loop) ─────────────────────────────────────────────────────
+    children.push(
+        tag('{#secciones}'),
+        new Paragraph({
+            spacing: { before: 200, after: 80 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D8F0' } },
+            children: [
+                new TextRun({ text: '{roman}. ', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '{#is_sm}SELECCIÓN MÚLTIPLE{/is_sm}', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '{#is_desarrollo}DESARROLLO{/is_desarrollo}', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '{#is_vf}VERDADERO O FALSO{/is_vf}', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '{#is_unir}UNIR CON FLECHAS{/is_unir}', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '{#is_completar}COMPLETAR{/is_completar}', bold: true, size: b(11), color: BLUE }),
+                new TextRun({ text: '  ({count} preguntas)', size: b(9), color: LGRAY }),
+            ],
+        }),
+        tag('{#preguntas}'),
+        new Paragraph({
+            spacing: { before: 120, after: 60 },
+            children: [
+                new TextRun({ text: '{numero}. ', bold: true, size: b(10), color: GRAY }),
+                new TextRun({ text: '{enunciado}', size: b(10), color: GRAY }),
+            ],
+        }),
+        tag('{#is_sm}'),
+        new Paragraph({
+            spacing: { after: 60 }, indent: { left: 360 },
+            children: [new TextRun({ text: 'a) {alt_a}   b) {alt_b}   c) {alt_c}   d) {alt_d}', size: b(10), color: GRAY })],
+        }),
+        tag('{/is_sm}'),
+        tag('{#is_vf}'),
+        tag('{#items}'),
+        new Paragraph({
+            spacing: { after: 40 }, indent: { left: 360 },
+            children: [
+                new TextRun({ text: '{numero}. {texto}', size: b(10), color: GRAY }),
+                new TextRun({ text: '    [   ]', size: b(10), color: LGRAY }),
+            ],
+        }),
+        tag('{/items}'),
+        tag('{/is_vf}'),
+        tag('{#is_unir}'),
+        new Table({
+            width: { size: 80, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+            rows: [new TableRow({ children: [
+                new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: 'Columna A', bold: true, size: b(9), color: LGRAY })], spacing: { after: 40 } })] }),
+                new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: 'Columna B', bold: true, size: b(9), color: LGRAY })], spacing: { after: 40 } })] }),
+            ]})],
+        }),
+        tag('{#items}'),
+        new Table({
+            width: { size: 80, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+            rows: [new TableRow({ children: [
+                new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: '{numero}. {izquierda}', size: b(10), color: GRAY })], spacing: { after: 60 } })] }),
+                new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: nb(), children: [new Paragraph({ children: [new TextRun({ text: '{letra}. {derecha}', size: b(10), color: GRAY })], spacing: { after: 60 } })] }),
+            ]})],
+        }),
+        tag('{/items}'),
+        tag('{/is_unir}'),
+        tag('{#is_completar}'),
+        tag('{#items}'),
+        new Paragraph({
+            spacing: { after: 40 }, indent: { left: 360 },
+            children: [new TextRun({ text: '{numero}. {texto}', size: b(10), color: GRAY })],
+        }),
+        tag('{/items}'),
+        tag('{/is_completar}'),
+        tag('{#is_desarrollo}'),
+        new Paragraph({
+            spacing: { before: 40, after: 120 }, indent: { left: 360 },
+            children: [new TextRun({ text: '_______________________________________________________________________________', size: b(10), color: 'CCCCCC' })],
+        }),
+        tag('{/is_desarrollo}'),
+        tag('{/preguntas}'),
+        tag('{/secciones}'),
+    );
+
+    const doc = new Document({
+        sections: [{
+            properties: { page: { margin: { top: 720, bottom: 720, left: 900, right: 900 } } },
+            children,
+        }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(nombreArchivo || 'plantilla_prueba').replace(/[^a-zA-Z0-9_\-]/g, '_')}.docx`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
 // ── Plantilla de ejemplo ───────────────────────────────────────────────────────
 
-const BLUE = '1B3A8C';
-const GRAY = '555555';
+const BLUE  = '1B3A8C';
+const GRAY  = '4A4A4A';
+const LGRAY = '888888';
 const hp = (pt) => pt * 2;
 
-function p(children, opts = {}) {
-    return new Paragraph({ children, spacing: { after: 80 }, ...opts });
+function cellPad(children) {
+    return new Paragraph({ children, spacing: { after: 60, before: 60 } });
 }
 
-function bold(text, color) {
-    return new TextRun({ text, bold: true, size: hp(11), color: color || GRAY });
+
+function cellBorder() {
+    return {
+        top:    { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        left:   { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+        right:  { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' },
+    };
 }
 
-function normal(text) {
-    return new TextRun({ text, size: hp(10), color: GRAY });
+function noBorder() {
+    return {
+        top:    { style: BorderStyle.NONE, size: 0 },
+        bottom: { style: BorderStyle.NONE, size: 0 },
+        left:   { style: BorderStyle.NONE, size: 0 },
+        right:  { style: BorderStyle.NONE, size: 0 },
+    };
 }
 
-function mono(text) {
-    return new TextRun({ text, size: hp(10), color: '1B6B3A', font: 'Courier New' });
-}
-
-function sectionTitle(text) {
+// Párrafo con tag de loop (solo el tag, sin texto adicional)
+function loopTag(tag) {
     return new Paragraph({
-        children: [new TextRun({ text, bold: true, size: hp(11), color: BLUE })],
-        spacing: { before: 200, after: 60 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D8F0' } },
-    });
-}
-
-function varRow(variable, descripcion) {
-    return new TableRow({
-        children: [
-            new TableCell({
-                width: { size: 35, type: WidthType.PERCENTAGE },
-                children: [new Paragraph({ children: [mono(variable)], spacing: { after: 0 } })],
-            }),
-            new TableCell({
-                width: { size: 65, type: WidthType.PERCENTAGE },
-                children: [new Paragraph({ children: [normal(descripcion)], spacing: { after: 0 } })],
-            }),
-        ],
+        children: [new TextRun({ text: tag, size: hp(10) })],
+        spacing: { after: 0, before: 0 },
     });
 }
 
 /**
- * Genera y descarga una plantilla de ejemplo (.docx) que muestra todas las
- * variables disponibles con comentarios de sintaxis docxtemplater.
+ * Genera y descarga una plantilla básica funcional (.docx) lista para subir.
+ * Incluye encabezado con logo placeholder, tabla de datos del alumno,
+ * instrucciones y loop de secciones con todos los tipos de preguntas.
  */
 export async function descargarPlantillaEjemplo() {
     const doc = new Document({
         sections: [{
-            properties: {},
+            properties: {
+                page: {
+                    margin: { top: 720, bottom: 720, left: 900, right: 900 },
+                },
+            },
             children: [
-                // ── Encabezado escuela ────────────────────────────────────────
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [new TextRun({
-                        text: 'CENTRO EDUCACIONAL ERNESTO YÁÑEZ RIVERA',
-                        bold: true, size: hp(13), color: BLUE,
-                    })],
-                }),
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 200 },
-                    children: [new TextRun({ text: 'Huechuraba · Santiago', size: hp(9), color: GRAY })],
+                // ── Logo placeholder + nombre del colegio ─────────────────────
+                new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                // Logo (reemplazar por imagen real)
+                                new TableCell({
+                                    width: { size: 20, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [
+                                        new Paragraph({
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { after: 0 },
+                                            children: [new TextRun({ text: '[ LOGO ]', size: hp(9), color: 'AAAAAA' })],
+                                        }),
+                                    ],
+                                }),
+                                // Nombre colegio
+                                new TableCell({
+                                    width: { size: 60, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [
+                                        new Paragraph({
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { after: 20 },
+                                            children: [new TextRun({ text: 'CENTRO EDUCACIONAL ERNESTO YÁÑEZ RIVERA', bold: true, size: hp(11), color: BLUE })],
+                                        }),
+                                        new Paragraph({
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { after: 0 },
+                                            children: [new TextRun({ text: 'Huechuraba · Santiago', size: hp(9), color: LGRAY })],
+                                        }),
+                                    ],
+                                }),
+                                // Espacio derecho
+                                new TableCell({
+                                    width: { size: 20, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [new Paragraph({ children: [] })],
+                                }),
+                            ],
+                        }),
+                    ],
                 }),
 
-                // ── Título de la prueba ───────────────────────────────────────
+                // Línea divisoria
                 new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [bold('{titulo}', BLUE)],
-                }),
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [normal('{asignatura}   |   {curso}')],
-                }),
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 200 },
-                    children: [normal('Profesor(a): {profesor}')],
+                    spacing: { before: 120, after: 120 },
+                    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BLUE } },
+                    children: [],
                 }),
 
-                // ── Tabla alumno/fecha/puntaje ────────────────────────────────
+                // ── Título de la evaluación ───────────────────────────────────
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 40 },
+                    children: [new TextRun({ text: 'EVALUACIÓN DE {asignatura}', bold: true, size: hp(13), color: BLUE })],
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 40 },
+                    children: [new TextRun({ text: '{titulo}', bold: true, size: hp(12), color: GRAY })],
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 160 },
+                    children: [new TextRun({ text: '{curso}   ·   Profesor(a): {profesor}', size: hp(10), color: LGRAY })],
+                }),
+
+                // ── Tabla alumno / fecha / puntaje ────────────────────────────
                 new Table({
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     rows: [
@@ -257,93 +767,183 @@ export async function descargarPlantillaEjemplo() {
                             children: [
                                 new TableCell({
                                     width: { size: 50, type: WidthType.PERCENTAGE },
-                                    children: [p([normal('Nombre: ___________________________________')])],
+                                    borders: cellBorder(),
+                                    children: [cellPad([
+                                        new TextRun({ text: 'Nombre: ', size: hp(10), color: LGRAY }),
+                                        new TextRun({ text: '_____________________________________', size: hp(10), color: GRAY }),
+                                    ])],
                                 }),
                                 new TableCell({
                                     width: { size: 25, type: WidthType.PERCENTAGE },
-                                    children: [p([normal('Fecha: {fecha}')])],
+                                    borders: cellBorder(),
+                                    children: [cellPad([
+                                        new TextRun({ text: 'Fecha: ', size: hp(10), color: LGRAY }),
+                                        new TextRun({ text: '{fecha}', size: hp(10), color: GRAY }),
+                                    ])],
                                 }),
                                 new TableCell({
                                     width: { size: 25, type: WidthType.PERCENTAGE },
-                                    children: [p([normal('Puntaje: ___ / {total_puntos}')])],
+                                    borders: cellBorder(),
+                                    children: [cellPad([
+                                        new TextRun({ text: 'Puntaje: ', size: hp(10), color: LGRAY }),
+                                        new TextRun({ text: '____ / {total_puntos}', size: hp(10), color: GRAY }),
+                                    ])],
+                                }),
+                            ],
+                        }),
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    columnSpan: 3,
+                                    borders: cellBorder(),
+                                    children: [cellPad([
+                                        new TextRun({ text: 'Curso: ', size: hp(10), color: LGRAY }),
+                                        new TextRun({ text: '_______________________', size: hp(10), color: GRAY }),
+                                    ])],
                                 }),
                             ],
                         }),
                     ],
                 }),
 
-                new Paragraph({ children: [], spacing: { after: 120 } }),
+                new Paragraph({ children: [], spacing: { after: 160 } }),
 
-                // ── Instrucciones ─────────────────────────────────────────────
-                p([bold('Instrucciones: '), normal('{instrucciones}')]),
-
-                new Paragraph({ children: [], spacing: { after: 200 } }),
-
-                // ── Guía de variables ─────────────────────────────────────────
-                sectionTitle('Variables disponibles (eliminar esta sección en tu plantilla real)'),
-
-                new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    rows: [
-                        varRow('{titulo}',        'Nombre de la evaluación'),
-                        varRow('{asignatura}',     'Asignatura'),
-                        varRow('{curso}',          'Curso'),
-                        varRow('{fecha}',          'Fecha formateada (ej: 31 de marzo de 2026)'),
-                        varRow('{profesor}',       'Nombre del profesor/a'),
-                        varRow('{instrucciones}',  'Instrucciones generales'),
-                        varRow('{total_puntos}',   'Total de puntos de la prueba'),
+                // ── Instrucciones generales ───────────────────────────────────
+                new Paragraph({
+                    spacing: { after: 80 },
+                    children: [
+                        new TextRun({ text: 'Instrucciones generales: ', bold: true, size: hp(10), color: GRAY }),
+                        new TextRun({ text: '{instrucciones}', size: hp(10), color: GRAY }),
                     ],
                 }),
 
                 new Paragraph({ children: [], spacing: { after: 200 } }),
 
-                // ── Secciones loop ────────────────────────────────────────────
-                sectionTitle('Secciones: {#secciones} ... {/secciones}  (orden del profesor)'),
-                p([normal('Las secciones aparecen en el orden en que el profesor creó los tipos de preguntas.')]),
-                p([normal('Ejemplo: si la primera pregunta es Verdadero/Falso, esa sección va primero.')]),
-                new Paragraph({ children: [], spacing: { after: 80 } }),
+                // ── Loop de secciones ─────────────────────────────────────────
+                // IMPORTANTE: cada tag de loop va en su propio párrafo (paragraphLoop: true)
 
-                p([mono('{#secciones}')]),
-                p([bold('  Variables de sección:')]),
-                p([mono('    {roman}        '), normal('→  Número romano (I, II, III…)')]),
-                p([mono('    {count}        '), normal('→  Cantidad de preguntas en la sección')]),
-                p([mono('    {#is_sm}       '), normal('→  Bloque solo para Selección Múltiple')]),
-                p([mono('    {#is_desarrollo}'), normal('→  Bloque solo para Desarrollo')]),
-                p([mono('    {#is_vf}       '), normal('→  Bloque solo para Verdadero o Falso')]),
-                p([mono('    {#is_unir}     '), normal('→  Bloque solo para Unir con Flechas')]),
-                p([mono('    {#is_completar}'), normal('→  Bloque solo para Completar')]),
-                new Paragraph({ children: [], spacing: { after: 80 } }),
+                loopTag('{#secciones}'),
 
-                p([bold('  Preguntas dentro de cada sección: {#preguntas} ... {/preguntas}')]),
-                p([mono('    {numero}       '), normal('→  Número de la pregunta dentro de la sección')]),
-                p([mono('    {enunciado}    '), normal('→  Texto de la pregunta')]),
-                p([mono('    {instruccion}  '), normal('→  Instrucción del bloque (VF, unir, completar)')]),
-                p([mono('    {alt_a} {alt_b} {alt_c} {alt_d}'), normal('  →  Alternativas (solo SM)')]),
-                new Paragraph({ children: [], spacing: { after: 80 } }),
+                // Título de sección con condicionales por tipo
+                new Paragraph({
+                    spacing: { before: 200, after: 80 },
+                    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D8F0' } },
+                    children: [
+                        new TextRun({ text: '{roman}. ', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '{#is_sm}SELECCIÓN MÚLTIPLE{/is_sm}', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '{#is_desarrollo}DESARROLLO{/is_desarrollo}', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '{#is_vf}VERDADERO O FALSO{/is_vf}', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '{#is_unir}UNIR CON FLECHAS{/is_unir}', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '{#is_completar}COMPLETAR{/is_completar}', bold: true, size: hp(11), color: BLUE }),
+                        new TextRun({ text: '  ({count} preguntas)', size: hp(9), color: LGRAY }),
+                    ],
+                }),
 
-                p([bold('  Ítems dentro de preguntas: {#items} ... {/items}')]),
-                p([mono('    {numero}       '), normal('→  Número del ítem')]),
-                p([mono('    {texto}        '), normal('→  Texto del ítem (VF, completar)')]),
-                p([mono('    {izquierda}    '), normal('→  Columna A (unir)')]),
-                p([mono('    {derecha}      '), normal('→  Columna B (unir)')]),
-                p([mono('    {letra}        '), normal('→  Letra columna B: A, B, C… (unir)')]),
-                p([mono('{/secciones}')]),
+                // ── Loop de preguntas ──────────────────────────────────────
+                loopTag('{#preguntas}'),
 
-                new Paragraph({ children: [], spacing: { after: 200 } }),
+                // Enunciado de la pregunta
+                new Paragraph({
+                    spacing: { before: 120, after: 60 },
+                    children: [
+                        new TextRun({ text: '{numero}. ', bold: true, size: hp(10), color: GRAY }),
+                        new TextRun({ text: '{enunciado}', size: hp(10), color: GRAY }),
+                    ],
+                }),
 
-                sectionTitle('Ejemplo de uso completo:'),
-                p([mono('{#secciones}')]),
-                p([mono('{roman}. {#is_sm}SELECCIÓN MÚLTIPLE{/is_sm}{#is_desarrollo}DESARROLLO{/is_desarrollo}{#is_vf}VERDADERO O FALSO{/is_vf}{#is_unir}UNIR CON FLECHAS{/is_unir}{#is_completar}COMPLETAR{/is_completar}')]),
-                p([mono('{#preguntas}')]),
-                p([mono('  {numero}. {enunciado}')]),
-                p([mono('  {#is_sm}')]),
-                p([mono('    a) {alt_a}  b) {alt_b}  c) {alt_c}  d) {alt_d}')]),
-                p([mono('  {/is_sm}')]),
-                p([mono('  {#is_vf}{#items}    {numero}. {texto}{/items}{/is_vf}')]),
-                p([mono('  {#is_unir}{#items}    {numero}. {izquierda}   {letra}. {derecha}{/items}{/is_unir}')]),
-                p([mono('  {#is_completar}{#items}    {numero}. {texto}{/items}{/is_completar}')]),
-                p([mono('{/preguntas}')]),
-                p([mono('{/secciones}')]),
+                // Selección múltiple: alternativas
+                loopTag('{#is_sm}'),
+                new Paragraph({
+                    spacing: { after: 60 },
+                    indent: { left: 360 },
+                    children: [
+                        new TextRun({ text: 'a) {alt_a}   b) {alt_b}   c) {alt_c}   d) {alt_d}', size: hp(10), color: GRAY }),
+                    ],
+                }),
+                loopTag('{/is_sm}'),
+
+                // Verdadero o Falso: ítems
+                loopTag('{#is_vf}'),
+                loopTag('{#items}'),
+                new Paragraph({
+                    spacing: { after: 40 },
+                    indent: { left: 360 },
+                    children: [
+                        new TextRun({ text: '{numero}. {texto}', size: hp(10), color: GRAY }),
+                        new TextRun({ text: '    [   ]', size: hp(10), color: LGRAY }),
+                    ],
+                }),
+                loopTag('{/items}'),
+                loopTag('{/is_vf}'),
+
+                // Unir con flechas: tabla columna A / columna B
+                loopTag('{#is_unir}'),
+                new Table({
+                    width: { size: 80, type: WidthType.PERCENTAGE },
+                    borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    width: { size: 50, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [new Paragraph({ children: [new TextRun({ text: 'Columna A', bold: true, size: hp(9), color: LGRAY })], spacing: { after: 40 } })],
+                                }),
+                                new TableCell({
+                                    width: { size: 50, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [new Paragraph({ children: [new TextRun({ text: 'Columna B', bold: true, size: hp(9), color: LGRAY })], spacing: { after: 40 } })],
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+                loopTag('{#items}'),
+                new Table({
+                    width: { size: 80, type: WidthType.PERCENTAGE },
+                    borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    width: { size: 50, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [new Paragraph({ children: [new TextRun({ text: '{numero}. {izquierda}', size: hp(10), color: GRAY })], spacing: { after: 60 } })],
+                                }),
+                                new TableCell({
+                                    width: { size: 50, type: WidthType.PERCENTAGE },
+                                    borders: noBorder(),
+                                    children: [new Paragraph({ children: [new TextRun({ text: '{letra}. {derecha}', size: hp(10), color: GRAY })], spacing: { after: 60 } })],
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+                loopTag('{/items}'),
+                loopTag('{/is_unir}'),
+
+                // Completar: ítems numerados
+                loopTag('{#is_completar}'),
+                loopTag('{#items}'),
+                new Paragraph({
+                    spacing: { after: 40 },
+                    indent: { left: 360 },
+                    children: [new TextRun({ text: '{numero}. {texto}', size: hp(10), color: GRAY })],
+                }),
+                loopTag('{/items}'),
+                loopTag('{/is_completar}'),
+
+                // Desarrollo: espacio para respuesta
+                loopTag('{#is_desarrollo}'),
+                new Paragraph({
+                    spacing: { before: 40, after: 120 },
+                    indent: { left: 360 },
+                    children: [new TextRun({ text: '_______________________________________________________________________________', size: hp(10), color: 'CCCCCC' })],
+                }),
+                loopTag('{/is_desarrollo}'),
+
+                loopTag('{/preguntas}'),
+                loopTag('{/secciones}'),
             ],
         }],
     });
@@ -351,7 +951,178 @@ export async function descargarPlantillaEjemplo() {
     const blob = await Packer.toBlob(doc);
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'plantilla_ejemplo_prueba.docx';
+    link.download = 'plantilla_base_prueba.docx';
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// ── Exportar evaluación con formato guardado ───────────────────────────────────
+
+/**
+ * Genera y descarga el .docx final de una evaluación aplicando el formato (bloques) guardado.
+ * Los bloques definen el encabezado/tabla; las preguntas se generan del objeto evaluacion.
+ * @param {{ bloques: Array, evaluacion: Object }} params
+ */
+export async function exportarConFormato({ bloques, evaluacion }) {
+    const hp  = (pt) => pt * 2;
+    const hx  = (c)  => (c || '#000000').replace('#', '');
+    const nb  = () => ({ top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } });
+    const cb  = () => ({ top: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'D0D0D0' } });
+    const cp  = (ch) => new Paragraph({ children: ch, spacing: { after: 60, before: 60 } });
+
+    const tg = (typo, key, defaults) => ({
+        color:     hx(typo?.[key]?.color     ?? defaults.color),
+        size:      hp(typo?.[key]?.size      ?? defaults.size),
+        bold:      typo?.[key]?.bold         ?? defaults.bold,
+        italic:    typo?.[key]?.italic       ?? false,
+        underline: typo?.[key]?.underline    ?? defaults.underline ?? false,
+    });
+
+    const TD = {
+        schoolName:   { color: '#1B3A8C', size: 12, bold: true  },
+        subtitle:     { color: '#888888', size:  9, bold: false },
+        evalAsig:     { color: '#1B3A8C', size: 13, bold: true  },
+        evalTitulo:   { color: '#333333', size: 12, bold: true,  underline: true },
+        evalInfo:     { color: '#666666', size: 10, bold: false },
+        tableLabel:   { color: '#888888', size: 10, bold: false },
+        tableValue:   { color: '#4A4A4A', size: 10, bold: false },
+        instrLabel:   { color: '#4A4A4A', size: 10, bold: true  },
+        freeText:     { color: '#4A4A4A', size: 10, bold: false },
+    };
+
+    // Datos reales de la evaluación
+    const asignaturaName = ASIGNATURAS.find(a => a.code === evaluacion.asignatura)?.name || evaluacion.asignatura || '';
+    const data = {
+        titulo:       evaluacion.name        || '',
+        asignatura:   asignaturaName,
+        curso:        evaluacion.curso       || '',
+        fecha:        formatFecha(evaluacion.date),
+        profesor:     evaluacion.createdBy?.name || '',
+        instrucciones: evaluacion.instrucciones || '',
+        oa:           evaluacion.oa          || '',
+        exigencia:    (evaluacion.exigencia != null ? evaluacion.exigencia : 60) + '%',
+        total_puntos: evaluacion.totalPoints
+            ?? (evaluacion.questions || []).reduce((acc, p) => acc + (p.puntaje ?? 1), 0),
+    };
+
+    // Variable substitution helper
+    const subst = (text) => (text || '')
+        .replace(/\{titulo\}/g,       data.titulo)
+        .replace(/\{asignatura\}/g,   data.asignatura)
+        .replace(/\{curso\}/g,        data.curso)
+        .replace(/\{fecha\}/g,        data.fecha)
+        .replace(/\{profesor\}/g,     data.profesor)
+        .replace(/\{total_puntos\}/g, String(data.total_puntos))
+        .replace(/\{oa\}/g,           data.oa)
+        .replace(/\{instrucciones\}/g, data.instrucciones);
+
+    const children = [];
+
+    for (const block of (bloques || [])) {
+        if (block.type === 'header') {
+            const snT = tg(block.typo, 'schoolName', TD.schoolName);
+            const stT = tg(block.typo, 'subtitle',   TD.subtitle);
+            const showCalif = block.showCalificacion ?? true;
+            const sb = () => ({ top: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'C0C0C0' } });
+            const logoChildren = block.logoBase64
+                ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new ImageRun({ data: block.logoBase64.split(',')[1], type: block.logoType || 'png', transformation: { width: 55, height: 55 } })] })]
+                : [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: '[ LOGO ]', size: hp(9), color: 'AAAAAA' })] })];
+            const infoChildren = [
+                new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: (block.schoolName || '').toUpperCase(), bold: snT.bold, size: snT.size, color: snT.color })] }),
+                ...(block.schoolSubtitle ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: block.schoolSubtitle, bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showUTP ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: 'Unidad Técnica Pedagógica', bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showAsignaturaInHeader ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 10 }, children: [new TextRun({ text: `Asignatura: ${data.asignatura}`, bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+                ...((block.showProfesorInHeader ?? true) ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: `Profesor: ${data.profesor}`, bold: stT.bold, size: stT.size, color: stT.color })] })] : []),
+            ];
+            const cells = [];
+            if (block.showLogo) cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), children: logoChildren }));
+            cells.push(new TableCell({ width: { size: (block.showLogo ? 70 : showCalif ? 85 : 100), type: WidthType.PERCENTAGE }, borders: sb(), children: infoChildren }));
+            if (showCalif) cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [new TextRun({ text: block.calificacionLabel || 'CALIFICACIÓN', bold: true, size: hp(10), color: '333333' })] })] }));
+            else if (block.showLogo && block.logoSide === 'both') cells.push(new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, borders: sb(), children: logoChildren }));
+            children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 }, insideH: { style: BorderStyle.NONE, size: 0 }, insideV: { style: BorderStyle.NONE, size: 0 } }, rows: [new TableRow({ children: cells })] }), new Paragraph({ children: [], spacing: { after: 80 } }));
+        }
+
+        else if (block.type === 'divider') {
+            children.push(new Paragraph({ spacing: { before: 80, after: 80 }, border: { bottom: { style: BorderStyle.SINGLE, size: (block.thickness || 2) * 4, color: hx(block.color) } }, children: [] }));
+        }
+
+        else if (block.type === 'eval_title') {
+            const tT = tg(block.typo, 'titulo', TD.evalTitulo);
+            const iT = tg(block.typo, 'info',   TD.evalInfo);
+            const align = block.align === 'left' ? AlignmentType.LEFT : AlignmentType.CENTER;
+            if (block.showAsignatura) children.push(new Paragraph({ alignment: align, spacing: { after: 40 }, children: [new TextRun({ text: `EVALUACIÓN DE ${data.asignatura}`.toUpperCase(), bold: true, size: hp(13), color: hx('#1B3A8C') })] }));
+            children.push(new Paragraph({ alignment: align, spacing: { after: 40 }, children: [new TextRun({ text: data.titulo.toUpperCase(), bold: tT.bold, size: tT.size, color: tT.color, underline: tT.underline ? {} : undefined })] }));
+            const infoRuns = [];
+            if (block.showCurso && data.curso) infoRuns.push(new TextRun({ text: data.curso, bold: iT.bold, size: iT.size, color: iT.color }));
+            if (block.showCurso && block.showProfesor && data.curso && data.profesor) infoRuns.push(new TextRun({ text: '   ·   ', size: iT.size, color: iT.color }));
+            if (block.showProfesor && data.profesor) infoRuns.push(new TextRun({ text: `Profesor(a): ${data.profesor}`, bold: iT.bold, size: iT.size, color: iT.color }));
+            if (infoRuns.length > 0) children.push(new Paragraph({ alignment: align, spacing: { after: 120 }, children: infoRuns }));
+        }
+
+        else if (block.type === 'info_table') {
+            const layout = INFO_LAYOUTS[block.layout] || INFO_LAYOUTS['n-f-p'];
+            const labels = block.customLabels || {};
+            const lT = tg(block.typo, 'label', TD.tableLabel);
+            const vT = tg(block.typo, 'value', TD.tableValue);
+            const nCols = layout.cols.length;
+            const getCells = (cols) => cols.map(col => {
+                const label = labels[col.field] ?? col.label;
+                let valueRun;
+                if (col.field === 'nombre')  valueRun = new TextRun({ text: '_______________________________', bold: vT.bold, size: vT.size, color: vT.color });
+                else if (col.field === 'curso')   valueRun = new TextRun({ text: data.curso, bold: vT.bold, size: vT.size, color: vT.color });
+                else if (col.field === 'fecha')   valueRun = new TextRun({ text: data.fecha, bold: vT.bold, size: vT.size, color: vT.color });
+                else if (col.field === 'puntaje') valueRun = new TextRun({ text: `___ / ${data.total_puntos} pts`, bold: vT.bold, size: vT.size, color: vT.color });
+                else valueRun = new TextRun({ text: '_______________', bold: vT.bold, size: vT.size, color: vT.color });
+                return new TableCell({ width: { size: col.w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${label}: `, bold: lT.bold, size: lT.size, color: lT.color }), valueRun])] });
+            });
+            const rows = [new TableRow({ children: getCells(layout.cols) })];
+            if (block.showCursoRow) rows.push(new TableRow({ children: [new TableCell({ columnSpan: nCols, borders: cb(), children: [cp([new TextRun({ text: 'Curso: ', bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: data.curso, bold: vT.bold, size: vT.size, color: vT.color })])] })] }));
+            if (block.showExigenciaRow && nCols >= 2) {
+                const exCells = [
+                    new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${block.exigenciaLabel || 'Exigencia:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: data.exigencia || '___', bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                    new TableCell({ width: { size: layout.cols[1].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: `${block.puntajeIdealLabel || 'Puntaje Ideal:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: `${data.total_puntos} pts`, bold: vT.bold, size: vT.size, color: vT.color })])] }),
+                ];
+                if (nCols >= 3) exCells.push(new TableCell({ columnSpan: nCols - 2, borders: cb(), children: [cp([new TextRun({ text: `${block.puntajeObtenidoLabel || 'Puntaje Obtenido:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: '___', bold: vT.bold, size: vT.size, color: vT.color })])] }));
+                rows.push(new TableRow({ children: exCells }));
+            }
+            if (block.showOARow) rows.push(new TableRow({ children: [new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: block.oaLabel || 'Objetivo de Aprendizaje:', bold: lT.bold, size: lT.size, color: lT.color })])] }), new TableCell({ columnSpan: nCols - 1, borders: cb(), children: [cp([new TextRun({ text: data.oa, bold: vT.bold, size: vT.size, color: vT.color })])] })] }));
+            if (block.showInstruccionesInTable) rows.push(new TableRow({ children: [new TableCell({ width: { size: layout.cols[0].w, type: WidthType.PERCENTAGE }, borders: cb(), children: [cp([new TextRun({ text: block.instrTableLabel || 'Instrucciones:', bold: lT.bold, size: lT.size, color: lT.color })])] }), new TableCell({ columnSpan: nCols - 1, borders: cb(), children: [cp([new TextRun({ text: data.instrucciones, bold: vT.bold, size: vT.size, color: vT.color })])] })] }));
+            children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }), new Paragraph({ children: [], spacing: { after: 120 } }));
+        }
+
+        else if (block.type === 'free_text') {
+            const fT = tg(block.typo, 'text', TD.freeText);
+            const align = block.align === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT;
+            children.push(new Paragraph({ alignment: align, spacing: { after: 80 }, children: [new TextRun({ text: subst(block.content || ''), bold: fT.bold, italics: fT.italic, size: fT.size, color: fT.color })] }));
+        }
+
+        else if (block.type === 'instructions') {
+            const lT = tg(block.typo, 'label', TD.instrLabel);
+            children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: `${block.labelText || 'Instrucciones:'} `, bold: lT.bold, size: lT.size, color: lT.color }), new TextRun({ text: data.instrucciones, size: lT.size, color: lT.color })] }));
+        }
+    }
+
+    // Pre-fetch imágenes para preguntas
+    const preguntas = (evaluacion.questions || []).filter(q => q.enunciado || ['verdadero_falso','unir','completar'].includes(q.tipo));
+    const imageBuffers = {};
+    await Promise.all(preguntas.filter(p => p.imagen?.url).map(async (p) => {
+        try { const res = await fetch(p.imagen.url); imageBuffers[p.number] = await res.arrayBuffer(); } catch {}
+    }));
+
+    // Secciones de preguntas
+    children.push(...generarSeccionesPreguntas({ preguntas, instrucciones: data.instrucciones, imageBuffers }));
+
+    const doc = new Document({
+        sections: [{
+            properties: { page: { size: { width: 12240, height: 18720 }, margin: { top: 720, bottom: 720, left: 900, right: 900 } } },
+            children,
+        }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(evaluacion.name || 'prueba').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}.docx`;
     link.click();
     URL.revokeObjectURL(link.href);
 }

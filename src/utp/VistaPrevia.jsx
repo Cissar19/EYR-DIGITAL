@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Download, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { ASIGNATURAS } from '../data/objetivosAprendizaje';
-import { exportarPrueba } from '../lib/docxExport';
-import { exportarConPlantilla } from '../lib/templateExport';
-import { cargarFormato, DEFAULT_FORMATO } from './formatoConfig';
-import { fetchDocument } from '../lib/firestoreService';
+import { Printer, Download, Eye, EyeOff, Loader2, FileText, Shuffle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ASIGNATURAS, getOAByCode } from '../data/objetivosAprendizaje';
+import logoEyr from '../assets/logo_eyr.png';
+import { exportarConFormato } from '../lib/templateExport';
+import { exportarPauta } from '../lib/pautaExport';
+import { generarVersionB } from '../lib/versionB';
+import { cargarFormato, DEFAULT_FORMATO, DEFAULT_FORMAT_BLOCKS } from './formatoConfig';
+import { fetchCollection } from '../lib/firestoreService';
+import { orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 const PLANTILLA_META_DOC = ['app_config', 'utp_plantilla_meta'];
@@ -22,19 +25,22 @@ function completarTexto(texto) {
 
 export default function VistaPrevia({ evaluacion }) {
     const [exporting,     setExporting]     = useState(false);
+    const [exportingPauta, setExportingPauta] = useState(false);
+    const [exportingVB,   setExportingVB]   = useState(false);
     const [showAnswers,   setShowAnswers]   = useState(false);
+    const [showEscala,    setShowEscala]    = useState(false);
     const [formato,       setFormato]       = useState(DEFAULT_FORMATO);
-    const [plantillaMeta, setPlantillaMeta] = useState(null); // null = no cargado aún
+    const [formatoBlocks, setFormatoBlocks] = useState(null); // null = no cargado aún
 
     useEffect(() => {
         Promise.all([
             cargarFormato(),
-            fetchDocument(...PLANTILLA_META_DOC),
-        ]).then(([fmt, meta]) => {
+            fetchCollection('formatos_prueba', orderBy('updatedAt', 'desc')),
+        ]).then(([fmt, fmts]) => {
             setFormato(fmt);
-            setPlantillaMeta(meta?.hasPlantilla ? meta : false);
+            setFormatoBlocks(fmts?.[0]?.bloques || null);
         }).catch(() => {
-            setPlantillaMeta(false);
+            setFormatoBlocks(null);
         });
     }, []);
 
@@ -65,33 +71,75 @@ export default function VistaPrevia({ evaluacion }) {
         fechaLabel = `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
     } catch { /* formato inválido, usar valor original */ }
 
-    const totalPuntos = preguntas.reduce((acc, p) => {
-        if (TIPOS_CON_ITEMS.includes(p.tipo)) return acc + (p.items?.length || 1);
-        return acc + 1;
-    }, 0);
+    const totalPuntos = evaluacion.totalPoints
+        ?? preguntas.reduce((acc, p) => acc + (p.puntaje ?? 1), 0);
+
+    // OAs únicos derivados de las preguntas
+    // Guardamos { full: 'MA-OA3', short: 'OA3' } para buscar descripción pero mostrar sin prefijo
+    const oasDePreguntas = Object.values(
+        (evaluacion.questions || [])
+            .map(q => q.oaCode).filter(Boolean)
+            .reduce((acc, full) => {
+                if (!acc[full]) {
+                    acc[full] = { full, short: full.includes('-') ? full.split('-').slice(1).join('-') : full };
+                }
+                return acc;
+            }, {})
+    );
+
+    // Block settings — from saved format or defaults matching EditorFormato DEFAULT_BLOCKS
+    const headerBlock = formatoBlocks?.find(b => b.type === 'header') ?? {
+        showUTP: true, showAsignaturaInHeader: true, showProfesorInHeader: true,
+        showCalificacion: true, calificacionLabel: 'CALIFICACIÓN',
+    };
+    const infoBlock = formatoBlocks?.find(b => b.type === 'info_table') ?? {
+        layout: 'n-c-f', showExigenciaRow: true, showOARow: true, showInstruccionesInTable: true,
+        exigenciaLabel: 'Exigencia:', puntajeIdealLabel: 'Puntaje Ideal:', puntajeObtenidoLabel: 'Puntaje Obtenido:',
+        oaLabel: 'Objetivo de Aprendizaje:', instrTableLabel: 'Instrucciones:',
+    };
 
     const handleExport = async () => {
         setExporting(true);
         try {
-            if (plantillaMeta?.hasPlantilla) {
-                await exportarConPlantilla({ evaluacion });
-            } else {
-                await exportarPrueba({
-                    nombre:        evaluacion.name,
-                    asignatura:    asignaturaLabel,
-                    curso:         evaluacion.curso,
-                    fecha:         evaluacion.date,
-                    profesor:      evaluacion.createdBy?.name || '',
-                    instrucciones: evaluacion.instrucciones,
-                    preguntas,
-                    formato,
-                });
-            }
+            await exportarConFormato({ bloques: formatoBlocks ?? DEFAULT_FORMAT_BLOCKS, evaluacion });
         } catch {
             toast.error('Error al exportar el documento');
         } finally {
             setExporting(false);
         }
+    };
+
+    const handleExportPauta = async () => {
+        setExportingPauta(true);
+        try {
+            await exportarPauta({ evaluacion });
+        } catch {
+            toast.error('Error al exportar la pauta');
+        } finally {
+            setExportingPauta(false);
+        }
+    };
+
+    const handleExportVersionB = async () => {
+        setExportingVB(true);
+        try {
+            const evalVB = generarVersionB(evaluacion);
+            await exportarConFormato({ bloques: formatoBlocks ?? DEFAULT_FORMAT_BLOCKS, evaluacion: evalVB });
+        } catch {
+            toast.error('Error al generar Versión B');
+        } finally {
+            setExportingVB(false);
+        }
+    };
+
+    // Escala de notas local
+    const calcularNotaLocal = (pts, total, exig) => {
+        if (!total) return null;
+        const p = pts / total;
+        const e = (exig ?? 60) / 100;
+        if (e <= 0 || e >= 1) return null;
+        const raw = p >= e ? 4 + 3 * (p - e) / (1 - e) : 1 + 3 * p / e;
+        return Math.max(1, Math.min(7, Math.round(raw * 10) / 10));
     };
 
     return (
@@ -102,7 +150,7 @@ export default function VistaPrevia({ evaluacion }) {
                     <Eye className="w-4 h-4 text-slate-400" />
                     <p className="text-sm text-slate-500">Vista previa del documento para estudiantes</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <button
                         onClick={() => setShowAnswers(v => !v)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-xl transition-colors ${
@@ -121,6 +169,24 @@ export default function VistaPrevia({ evaluacion }) {
                         <Printer className="w-3.5 h-3.5" /> Imprimir
                     </button>
                     <button
+                        onClick={handleExportPauta}
+                        disabled={exportingPauta}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    >
+                        <FileText className="w-3.5 h-3.5" />
+                        {exportingPauta ? 'Generando…' : 'Pauta (.docx)'}
+                    </button>
+                    {preguntas.some(p => p.tipo === 'seleccion_multiple') && (
+                        <button
+                            onClick={handleExportVersionB}
+                            disabled={exportingVB}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-violet-200 rounded-xl text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                        >
+                            <Shuffle className="w-3.5 h-3.5" />
+                            {exportingVB ? 'Generando…' : 'Versión B'}
+                        </button>
+                    )}
+                    <button
                         onClick={handleExport}
                         disabled={exporting}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
@@ -135,47 +201,126 @@ export default function VistaPrevia({ evaluacion }) {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-2xl mx-auto print:shadow-none print:border-none print:max-w-none">
                 <div className="p-8 space-y-4">
 
-                    {/* Encabezado escuela */}
-                    <div className="text-center space-y-0.5">
-                        <p className="font-extrabold text-[#1B3A8C] text-sm tracking-wide uppercase">
-                            Centro Educacional Ernesto Yáñez Rivera
-                        </p>
-                        <p className="text-xs text-slate-500">Huechuraba · Santiago</p>
-                    </div>
-
-                    {/* Título */}
-                    <div className="text-center space-y-0.5">
-                        <h1 className="font-bold text-[#1B3A8C] text-base uppercase tracking-wide">
-                            {evaluacion.name || 'Sin título'}
-                        </h1>
-                        <p className="text-xs text-slate-500 italic">{asignaturaLabel} &nbsp;|&nbsp; {evaluacion.curso}</p>
-                        {evaluacion.createdBy?.name && (
-                            <p className="text-xs text-slate-500">Profesor(a): {evaluacion.createdBy.name}</p>
-                        )}
-                    </div>
-
-                    {/* Tabla datos alumno */}
-                    <table className="w-full border-collapse text-xs border border-[#1B3A8C]/30">
+                    {/* Encabezado — 3 celdas: Logo | Info escuela | Calificación */}
+                    <table className="w-full border-collapse text-xs border border-slate-500">
                         <tbody>
                             <tr>
-                                <td className="border border-[#1B3A8C]/20 bg-[#E8EDF7] font-bold text-[#1B3A8C] px-2 py-1.5 w-[15%]">Nombre:</td>
-                                <td className="border border-[#1B3A8C]/20 px-2 py-1.5 w-[35%]">&nbsp;</td>
-                                <td className="border border-[#1B3A8C]/20 bg-[#E8EDF7] font-bold text-[#1B3A8C] px-2 py-1.5 w-[15%]">Fecha:</td>
-                                <td className="border border-[#1B3A8C]/20 px-2 py-1.5 w-[35%]">{fechaLabel}</td>
-                            </tr>
-                            <tr>
-                                <td className="border border-[#1B3A8C]/20 bg-[#E8EDF7] font-bold text-[#1B3A8C] px-2 py-1.5">Curso:</td>
-                                <td className="border border-[#1B3A8C]/20 px-2 py-1.5">{evaluacion.curso}</td>
-                                <td className="border border-[#1B3A8C]/20 bg-[#E8EDF7] font-bold text-[#1B3A8C] px-2 py-1.5">Puntaje:</td>
-                                <td className="border border-[#1B3A8C]/20 px-2 py-1.5">_______ / {totalPuntos} pts</td>
+                                <td className="border border-slate-500 p-2 text-center align-middle" style={{ width: '22%' }}>
+                                    <img src={logoEyr} alt="Logo EYR" className="max-h-14 max-w-full object-contain mx-auto" />
+                                </td>
+                                <td className="border border-slate-500 p-2 text-center align-middle" style={{ width: headerBlock.showCalificacion ? '56%' : '78%' }}>
+                                    <p className="font-bold text-sm text-slate-800 leading-tight">Centro Educacional Ernesto Yáñez Rivera</p>
+                                    {(headerBlock.showUTP ?? true) && (
+                                        <p className="text-[11px] text-slate-600 mt-0.5">Unidad Técnica Pedagógica</p>
+                                    )}
+                                    {(headerBlock.showAsignaturaInHeader ?? true) && (
+                                        <p className="text-[11px] text-slate-600 mt-0.5">{asignaturaLabel}</p>
+                                    )}
+                                    {(headerBlock.showProfesorInHeader ?? true) && evaluacion.createdBy?.name && (
+                                        <p className="text-[11px] text-slate-600 mt-0.5">Prof. {evaluacion.createdBy.name}</p>
+                                    )}
+                                </td>
+                                {(headerBlock.showCalificacion ?? true) && (
+                                    <td className="border border-slate-500 p-2 text-center align-middle" style={{ width: '22%' }}>
+                                        <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">
+                                            {headerBlock.calificacionLabel || 'CALIFICACIÓN'}
+                                        </p>
+                                        <div className="h-10" />
+                                    </td>
+                                )}
                             </tr>
                         </tbody>
                     </table>
 
-                    {/* Instrucciones generales */}
-                    <p className="text-xs italic text-slate-500 border-l-2 border-[#1B3A8C]/20 pl-3">
-                        {instrucciones}
-                    </p>
+                    {/* Título evaluación */}
+                    <div className="text-center py-1">
+                        <h1 className="font-bold text-sm uppercase tracking-wide text-slate-800 underline decoration-slate-800">
+                            {evaluacion.name || 'Sin título'}
+                        </h1>
+                    </div>
+
+                    {/* Tabla datos alumno */}
+                    <table className="w-full border-collapse text-xs border border-slate-500">
+                        <tbody>
+                            {/* Fila 1: layout columnas (Nombre / Curso / Fecha por defecto) */}
+                            <tr>
+                                <td className="border border-slate-500 px-2 py-1.5 font-medium" style={{ width: '50%' }}>
+                                    Nombre: <span className="inline-block border-b border-slate-400 w-28 align-bottom" />
+                                </td>
+                                <td className="border border-slate-500 px-2 py-1.5 font-medium" style={{ width: '25%' }}>
+                                    Curso: {evaluacion.curso}
+                                </td>
+                                <td className="border border-slate-500 px-2 py-1.5 font-medium" style={{ width: '25%' }}>
+                                    Fecha: {fechaLabel}
+                                </td>
+                            </tr>
+                            {/* Fila 2: Exigencia / Puntaje Ideal / Puntaje Obtenido */}
+                            {(infoBlock.showExigenciaRow ?? true) && (
+                                <tr>
+                                    <td className="border border-slate-500 px-2 py-1.5">
+                                        {infoBlock.exigenciaLabel || 'Exigencia:'}{' '}
+                                        {evaluacion.exigencia ?? 60}%
+                                    </td>
+                                    <td className="border border-slate-500 px-2 py-1.5">
+                                        {infoBlock.puntajeIdealLabel || 'Puntaje Ideal:'}{' '}{totalPuntos}
+                                    </td>
+                                    <td className="border border-slate-500 px-2 py-1.5">
+                                        {infoBlock.puntajeObtenidoLabel || 'Puntaje Obtenido:'}{' '}___
+                                    </td>
+                                </tr>
+                            )}
+                            {/* Fila 3: OA */}
+                            {(infoBlock.showOARow ?? true) && (
+                                <tr>
+                                    <td colSpan={3} className="border border-slate-500 px-2 py-1.5">
+                                        <span className="font-medium text-slate-700 mr-1">
+                                            {infoBlock.oaLabel || 'Objetivo de Aprendizaje:'}
+                                        </span>
+                                        {evaluacion.oa ? (
+                                            <span>{evaluacion.oa}</span>
+                                        ) : oasDePreguntas.length > 0 ? (
+                                            oasDePreguntas.length <= 2 ? (
+                                                // Pocos OAs: código corto + descripción completa
+                                                <span>
+                                                    {oasDePreguntas.map(({ full, short }, i) => {
+                                                        const oa = getOAByCode(full);
+                                                        return (
+                                                            <span key={full}>
+                                                                <span className="font-semibold">{short}</span>
+                                                                {oa?.description ? `: ${oa.description}` : ''}
+                                                                {i < oasDePreguntas.length - 1 ? ' · ' : ''}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </span>
+                                            ) : (
+                                                // Muchos OAs: solo códigos cortos
+                                                <span className="font-semibold">
+                                                    {oasDePreguntas.map(o => o.short).join(' · ')}
+                                                </span>
+                                            )
+                                        ) : null}
+                                    </td>
+                                </tr>
+                            )}
+                            {/* Fila 4: Instrucciones */}
+                            {(infoBlock.showInstruccionesInTable ?? true) && (
+                                <tr>
+                                    <td colSpan={3} className="border border-slate-500 px-2 py-1.5 italic text-slate-600">
+                                        {infoBlock.instrTableLabel || 'Instrucciones:'}{' '}
+                                        {instrucciones}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+
+                    {/* Instrucciones generales (solo si NO están en la tabla) */}
+                    {!(infoBlock.showInstruccionesInTable ?? true) && instrucciones && (
+                        <p className="text-xs italic text-slate-500 border-l-2 border-[#1B3A8C]/20 pl-3">
+                            {instrucciones}
+                        </p>
+                    )}
 
                     {preguntas.length === 0 && (
                         <p className="text-center text-sm text-slate-400 py-8">
@@ -245,10 +390,10 @@ export default function VistaPrevia({ evaluacion }) {
                                                         {p.respuestaCorrecta}
                                                     </p>
                                                 ) : (
-                                                    <div className="ml-5 mt-2 space-y-2.5">
-                                                        <div className="border-b border-slate-300 w-full" />
-                                                        <div className="border-b border-slate-300 w-full" />
-                                                        <div className="border-b border-slate-300 w-full" />
+                                                    <div className="ml-5 mt-5 space-y-5">
+                                                        {Array.from({ length: 8 }).map((_, i) => (
+                                                            <div key={i} className="border-b border-slate-300 w-full" />
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -367,6 +512,57 @@ export default function VistaPrevia({ evaluacion }) {
                             </div>
                         );
                     })}
+
+                    {/* Escala de notas colapsable */}
+                    {totalPuntos > 0 && (
+                        <div className="border-t border-slate-200 pt-3">
+                            <button
+                                onClick={() => setShowEscala(v => !v)}
+                                className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                            >
+                                {showEscala ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                {showEscala ? 'Ocultar escala de notas' : 'Ver escala de notas'}
+                            </button>
+                            {showEscala && (
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="text-[10px] border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-100">
+                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">Puntaje</th>
+                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">% Logro</th>
+                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">Nota</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Array.from({ length: totalPuntos + 1 }, (_, i) => {
+                                                const nota  = calcularNotaLocal(i, totalPuntos, evaluacion.exigencia);
+                                                const logro = totalPuntos ? Math.round(i / totalPuntos * 100) : 0;
+                                                const aprueba = nota !== null && nota >= 4;
+                                                return (
+                                                    <tr key={i} className={aprueba ? 'bg-emerald-50' : 'bg-orange-50'}>
+                                                        <td className="border border-slate-200 px-2 py-0.5 text-center font-medium">
+                                                            {i} / {totalPuntos}
+                                                        </td>
+                                                        <td className="border border-slate-200 px-2 py-0.5 text-center text-slate-500">
+                                                            {logro}%
+                                                        </td>
+                                                        <td className={`border border-slate-200 px-2 py-0.5 text-center font-bold ${
+                                                            aprueba ? 'text-emerald-700' : 'text-red-600'
+                                                        }`}>
+                                                            {nota !== null ? nota.toFixed(1) : '—'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    <p className="text-[9px] text-slate-400 mt-1.5">
+                                        Exigencia {evaluacion.exigencia ?? 60}% → Nota 4.0 · Verde = aprueba · Naranja = reprueba
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Pie de página */}
                     {preguntas.length > 0 && (

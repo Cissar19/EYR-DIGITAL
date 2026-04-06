@@ -381,6 +381,81 @@ function renderCompletar(preguntas) {
 // ── Exportar ──────────────────────────────────────────────────────────────────
 
 /**
+ * Genera los children (paragraphs/tables) para las secciones de preguntas.
+ * Incluye piePagina al final.
+ * @param {{ preguntas: Array, instrucciones?: string, formato?: Object, imageBuffers?: Object }} params
+ * @returns {Array} docx children array
+ */
+export function generarSeccionesPreguntas({ preguntas, instrucciones, formato, imageBuffers = {} }) {
+  const tiposEnOrden = [];
+  const gruposPorTipo = {};
+  for (const p of preguntas) {
+    if (!gruposPorTipo[p.tipo]) {
+      gruposPorTipo[p.tipo] = [];
+      tiposEnOrden.push(p.tipo);
+    }
+    gruposPorTipo[p.tipo].push(p);
+  }
+
+  const titulosPorTipo       = formato?.titulosPorTipo      || DEFAULT_TITULOS;
+  const instruccionesPorTipo = formato?.instruccionesPorTipo || {};
+  const children = [];
+
+  if (instrucciones?.trim()) {
+    children.push(instruccionGeneral(instrucciones.trim()));
+  }
+
+  tiposEnOrden.forEach((tipo, sIdx) => {
+    const secPreguntas = gruposPorTipo[tipo];
+    const roman = ROMAN[sIdx] || String(sIdx + 1);
+    const titulo = titulosPorTipo[tipo] || DEFAULT_TITULOS[tipo] || tipo.toUpperCase();
+
+    children.push(encabezadoSeccion(roman, titulo));
+
+    const instruccionCustom = instruccionesPorTipo[tipo];
+    if (tipo === 'seleccion_multiple') {
+      const count = secPreguntas.length;
+      children.push(instruccionSeccion(instruccionCustom || `Marca con una X la alternativa correcta. (${count} pregunta${count !== 1 ? 's' : ''})`));
+    } else if (tipo === 'desarrollo') {
+      const count = secPreguntas.length;
+      children.push(instruccionSeccion(instruccionCustom || `Responde con letra clara. (${count} pregunta${count !== 1 ? 's' : ''})`));
+    } else if (instruccionCustom) {
+      children.push(instruccionSeccion(instruccionCustom));
+    }
+
+    if (tipo === 'seleccion_multiple') {
+      let qNum = 0;
+      for (const p of secPreguntas) {
+        qNum++;
+        children.push(preguntaParrafo(qNum, p.enunciado));
+        if (imageBuffers[p.number]) children.push(imagenParrafo(imageBuffers[p.number], p.imagen?.aspectRatio));
+        const altKeys = Object.keys(p.alternativas || {}).filter(k => ['a','b','c','d'].includes(k)).sort();
+        for (const letra of altKeys) children.push(alternativaParrafo(letra, p.alternativas[letra]));
+      }
+    } else if (tipo === 'desarrollo') {
+      let qNum = 0;
+      for (const p of secPreguntas) {
+        qNum++;
+        children.push(preguntaParrafo(qNum, p.enunciado));
+        if (imageBuffers[p.number]) children.push(imagenParrafo(imageBuffers[p.number], p.imagen?.aspectRatio));
+        children.push(lineaRespuesta());
+        children.push(lineaRespuesta());
+        children.push(lineaRespuesta());
+      }
+    } else if (tipo === 'verdadero_falso') {
+      children.push(...renderVerdaderoFalso(secPreguntas));
+    } else if (tipo === 'unir') {
+      children.push(...renderUnir(secPreguntas));
+    } else if (tipo === 'completar') {
+      children.push(...renderCompletar(secPreguntas));
+    }
+  });
+
+  children.push(piePagina());
+  return children;
+}
+
+/**
  * Genera y descarga un .docx con la prueba formateada.
  * Las secciones respetan el orden del primer tipo que aparece en la evaluación.
  *
@@ -418,96 +493,17 @@ export async function exportarPrueba({ nombre, asignatura, curso, fecha, profeso
       })
   );
 
-  // Agrupar por tipo respetando el orden de primera aparición
-  const tiposEnOrden = [];
-  const gruposPorTipo = {};
-  for (const p of preguntas) {
-    if (!gruposPorTipo[p.tipo]) {
-      gruposPorTipo[p.tipo] = [];
-      tiposEnOrden.push(p.tipo);
-    }
-    gruposPorTipo[p.tipo].push(p);
-  }
-
   const totalPuntos = preguntas.reduce((acc, p) => {
     if (TIPOS_CON_ITEMS.includes(p.tipo)) return acc + (p.items?.length || 1);
     return acc + 1;
   }, 0);
 
-  const titulosPorTipo      = formato?.titulosPorTipo      || DEFAULT_TITULOS;
-  const instruccionesPorTipo = formato?.instruccionesPorTipo || {};
-
   const children = [
     ...encabezadoEscuela(),
     ...tituloPrueba(nombre, asignatura, curso, profesor),
     tablaDatosAlumno(fechaLabel, curso, totalPuntos),
-    instruccionGeneral(instrucciones?.trim() || formato?.instruccionesGenerales),
+    ...generarSeccionesPreguntas({ preguntas, instrucciones: instrucciones?.trim() || formato?.instruccionesGenerales, formato, imageBuffers }),
   ];
-
-  tiposEnOrden.forEach((tipo, sIdx) => {
-    const secPreguntas = gruposPorTipo[tipo];
-    const roman = ROMAN[sIdx] || String(sIdx + 1);
-    const titulo = titulosPorTipo[tipo] || DEFAULT_TITULOS[tipo] || tipo.toUpperCase();
-
-    children.push(encabezadoSeccion(roman, titulo));
-
-    // Instrucción de sección
-    const instruccionCustom = instruccionesPorTipo[tipo];
-    if (tipo === 'seleccion_multiple') {
-      const count = secPreguntas.length;
-      children.push(instruccionSeccion(
-        instruccionCustom || `Marca con una X la alternativa correcta. (${count} pregunta${count !== 1 ? 's' : ''})`
-      ));
-    } else if (tipo === 'desarrollo') {
-      const count = secPreguntas.length;
-      children.push(instruccionSeccion(
-        instruccionCustom || `Responde con letra clara. (${count} pregunta${count !== 1 ? 's' : ''})`
-      ));
-    } else if (instruccionCustom) {
-      children.push(instruccionSeccion(instruccionCustom));
-    }
-
-    // Contenido según tipo
-    if (tipo === 'seleccion_multiple') {
-      let qNum = 0;
-      for (const p of secPreguntas) {
-        qNum++;
-        children.push(preguntaParrafo(qNum, p.enunciado));
-        if (imageBuffers[p.number]) {
-          children.push(imagenParrafo(imageBuffers[p.number], p.imagen?.aspectRatio));
-        }
-        const altKeys = Object.keys(p.alternativas || {})
-          .filter(k => ['a','b','c','d'].includes(k)).sort();
-        for (const letra of altKeys) {
-          children.push(alternativaParrafo(letra, p.alternativas[letra]));
-        }
-      }
-
-    } else if (tipo === 'desarrollo') {
-      let qNum = 0;
-      for (const p of secPreguntas) {
-        qNum++;
-        children.push(preguntaParrafo(qNum, p.enunciado));
-        if (imageBuffers[p.number]) {
-          children.push(imagenParrafo(imageBuffers[p.number], p.imagen?.aspectRatio));
-        }
-        children.push(lineaRespuesta());
-        children.push(lineaRespuesta());
-        children.push(lineaRespuesta());
-      }
-
-    } else if (tipo === 'verdadero_falso') {
-      children.push(...renderVerdaderoFalso(secPreguntas));
-
-    } else if (tipo === 'unir') {
-      children.push(...renderUnir(secPreguntas));
-
-    } else if (tipo === 'completar') {
-      children.push(...renderCompletar(secPreguntas));
-    }
-  });
-
-  children.push(piePagina());
 
   const doc = new Document({
     sections: [{

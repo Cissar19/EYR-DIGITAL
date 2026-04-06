@@ -33,7 +33,11 @@ import AttendanceMonitorView from './views/AttendanceMonitorView';
 import JustificativesView from './views/JustificativesView';
 import EntrevistasView from './views/EntrevistasView';
 import UTPView from './utp/UTPView';
+import EditorFormato from './utp/EditorFormato';
 import ControlSanoView from './views/ControlSanoView';
+import FichaClap from './views/FichaClap';
+import AtencionDiariaView from './views/AtencionDiariaView';
+import EnfermeriaResumenView from './views/EnfermeriaResumenView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -224,8 +228,12 @@ export default function App() {
           <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
           <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
+          <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
           <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
           <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
+          <Route path="/enfermeria/ficha-clap" element={<PermissionGate moduleKey="ficha_clap"><FichaClap /></PermissionGate>} />
+          <Route path="/enfermeria/atenciones-diarias" element={<PermissionGate moduleKey="atenciones_diarias"><AtencionDiariaView /></PermissionGate>} />
+          <Route path="/enfermeria/resumen" element={<PermissionGate moduleKey="enfermeria_resumen"><EnfermeriaResumenView /></PermissionGate>} />
 
           <Route path="/settings" element={<Settings />} />
         </Route>
