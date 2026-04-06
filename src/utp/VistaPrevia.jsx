@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Printer, Download, Eye, EyeOff, Loader2, FileText, Shuffle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Printer, Download, Eye, EyeOff, Loader2, FileText, Shuffle, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
 import { ASIGNATURAS, getOAByCode } from '../data/objetivosAprendizaje';
 import logoEyr from '../assets/logo_eyr.png';
 import { exportarConFormato } from '../lib/templateExport';
@@ -27,10 +27,12 @@ export default function VistaPrevia({ evaluacion }) {
     const [exporting,     setExporting]     = useState(false);
     const [exportingPauta, setExportingPauta] = useState(false);
     const [exportingVB,   setExportingVB]   = useState(false);
+    const [exportingPdf,  setExportingPdf]  = useState(false);
     const [showAnswers,   setShowAnswers]   = useState(false);
     const [showEscala,    setShowEscala]    = useState(false);
     const [formato,       setFormato]       = useState(DEFAULT_FORMATO);
     const [formatoBlocks, setFormatoBlocks] = useState(null); // null = no cargado aún
+    const previewRef = useRef(null);
 
     useEffect(() => {
         Promise.all([
@@ -132,6 +134,55 @@ export default function VistaPrevia({ evaluacion }) {
         }
     };
 
+    const handleExportPDF = async () => {
+        const el = previewRef.current;
+        if (!el) return;
+        setExportingPdf(true);
+        try {
+            const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+                import('html2canvas'),
+                import('jspdf'),
+            ]);
+
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                onclone: (_doc, clone) => {
+                    clone.style.borderRadius = '0';
+                    clone.style.boxShadow = 'none';
+                    clone.style.border = 'none';
+                    clone.style.overflow = 'visible';
+                    clone.style.maxWidth = 'none';
+                },
+            });
+
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const margin = 10;
+            const pageW = 210;
+            const pageH = 297;
+            const contentW = pageW - 2 * margin;
+            const contentH = (canvas.height / canvas.width) * contentW;
+            const sliceH = pageH - 2 * margin;
+            const pages = Math.ceil(contentH / sliceH);
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+            for (let i = 0; i < pages; i++) {
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', margin, margin - i * sliceH, contentW, contentH);
+            }
+
+            const name = (evaluacion.name || 'prueba')
+                .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            pdf.save(`${name}.pdf`);
+        } catch {
+            toast.error('Error al generar PDF');
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
     // Escala de notas local
     const calcularNotaLocal = (pts, total, exig) => {
         if (!total) return null;
@@ -169,6 +220,14 @@ export default function VistaPrevia({ evaluacion }) {
                         <Printer className="w-3.5 h-3.5" /> Imprimir
                     </button>
                     <button
+                        onClick={handleExportPDF}
+                        disabled={exportingPdf}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-rose-200 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                    >
+                        <FileDown className="w-3.5 h-3.5" />
+                        {exportingPdf ? 'Generando…' : 'Descargar PDF'}
+                    </button>
+                    <button
                         onClick={handleExportPauta}
                         disabled={exportingPauta}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
@@ -198,7 +257,7 @@ export default function VistaPrevia({ evaluacion }) {
             </div>
 
             {/* Hoja de prueba */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-2xl mx-auto print:shadow-none print:border-none print:max-w-none">
+            <div ref={previewRef} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-2xl mx-auto print:shadow-none print:border-none print:max-w-none">
                 <div className="p-8 space-y-4">
 
                     {/* Encabezado — 3 celdas: Logo | Info escuela | Calificación */}
