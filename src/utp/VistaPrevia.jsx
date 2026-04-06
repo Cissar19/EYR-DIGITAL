@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Download, Eye, EyeOff, Loader2, FileText, Shuffle, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
+import { Printer, Download, Eye, EyeOff, Loader2, FileText, Shuffle, FileDown } from 'lucide-react';
 import { ASIGNATURAS, getOAByCode } from '../data/objetivosAprendizaje';
 import logoEyr from '../assets/logo_eyr.png';
 import { exportarConFormato } from '../lib/templateExport';
@@ -29,7 +29,6 @@ export default function VistaPrevia({ evaluacion }) {
     const [exportingVB,   setExportingVB]   = useState(false);
     const [exportingPdf,  setExportingPdf]  = useState(false);
     const [showAnswers,   setShowAnswers]   = useState(false);
-    const [showEscala,    setShowEscala]    = useState(false);
     const [formato,       setFormato]       = useState(DEFAULT_FORMATO);
     const [formatoBlocks, setFormatoBlocks] = useState(null); // null = no cargado aún
     const previewRef = useRef(null);
@@ -236,16 +235,6 @@ export default function VistaPrevia({ evaluacion }) {
         } finally {
             setExportingPdf(false);
         }
-    };
-
-    // Escala de notas local
-    const calcularNotaLocal = (pts, total, exig) => {
-        if (!total) return null;
-        const p = pts / total;
-        const e = (exig ?? 60) / 100;
-        if (e <= 0 || e >= 1) return null;
-        const raw = p >= e ? 4 + 3 * (p - e) / (1 - e) : 1 + 3 * p / e;
-        return Math.max(1, Math.min(7, Math.round(raw * 10) / 10));
     };
 
     return (
@@ -627,56 +616,6 @@ export default function VistaPrevia({ evaluacion }) {
                         );
                     })}
 
-                    {/* Escala de notas colapsable */}
-                    {totalPuntos > 0 && (
-                        <div className="border-t border-slate-200 pt-3">
-                            <button
-                                onClick={() => setShowEscala(v => !v)}
-                                className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
-                            >
-                                {showEscala ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                {showEscala ? 'Ocultar escala de notas' : 'Ver escala de notas'}
-                            </button>
-                            {showEscala && (
-                                <div className="mt-3 overflow-x-auto">
-                                    <table className="text-[10px] border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-100">
-                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">Puntaje</th>
-                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">% Logro</th>
-                                                <th className="border border-slate-300 px-2 py-1 font-semibold text-slate-600">Nota</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {Array.from({ length: totalPuntos + 1 }, (_, i) => {
-                                                const nota  = calcularNotaLocal(i, totalPuntos, evaluacion.exigencia);
-                                                const logro = totalPuntos ? Math.round(i / totalPuntos * 100) : 0;
-                                                const aprueba = nota !== null && nota >= 4;
-                                                return (
-                                                    <tr key={i} className={aprueba ? 'bg-emerald-50' : 'bg-orange-50'}>
-                                                        <td className="border border-slate-200 px-2 py-0.5 text-center font-medium">
-                                                            {i} / {totalPuntos}
-                                                        </td>
-                                                        <td className="border border-slate-200 px-2 py-0.5 text-center text-slate-500">
-                                                            {logro}%
-                                                        </td>
-                                                        <td className={`border border-slate-200 px-2 py-0.5 text-center font-bold ${
-                                                            aprueba ? 'text-emerald-700' : 'text-red-600'
-                                                        }`}>
-                                                            {nota !== null ? nota.toFixed(1) : '—'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                    <p className="text-[9px] text-slate-400 mt-1.5">
-                                        Exigencia {evaluacion.exigencia ?? 60}% → Nota 4.0 · Verde = aprueba · Naranja = reprueba
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* Pie de página */}
                     {preguntas.length > 0 && (
