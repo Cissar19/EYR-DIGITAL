@@ -150,16 +150,17 @@ export default function VistaPrevia({ evaluacion }) {
                 logging: false,
                 backgroundColor: '#ffffff',
                 onclone: (_doc, clone) => {
+                    // Solo limpiar estilos visuales; NO cambiar width/maxWidth
+                    // (maxWidth:none causa que el elemento se expanda al ancho del viewport
+                    //  → imagen 3x más ancha → texto diminuto al comprimir a A4)
                     clone.style.borderRadius = '0';
                     clone.style.boxShadow = 'none';
                     clone.style.border = 'none';
-                    clone.style.overflow = 'visible';
-                    clone.style.maxWidth = 'none';
                 },
             });
 
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const margin = 10;
+            const margin = 8;
             const pageW = 210;
             const pageH = 297;
             const contentW = pageW - 2 * margin;
