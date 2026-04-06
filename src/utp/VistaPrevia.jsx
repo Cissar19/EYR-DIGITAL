@@ -302,7 +302,8 @@ export default function VistaPrevia({ evaluacion }) {
 
             {/* Hoja de prueba */}
             <div ref={previewRef} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-2xl mx-auto print:shadow-none print:border-none print:max-w-none">
-                <div className="p-8 space-y-4">
+                <div className="p-8 flex flex-col" style={{ minHeight: '29.7cm' }}>
+                <div className="flex-1 space-y-4">
 
                     {/* Encabezado — 3 celdas: Logo | Info escuela | Calificación */}
                     <table className="w-full border-collapse text-xs border border-slate-500">
@@ -617,14 +618,14 @@ export default function VistaPrevia({ evaluacion }) {
                     })}
 
 
-                    {/* Pie de página */}
-                    {preguntas.length > 0 && (
-                        <div className="pt-4 border-t border-[#1B3A8C]/15 text-center">
-                            <p className="text-[10px] italic text-slate-400">
-                                EYR Digital · Centro Educacional Ernesto Yáñez Rivera · Huechuraba
-                            </p>
-                        </div>
-                    )}
+                </div>
+
+                    {/* Pie de página — siempre al fondo de la hoja */}
+                    <div className="mt-auto pt-4 border-t border-[#1B3A8C]/15 text-center">
+                        <p className="text-[10px] italic text-slate-400">
+                            EYR Digital · Centro Educacional Ernesto Yáñez Rivera · Huechuraba
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
