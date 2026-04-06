@@ -165,30 +165,47 @@ export default function VistaPrevia({ evaluacion }) {
             // Pixeles de canvas equivalentes a una página de contenido
             const sliceH_px = Math.round(sliceH_mm * canvas.width / contentW);
 
-            // Detecta el corte más blanco dentro de ±15% del sliceH
-            // para evitar cortar en medio de una pregunta
-            const findWhiteRow = (targetY) => {
+            // Detecta el mejor punto de corte dentro de ±15% del sliceH.
+            // Busca la CORRIDA MÁS LARGA de filas blancas consecutivas,
+            // que corresponde a gaps entre preguntas (≥12px) y no a los
+            // micro-espacios entre alternativas (2px). Corta en el centro
+            // de esa corrida para no partir listas de alternativas.
+            const findBestCut = (targetY) => {
                 const ctx    = canvas.getContext('2d');
                 const search = Math.round(sliceH_px * 0.15);
                 const from   = Math.max(targetY - search, 0);
                 const to     = Math.min(targetY + search, canvas.height - 1);
-                let best = targetY, bestScore = -1;
-                for (let y = from; y <= to; y += 2) {
+                const minWhite = Math.round(canvas.width * 0.92); // umbral "fila blanca"
+
+                let bestMid = targetY, bestLen = 0;
+                let runStart = -1, runLen = 0;
+
+                for (let y = from; y <= to; y++) {
                     const data = ctx.getImageData(0, y, canvas.width, 1).data;
-                    let white = 0;
+                    let w = 0;
                     for (let i = 0; i < data.length; i += 4) {
-                        if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) white++;
+                        if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) w++;
                     }
-                    if (white > bestScore) { bestScore = white; best = y; }
+                    if (w >= minWhite) {
+                        if (runStart < 0) runStart = y;
+                        runLen++;
+                    } else {
+                        if (runLen > bestLen) {
+                            bestLen = runLen;
+                            bestMid = runStart + Math.floor(runLen / 2);
+                        }
+                        runStart = -1; runLen = 0;
+                    }
                 }
-                return best;
+                if (runLen > bestLen) bestMid = runStart + Math.floor(runLen / 2);
+                return bestMid;
             };
 
             // Calcular todos los puntos de corte
             const cuts = [];
             let pos = 0;
             while (pos + sliceH_px < canvas.height) {
-                const cut = findWhiteRow(pos + sliceH_px);
+                const cut = findBestCut(pos + sliceH_px);
                 cuts.push(cut);
                 pos = cut;
             }
