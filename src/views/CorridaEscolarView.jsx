@@ -171,7 +171,7 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
             doc.text(subtitle.trim(), cx, textY, { align: 'center', maxWidth: bibW - 10 });
         }
 
-        // Número
+        // Número — centrado visual (baseline = centro_área + capHeight/2)
         const numStr = formatNum(n, end);
         const fillRatio = nameMode ? 0.65 : 0.82;
         const nameReserve = nameMode ? 32 : 0;
@@ -179,7 +179,11 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         doc.setFont(fNum, fNumSt);
         doc.setFontSize(fs);
         doc.setTextColor(10, 15, 50);
-        const numCenterY = by + numAreaY + (numAreaH - nameReserve) * 0.58;
+        const areaTop     = by + numAreaY;
+        const areaBot     = by + bibH - nameReserve;
+        const areaMid     = (areaTop + areaBot) / 2;
+        const capHeightMm = fs * 0.3528 * 0.72;   // pt → mm × ratio cap-height
+        const numCenterY  = areaMid + capHeightMm / 2;
         doc.text(numStr, bx + bibW / 2, numCenterY, { align: 'center' });
 
         // Nombre + curso (solo modo nombres)
