@@ -112,7 +112,7 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     const bibH = (pageH - mY * 2 - (perPage - 1) * 8) / perPage;
 
     // Header adaptativo según espacio disponible
-    const headerH  = bibH < 80 ? 24 : 38;
+    const headerH  = bibH < 80 ? 26 : 48;
     const numAreaY = headerH + 4;
     const numAreaH = bibH - numAreaY;
 
@@ -149,12 +149,17 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
 
         let textY = by + logoSize + 7;
 
-        // Título centrado
+        // Título — escala al ancho completo del letrero
+        const titleMaxFs = bibH < 80 ? 16 : 38;
+        const titleFs = Math.min(
+            fitFontSize(doc, title.toUpperCase(), bibW, fText, 'bold', 0.92),
+            titleMaxFs
+        );
         doc.setFont(fText, 'bold');
-        doc.setFontSize(bibH < 80 ? 10 : 13);
+        doc.setFontSize(titleFs);
         doc.setTextColor(12, 18, 55);
-        doc.text(title.toUpperCase(), cx, textY, { align: 'center', maxWidth: bibW - 10 });
-        textY += bibH < 80 ? 5 : 6;
+        doc.text(title.toUpperCase(), cx, textY, { align: 'center' });
+        textY += titleFs * 0.3528 * 0.72 + 3;   // cap-height + margen
 
         // Colegio centrado
         doc.setFont(fText, 'normal');
