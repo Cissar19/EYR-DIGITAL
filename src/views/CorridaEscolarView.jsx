@@ -6,6 +6,48 @@ import logoUrl from '../assets/logo_eyr_pdf.jpeg';
 
 const SCHOOL_NAME = 'Centro Educacional Ernesto Yañez Rivera';
 
+// ── Fuentes Montserrat desde jsDelivr (CORS abierto) ──
+const FONT_BASE = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/montserrat/static/';
+let _fontCache = null;
+let _fontLoadPromise = null;
+
+async function _ab2b64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const CHUNK = 8192;
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += CHUNK)
+        bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    return btoa(bin);
+}
+
+async function _fetchFont(file) {
+    const res = await fetch(FONT_BASE + file);
+    if (!res.ok) throw new Error(`font 404: ${file}`);
+    return _ab2b64(await res.arrayBuffer());
+}
+
+async function loadFonts() {
+    if (_fontCache) return _fontCache;
+    if (_fontLoadPromise) return _fontLoadPromise;
+    _fontLoadPromise = Promise.all([
+        _fetchFont('Montserrat-Bold.ttf'),
+        _fetchFont('Montserrat-SemiBold.ttf'),
+        _fetchFont('Montserrat-Italic.ttf'),
+        _fetchFont('Montserrat-Black.ttf'),
+    ]).then(([bold, semiBold, italic, black]) => {
+        _fontCache = { bold, semiBold, italic, black };
+        return _fontCache;
+    });
+    return _fontLoadPromise;
+}
+
+function registerFonts(doc, f) {
+    doc.addFileToVFS('Mont-Bold.ttf',     f.bold);    doc.addFont('Mont-Bold.ttf',     'Mont', 'bold');
+    doc.addFileToVFS('Mont-SemiBold.ttf', f.semiBold); doc.addFont('Mont-SemiBold.ttf', 'Mont', 'normal');
+    doc.addFileToVFS('Mont-Italic.ttf',   f.italic);  doc.addFont('Mont-Italic.ttf',   'Mont', 'italic');
+    doc.addFileToVFS('Mont-Black.ttf',    f.black);   doc.addFont('Mont-Black.ttf',    'MontBlack', 'normal');
+}
+
 // ── Cargar logo como base64 ──
 async function loadLogoBase64() {
     try {
@@ -16,22 +58,19 @@ async function loadLogoBase64() {
             reader.onloadend = () => resolve(reader.result);
             reader.readAsDataURL(blob);
         });
-    } catch {
-        return null;
-    }
+    } catch { return null; }
 }
 
-// ── Calcular font size para que el número ocupe ~80% del ancho disponible ──
-function fitFontSize(doc, text, maxWidth) {
+// ── Font size dinámico para el número ──
+function fitFontSize(doc, text, maxWidth, fontName, fontStyle) {
     let fs = 200;
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontName, fontStyle);
     doc.setFontSize(fs);
     const w = doc.getTextWidth(text);
-    const scaled = Math.floor(fs * ((maxWidth * 0.82) / w));
-    return Math.min(scaled, 200);
+    return Math.min(Math.floor(fs * ((maxWidth * 0.82) / w)), 200);
 }
 
-// ── Formatear número con ceros (070 en vez de 70) ──
+// ── Formatear número con ceros ──
 function formatNum(n, maxNum) {
     const digits = String(maxNum).length;
     return String(n).padStart(Math.max(digits, 3), '0');
@@ -40,19 +79,26 @@ function formatNum(n, maxNum) {
 // ── Generar PDF ──
 async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const logo = await loadLogoBase64();
+    const [logo, fonts] = await Promise.allSettled([loadLogoBase64(), loadFonts()]);
 
-    const pageW = 210;
-    const pageH = 297;
-    const marginX = 8;
-    const marginY = 8;
-    const bibW = pageW - marginX * 2;            // 194mm
-    const bibH = (pageH - marginY * 2 - (perPage - 1) * 8) / perPage;
+    const logoData = logo.status === 'fulfilled' ? logo.value : null;
+    const hasFonts  = fonts.status === 'fulfilled';
+    if (hasFonts) registerFonts(doc, fonts.value);
 
-    const headerH = 30;     // altura del header
-    const dividerY  = headerH + 2;
-    const numAreaY  = dividerY + 4;
-    const numAreaH  = bibH - numAreaY;
+    // Aliases de fuente (fallback a helvetica si la red falló)
+    const fText   = hasFonts ? 'Mont'      : 'helvetica';
+    const fNum    = hasFonts ? 'MontBlack' : 'helvetica';
+    const fNumSt  = hasFonts ? 'normal'    : 'bold';
+
+    const pageW = 210, pageH = 297;
+    const mX = 8, mY = 8;
+    const bibW = pageW - mX * 2;
+    const bibH = (pageH - mY * 2 - (perPage - 1) * 8) / perPage;
+
+    const headerH = 28;
+    const dividerY = headerH + 2;
+    const numAreaY = dividerY + 4;
+    const numAreaH = bibH - numAreaY;
 
     const end = startNum + total - 1;
     let slot = 0;
@@ -60,68 +106,68 @@ async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
     for (let n = startNum; n <= end; n++) {
         if (slot > 0 && slot % perPage === 0) doc.addPage();
 
-        const rowInPage = slot % perPage;
-        const bx = marginX;
-        const by = marginY + rowInPage * (bibH + 8);
+        const row = slot % perPage;
+        const bx  = mX;
+        const by  = mY + row * (bibH + 8);
 
-        // ── Fondo blanco ──
+        // Fondo blanco
         doc.setFillColor(255, 255, 255);
         doc.rect(bx, by, bibW, bibH, 'F');
 
-        // ── Borde fino ──
-        doc.setDrawColor(200, 210, 230);
+        // Borde sutil
+        doc.setDrawColor(210, 218, 235);
         doc.setLineWidth(0.3);
         doc.rect(bx, by, bibW, bibH, 'S');
 
-        // ── Logo ──
-        const logoSize = 16;
+        // Logo
+        const logoSize = 15;
         const logoX = bx + 6;
         const logoY = by + (headerH - logoSize) / 2;
-        if (logo) {
-            try { doc.addImage(logo, 'JPEG', logoX, logoY, logoSize, logoSize); } catch { /* */ }
+        if (logoData) {
+            try { doc.addImage(logoData, 'JPEG', logoX, logoY, logoSize, logoSize); } catch { /* */ }
         }
 
-        // ── Título del evento ──
         const textX = logoX + logoSize + 5;
-        const textW  = bibW - logoSize - 14;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(15, 20, 60);
-        doc.text(title.toUpperCase(), textX, by + 10, { maxWidth: textW });
+        const textW = bibW - logoSize - 14;
 
-        // ── Nombre del colegio ──
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(50, 60, 90);
-        doc.text(SCHOOL_NAME, textX, by + 18, { maxWidth: textW });
+        // Título del evento
+        doc.setFont(fText, 'bold');
+        doc.setFontSize(12.5);
+        doc.setTextColor(12, 18, 55);
+        doc.text(title.toUpperCase(), textX, by + 9.5, { maxWidth: textW });
 
-        // ── Subtítulo en cursiva ──
+        // Nombre del colegio
+        doc.setFont(fText, 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(55, 65, 95);
+        doc.text(SCHOOL_NAME, textX, by + 17, { maxWidth: textW });
+
+        // Subtítulo
         if (subtitle.trim()) {
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 110, 140);
-            doc.text(subtitle.trim(), textX, by + 26, { maxWidth: textW });
+            doc.setFont(fText, 'italic');
+            doc.setFontSize(7.5);
+            doc.setTextColor(105, 115, 145);
+            doc.text(subtitle.trim(), textX, by + 24, { maxWidth: textW });
         }
 
-        // ── Línea divisora ──
-        doc.setDrawColor(210, 220, 240);
-        doc.setLineWidth(0.4);
+        // Línea divisora
+        doc.setDrawColor(215, 222, 240);
+        doc.setLineWidth(0.35);
         doc.line(bx + 4, by + dividerY, bx + bibW - 4, by + dividerY);
 
-        // ── Número ──
+        // Número
         const numStr = formatNum(n, end);
-        const fs = fitFontSize(doc, numStr, bibW);
-        doc.setFont('helvetica', 'bold');
+        const fs = fitFontSize(doc, numStr, bibW, fNum, fNumSt);
+        doc.setFont(fNum, fNumSt);
         doc.setFontSize(fs);
         doc.setTextColor(10, 15, 50);
-        // Centro vertical del área del número
         const numCenterY = by + numAreaY + numAreaH * 0.62;
         doc.text(numStr, bx + bibW / 2, numCenterY, { align: 'center' });
 
         slot++;
     }
 
-    doc.save(`corrida-${startNum}-${end}.pdf`);
+    doc.save(`corrida-${formatNum(startNum, end)}-${formatNum(end, end)}.pdf`);
 }
 
 // ── Opciones de layout ──
@@ -132,11 +178,11 @@ const LAYOUTS = [
 ];
 
 export default function CorridaEscolarView() {
-    const [total,     setTotal]     = useState(100);
-    const [startNum,  setStartNum]  = useState(1);
-    const [title,     setTitle]     = useState('Primera Corrida Escolar');
-    const [subtitle,  setSubtitle]  = useState('Celebrando el Día Mundial de la Actividad Física');
-    const [layoutId,  setLayoutId]  = useState('2');
+    const [total,      setTotal]      = useState(100);
+    const [startNum,   setStartNum]   = useState(1);
+    const [title,      setTitle]      = useState('Primera Corrida Escolar');
+    const [subtitle,   setSubtitle]   = useState('Celebrando el Día Mundial de la Actividad Física');
+    const [layoutId,   setLayoutId]   = useState('2');
     const [generating, setGenerating] = useState(false);
 
     const layout = LAYOUTS.find(l => l.id === layoutId);
