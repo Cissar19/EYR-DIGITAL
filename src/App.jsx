@@ -38,6 +38,7 @@ import ControlSanoView from './views/ControlSanoView';
 import FichaClap from './views/FichaClap';
 import AtencionDiariaView from './views/AtencionDiariaView';
 import EnfermeriaResumenView from './views/EnfermeriaResumenView';
+import CorridaEscolarView from './views/CorridaEscolarView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -224,6 +225,7 @@ export default function App() {
           <Route path="/admin/teacher-hours" element={<PermissionGate moduleKey="teacher_hours"><TeacherHoursView /></PermissionGate>} />
           <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
           <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
+          <Route path="/corrida-escolar" element={<PermissionGate moduleKey="corrida_escolar"><CorridaEscolarView /></PermissionGate>} />
           <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
           <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />

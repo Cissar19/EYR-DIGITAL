@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag
 } from 'lucide-react';
 
 /**
@@ -206,6 +206,15 @@ export const MODULE_REGISTRY = [
         path: '/admin/stats',
         category: 'role_specific',
         defaultRoles: [...MANAGEMENT],
+    },
+    {
+        key: 'corrida_escolar',
+        name: 'Corrida Escolar',
+        icon: Flag,
+        path: '/corrida-escolar',
+        category: 'role_specific',
+        group: 'administracion',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
     },
     {
         key: 'permissions',
