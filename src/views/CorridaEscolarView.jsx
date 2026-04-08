@@ -188,17 +188,31 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
 
         // Nombre + curso (solo modo nombres)
         if (nameMode && name) {
+            // Nombre
             const nameFontSize = fitNameFontSize(doc, name.toUpperCase(), bibW - 16, fText);
             doc.setFont(fText, 'bold');
             doc.setFontSize(nameFontSize);
             doc.setTextColor(10, 15, 50);
-            doc.text(name.toUpperCase(), bx + bibW / 2, by + bibH - 19, { align: 'center' });
+            doc.text(name.toUpperCase(), bx + bibW / 2, by + bibH - 20, { align: 'center' });
 
+            // Curso — pill con fondo oscuro y texto blanco Montserrat Bold
             if (curso) {
-                doc.setFont(fText, 'normal');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 110, 145);
-                doc.text(curso, bx + bibW / 2, by + bibH - 10, { align: 'center' });
+                const cursoLabel = curso.toUpperCase();
+                doc.setFont(fText, 'bold');
+                doc.setFontSize(9);
+                const tw       = doc.getTextWidth(cursoLabel);
+                const pillPadX = 5;
+                const pillPadY = 2.2;
+                const pillH    = 9 * 0.3528 + pillPadY * 2;   // ~5.4mm
+                const pillW    = tw + pillPadX * 2;
+                const pillX    = bx + bibW / 2 - pillW / 2;
+                const pillY    = by + bibH - 4 - pillH;
+
+                doc.setFillColor(12, 18, 55);
+                doc.roundedRect(pillX, pillY, pillW, pillH, 2, 2, 'F');
+
+                doc.setTextColor(255, 255, 255);
+                doc.text(cursoLabel, bx + bibW / 2, pillY + pillH - pillPadY, { align: 'center' });
             }
         }
     }
