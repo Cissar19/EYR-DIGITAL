@@ -38,7 +38,7 @@ import { useMedicalLeaves } from '../context/MedicalLeavesContext';
 import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import UserDetailPanel from './UserDetailPanel';
-import { exportAbsencesPDF } from '../lib/pdfExport';
+import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -198,8 +198,6 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { users } = useAuth();
-    const { schedules } = useSchedule();
-    const { logs } = useReplacementLogs();
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDay, setSelectedDay] = useState(null);
     const [showConsolidado, setShowConsolidado] = useState(false);
@@ -320,94 +318,23 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
         return Array.from(byUser.values()).sort((a, b) => a.userName.localeCompare(b.userName));
     }, [weekOffset, requests, leaves, users]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Compute replacement data for PDF export (mirrors ReplacementsCard logic)
-    const pdfReplacementData = useMemo(() => {
-        if (!selectedDay) return null;
-        const targetStr = selectedDay;
-        const d = new Date(targetStr + 'T12:00:00');
-        const dayName = DAY_NAMES_FULL[d.getDay()];
-
-        const absentMap = new Map();
-        requests
-            .filter(r => (r.status === 'approved' || r.status === 'pending') && r.date === targetStr && r.type !== 'discount' && r.type !== 'hour_return')
-            .forEach(r => {
-                let typeLabel = r.isHalfDay ? (r.isHalfDay === 'am' ? '½ AM' : r.isHalfDay === 'pm' ? '½ PM' : '½ Día Admin.') : 'Día Admin.';
-                if (r.type === 'hour_permission') typeLabel = 'Permiso Horas';
-                if (!absentMap.has(r.userId)) {
-                    absentMap.set(r.userId, { userId: r.userId, userName: r.userName, typeLabel });
-                }
+    const handleExportPDF = async () => {
+        try {
+            const d = new Date(selectedDay + 'T12:00:00');
+            const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const dateLabel = `${dayNames[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+            await exportWeeklyAbsencesPDF({
+                weekLabel,
+                weekDays,
+                weekConsolidado,
+                dateLabel,
+                dateStr: selectedDay,
+                groupedAbsences: grouped,
             });
-        leaves
-            .filter(l => l.startDate && l.endDate && targetStr >= l.startDate && targetStr <= l.endDate)
-            .forEach(l => {
-                if (!absentMap.has(l.userId)) {
-                    absentMap.set(l.userId, { userId: l.userId, userName: l.userName, typeLabel: 'Licencia Médica' });
-                }
-            });
-        if (absentMap.size === 0) return null;
-        const absentIds = new Set(absentMap.keys());
-
-        const busyByUser = {};
-        for (const [uid, blocks] of Object.entries(schedules)) {
-            if (!blocks) continue;
-            busyByUser[uid] = new Set(blocks.filter(b => b.day === dayName).map(b => b.startTime));
+        } catch (err) {
+            console.error('Error al exportar PDF:', err);
+            toast.error('No se pudo generar el PDF');
         }
-        logs.filter(l => l.date === targetStr).forEach(l => {
-            if (!busyByUser[l.replacementId]) busyByUser[l.replacementId] = new Set();
-            busyByUser[l.replacementId].add(l.startTime);
-        });
-
-        const teacherSections = [];
-        let totalUncovered = 0;
-        for (const absent of absentMap.values()) {
-            const userBlocks = (schedules[absent.userId] || [])
-                .filter(b => b.day === dayName && b.startTime !== '08:00');
-            if (userBlocks.length === 0) continue;
-            const blockDetails = [];
-            for (const block of userBlocks) {
-                totalUncovered++;
-                const schedBlock = SCHEDULE_BLOCKS.find(sb => sb.start === block.startTime);
-                const timeLabel = schedBlock ? schedBlock.start : block.startTime;
-                const candidates = [];
-                for (const u of users) {
-                    if (absentIds.has(u.id) || u.id === absent.userId) continue;
-                    const eligible = u.canReplace !== undefined ? u.canReplace : u.role === 'teacher';
-                    if (!eligible) continue;
-                    const userBusy = busyByUser[u.id];
-                    if (userBusy && userBusy.has(block.startTime)) continue;
-                    const userSubjects = new Set((schedules[u.id] || []).map(b => b.subject).filter(Boolean));
-                    let matchLevel = 'available';
-                    let matchSubject = null;
-                    if (block.subject && userSubjects.has(block.subject)) {
-                        matchLevel = 'exact'; matchSubject = block.subject;
-                    } else if (block.subject && RELATED_SUBJECTS[block.subject]) {
-                        for (const rel of RELATED_SUBJECTS[block.subject]) {
-                            if (userSubjects.has(rel)) { matchLevel = 'related'; matchSubject = rel; break; }
-                        }
-                    }
-                    candidates.push({ userId: u.id, name: u.name, firstName: u.name.split(' ')[0], matchLevel, matchSubject });
-                }
-                const order = { exact: 0, related: 1, available: 2 };
-                candidates.sort((a, b) => order[a.matchLevel] - order[b.matchLevel]);
-                blockDetails.push({ startTime: timeLabel, subject: block.subject, course: block.course, candidates });
-            }
-            if (blockDetails.length > 0) teacherSections.push({ ...absent, blocks: blockDetails });
-        }
-        if (teacherSections.length === 0) return null;
-        return { teacherSections, totalUncovered };
-    }, [selectedDay, requests, leaves, schedules, users, logs]);
-
-    const handleExportPDF = () => {
-        const d = new Date(selectedDay + 'T12:00:00');
-        const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const dateLabel = `${dayNames[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-        exportAbsencesPDF({
-            dateLabel,
-            dateStr: selectedDay,
-            groupedAbsences: grouped,
-            replacementData: pdfReplacementData,
-            logs,
-        });
     };
 
     return (

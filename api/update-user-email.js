@@ -49,18 +49,16 @@ export default async function handler(req, res) {
         const decoded = await admin.auth().verifyIdToken(idToken);
         const callerUid = decoded.uid;
 
-        // Check caller's role in Firestore
-        const callerDoc = await admin.firestore()
-            .collection('users')
-            .where('uid', '==', callerUid)
-            .limit(1)
-            .get();
-
-        if (callerDoc.empty) {
-            return res.status(403).json({ error: 'Usuario no encontrado en Firestore' });
+        // Use custom claim if available, fall back to Firestore for users without claims yet
+        let callerRole = decoded.role;
+        if (!callerRole) {
+            const callerDoc = await admin.firestore().doc(`users/${callerUid}`).get();
+            if (!callerDoc.exists) {
+                return res.status(403).json({ error: 'Usuario no encontrado en Firestore' });
+            }
+            callerRole = callerDoc.data().role;
         }
 
-        const callerRole = callerDoc.docs[0].data().role;
         if (callerRole !== 'super_admin' && callerRole !== 'admin') {
             return res.status(403).json({ error: 'No tienes permisos para cambiar correos' });
         }

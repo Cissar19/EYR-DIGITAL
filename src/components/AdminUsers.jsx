@@ -1,16 +1,23 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
+import { db } from '../lib/firebase';
+import {
+    collection, query, where, orderBy, limit,
+    startAfter, getDocs,
+} from 'firebase/firestore';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ModalContainer from './ModalContainer';
 
+const PAGE_FETCH_SIZE = 100; // Firestore batch size — keeps queries fast and bounded
+
 export default function AdminUsers() {
-    const { user: currentUser, users: MOCK_USERS, addUser, updateUser, deleteUser, resetPassword, setUserPassword } = useAuth();
-    const { roleDefaults } = usePermissions();
+    const { user: currentUser, addUser, updateUser, deleteUser, resetPassword, setUserPassword } = useAuth();
+    const { roleDefaults, customRoles, getRoleLabelDynamic } = usePermissions();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isEditAttributesOpen, setIsEditAttributesOpen] = useState(false);
@@ -42,11 +49,47 @@ export default function AdminUsers() {
         return password;
     };
 
+    // Local paginated users list — loaded directly from Firestore
+    const [MOCK_USERS, setMockUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [lastCursor, setLastCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+
     // Search, Filter & Pagination State
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 6;
+
+    const loadUsers = useCallback(async (cursor = null, append = false) => {
+        setUsersLoading(true);
+        try {
+            const constraints = [orderBy('name'), limit(PAGE_FETCH_SIZE + 1)];
+            if (roleFilter !== 'all') {
+                constraints.unshift(where('role', '==', roleFilter));
+            }
+            if (cursor) {
+                constraints.push(startAfter(cursor));
+            }
+            const snapshot = await getDocs(query(collection(db, 'users'), ...constraints));
+            const docs = snapshot.docs;
+            const fetched = docs.slice(0, PAGE_FETCH_SIZE).map(d => ({ id: d.id, ...d.data() }));
+            setHasMore(docs.length > PAGE_FETCH_SIZE);
+            setLastCursor(docs[PAGE_FETCH_SIZE - 1] ?? null);
+            setMockUsers(prev => append ? [...prev, ...fetched] : fetched);
+        } catch (err) {
+            console.error('Error cargando usuarios:', err);
+        } finally {
+            setUsersLoading(false);
+        }
+    }, [roleFilter]);
+
+    // Reload when role filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+        setLastCursor(null);
+        loadUsers(null, false);
+    }, [loadUsers]);
 
     const openCreateModal = () => {
         setEditingUserId(null);
@@ -92,10 +135,12 @@ export default function AdminUsers() {
             if (editingUserId) {
                 await updateUser(editingUserId, { ...submitData, permissionOverrides: permOverrides });
                 setNotification('Usuario actualizado correctamente');
+                loadUsers(null, false);
             } else {
                 const result = await addUser(submitData);
                 setTempPasswordData({ name: formData.name, email: formData.email, tempPassword: result.tempPassword });
                 setCopiedPassword(false);
+                loadUsers(null, false);
             }
 
             setIsModalOpen(false);
@@ -140,6 +185,7 @@ export default function AdminUsers() {
                 await deleteUser(userToDelete.id);
                 setNotification('Usuario eliminado');
                 setTimeout(() => setNotification(null), 3000);
+                loadUsers(null, false);
             } catch (error) {
                 setNotification('Error: ' + error.message);
                 setTimeout(() => setNotification(null), 5000);
@@ -230,10 +276,10 @@ export default function AdminUsers() {
                 };
             default:
                 return {
-                    bgColor: 'bg-slate-100',
-                    textColor: 'text-slate-500',
-                    label: getRoleLabel(role),
-                    icon: User
+                    bgColor: 'bg-violet-100',
+                    textColor: 'text-violet-600',
+                    label: getRoleLabelDynamic(role),
+                    icon: Tag
                 };
         }
     };
@@ -267,10 +313,8 @@ export default function AdminUsers() {
         { value: ROLES.PIE, label: 'PIE', icon: HeartHandshake, color: 'cyan' },
     ];
 
-    // Only show filter options for roles that exist in the team
-    const availableRoleFilters = ROLE_FILTERS.filter(
-        rf => rf.value === 'all' || allUsers.some(u => u.role === rf.value)
-    );
+    // Show all role filters — we no longer scan the full user list to derive available roles
+    const availableRoleFilters = ROLE_FILTERS;
 
     // Filter Logic with accent-insensitive search + role filter
     const filteredUsers = sortedUsers.filter(u => {
@@ -315,7 +359,7 @@ export default function AdminUsers() {
                         <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
                             Equipo EYR
                             <span className="ml-2 px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider border border-indigo-100">
-                                {allUsers.length} Miembros
+                                {MOCK_USERS.length}{hasMore ? '+' : ''} Miembros
                             </span>
                         </h1>
                     </div>
@@ -412,7 +456,12 @@ export default function AdminUsers() {
             </AnimatePresence>
 
             {/* Users Grid */}
-            {currentUsers.length > 0 ? (
+            {usersLoading && MOCK_USERS.length === 0 && (
+                <div className="flex justify-center items-center py-20 text-slate-400">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+            )}
+            {!usersLoading && currentUsers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {currentUsers.map(u => (
                         <motion.div
@@ -604,6 +653,20 @@ export default function AdminUsers() {
                 </div>
             )}
 
+            {/* Load more from Firestore when there are more results */}
+            {hasMore && !searchTerm && (
+                <div className="flex justify-center mt-6">
+                    <button
+                        onClick={() => loadUsers(lastCursor, true)}
+                        disabled={usersLoading}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-all disabled:opacity-50"
+                    >
+                        {usersLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronDown className="w-4 h-4" />}
+                        Cargar más usuarios
+                    </button>
+                </div>
+            )}
+
             {/* Create/Edit Modal */}
             <AnimatePresence>
                 {isModalOpen && (
@@ -742,6 +805,21 @@ export default function AdminUsers() {
                                             <HeartHandshake className="w-4 h-4" />
                                             PIE
                                         </button>
+                                        {/* Custom roles */}
+                                        {customRoles.map(cr => (
+                                            <button
+                                                key={cr.key}
+                                                type="button"
+                                                onClick={() => { setFormData({ ...formData, role: cr.key }); setPermOverrides({}); }}
+                                                className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                    ${formData.role === cr.key
+                                                        ? 'bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                <Tag className="w-4 h-4" />
+                                                {cr.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
@@ -817,19 +895,27 @@ export default function AdminUsers() {
                                                             </button>
                                                         )}
                                                         {MODULE_REGISTRY.map(mod => {
-                                                            // Compute resolved value using the form's current role + overrides
                                                             const fakeUser = { role: formData.role, permissionOverrides: permOverrides };
                                                             const resolved = resolvePermissions(fakeUser, roleDefaults);
-                                                            const value = resolved[mod.key];
+                                                            const value = resolved[mod.key]; // false | 'view' | 'edit'
                                                             const isOverride = permOverrides[mod.key] !== undefined;
 
-                                                            // Compute role-level value (without user overrides)
+                                                            // Role-level value (layers 1+2, no user overrides)
                                                             const roleValue = (() => {
-                                                                let v = mod.defaultRoles === null ? true : mod.defaultRoles.includes(formData.role);
+                                                                let v = mod.defaultRoles === null ? 'edit' : (mod.defaultRoles.includes(formData.role) ? 'edit' : false);
                                                                 const ro = roleDefaults[formData.role]?.modules?.[mod.key];
-                                                                if (ro !== undefined) v = ro;
+                                                                if (ro !== undefined) v = ro === true ? 'edit' : ro === false ? false : ro;
                                                                 return v;
                                                             })();
+
+                                                            const nextVal = (cur) => { if (!cur) return 'view'; if (cur === 'view') return 'edit'; return false; };
+
+                                                            const pillStyles = {
+                                                                false: 'bg-slate-100 text-slate-400',
+                                                                view: 'bg-amber-50 text-amber-600 ring-1 ring-amber-300',
+                                                                edit: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-400',
+                                                            };
+                                                            const pillLabel = { false: '—', view: 'Ver', edit: 'Editar' };
 
                                                             return (
                                                                 <div key={mod.key} className="flex items-center justify-between py-1.5">
@@ -843,21 +929,18 @@ export default function AdminUsers() {
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => {
+                                                                            const newVal = nextVal(value);
                                                                             const newOverrides = { ...permOverrides };
-                                                                            const newValue = !value;
-                                                                            if (newValue === roleValue) {
+                                                                            if (newVal === roleValue) {
                                                                                 delete newOverrides[mod.key];
                                                                             } else {
-                                                                                newOverrides[mod.key] = newValue;
+                                                                                newOverrides[mod.key] = newVal;
                                                                             }
                                                                             setPermOverrides(newOverrides);
                                                                         }}
-                                                                        className={`w-9 h-5 rounded-full transition-colors relative inline-flex items-center
-                                                                            ${value ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                                        className={`px-2 py-0.5 rounded-full text-xs font-bold transition-all ${pillStyles[value || false]}`}
                                                                     >
-                                                                        <span className={`inline-block w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform
-                                                                            ${value ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}
-                                                                        />
+                                                                        {pillLabel[value || false]}
                                                                     </button>
                                                                 </div>
                                                             );

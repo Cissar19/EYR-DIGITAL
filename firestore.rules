@@ -11,7 +11,12 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      // Custom claim is set on login and kept in sync by /api/sync-role-claim.
+      // Fall back to a Firestore read for users who were created before claims
+      // were introduced (claim will be missing, not null).
+      return request.auth.token.role != null
+        ? request.auth.token.role
+        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isAdmin() {
@@ -272,6 +277,14 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isManagement();
       allow create, update: if isAuthenticated() && isManagement();
       allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ============================================
+    // CUSTOM ROLES
+    // ============================================
+    match /roles/{roleKey} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
     }
 
     // ============================================

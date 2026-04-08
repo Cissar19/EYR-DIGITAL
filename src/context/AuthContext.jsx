@@ -18,8 +18,6 @@ import {
     setDoc,
     updateDoc,
     deleteDoc,
-    query,
-    where
 } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -128,22 +126,27 @@ export const AuthProvider = ({ children }) => {
             if (firebaseUser) {
                 setLoading(true);
                 try {
-                    // Fetch user profile from Firestore
-                    const q = query(collection(db, 'users'), where('uid', '==', firebaseUser.uid));
-                    const snapshot = await getDocs(q);
+                    // Direct document read — uid is the Firestore doc id, no query needed
+                    const profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
 
-                    if (!snapshot.empty) {
-                        const profileDoc = snapshot.docs[0];
+                    if (profileDoc.exists()) {
                         const profile = { id: profileDoc.id, ...profileDoc.data() };
                         setUser(profile);
+
+                        // Only load full user list for management roles — teacher/staff/printer
+                        // don't need it and loading 15k users on login doesn't scale.
+                        const managementRoles = [
+                            'super_admin', 'admin', 'director', 'utp_head',
+                            'inspector', 'convivencia_head', 'convivencia',
+                        ];
+                        if (managementRoles.includes(profile.role)) {
+                            await fetchUsers();
+                        }
                     } else {
                         // User exists in Auth but not in Firestore — unusual
                         console.warn('Auth user has no Firestore profile:', firebaseUser.uid);
                         setUser(null);
                     }
-
-                    // Fetch all users for admin views
-                    await fetchUsers();
                 } catch (error) {
                     console.error('Error fetching user profile:', error);
                     setUser(null);
@@ -242,6 +245,24 @@ export const AuthProvider = ({ children }) => {
 
             await setDoc(doc(db, 'users', uid), userDoc);
 
+            // Set custom claim so security rules don't need a Firestore read per operation
+            try {
+                const firebaseUser = auth.currentUser;
+                if (firebaseUser) {
+                    const idToken = await firebaseUser.getIdToken();
+                    await fetch('/api/sync-role-claim', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${idToken}`,
+                        },
+                        body: JSON.stringify({ uid, role: newUserData.role }),
+                    });
+                }
+            } catch (claimErr) {
+                console.warn('No se pudo sincronizar claim de rol (no crítico):', claimErr);
+            }
+
             // Sign out from secondary app
             await signOut(secondaryAuth);
 
@@ -314,6 +335,26 @@ export const AuthProvider = ({ children }) => {
                             throw new Error(data.error || 'Error al actualizar correo en Authentication');
                         }
                     }
+                }
+            }
+
+            // Sync role claim if role changed
+            if (safeFields.role) {
+                try {
+                    const firebaseUser = auth.currentUser;
+                    if (firebaseUser) {
+                        const idToken = await firebaseUser.getIdToken();
+                        await fetch('/api/sync-role-claim', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${idToken}`,
+                            },
+                            body: JSON.stringify({ uid: userId, role: safeFields.role }),
+                        });
+                    }
+                } catch (claimErr) {
+                    console.warn('No se pudo sincronizar claim de rol (no crítico):', claimErr);
                 }
             }
 

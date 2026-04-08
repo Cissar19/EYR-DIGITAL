@@ -19,8 +19,10 @@ function initAdmin() {
     });
 }
 
+// Accept any snake_case role key (hardcoded + custom roles created by admins)
+const ROLE_FORMAT = /^[a-z][a-z0-9_]{0,49}$/;
+
 export default async function handler(req, res) {
-    // Always return JSON
     res.setHeader('Content-Type', 'application/json');
 
     if (req.method !== 'POST') {
@@ -40,52 +42,35 @@ export default async function handler(req, res) {
     }
 
     const idToken = authHeader.split('Bearer ')[1];
-    const { uid, newPassword } = req.body || {};
+    const { uid, role } = req.body || {};
 
-    if (!uid || !newPassword) {
-        return res.status(400).json({ error: 'Faltan campos requeridos (uid, newPassword)' });
+    if (!uid || !role) {
+        return res.status(400).json({ error: 'Faltan campos requeridos (uid, role)' });
     }
 
-    if (newPassword.length < 6) {
-        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (!ROLE_FORMAT.test(role)) {
+        return res.status(400).json({ error: `Formato de rol inválido: ${role}` });
     }
 
     try {
-        // Verify the caller's ID token
         const decoded = await admin.auth().verifyIdToken(idToken);
-        const callerUid = decoded.uid;
 
         // Use custom claim if available, fall back to Firestore for users without claims yet
         let callerRole = decoded.role;
         if (!callerRole) {
-            const callerDoc = await admin.firestore().doc(`users/${callerUid}`).get();
-            if (!callerDoc.exists) {
-                return res.status(403).json({ error: 'Usuario no encontrado en Firestore' });
-            }
-            callerRole = callerDoc.data().role;
+            const callerDoc = await admin.firestore().doc(`users/${decoded.uid}`).get();
+            callerRole = callerDoc.exists ? callerDoc.data().role : null;
         }
 
         if (callerRole !== 'super_admin' && callerRole !== 'admin') {
-            return res.status(403).json({ error: 'No tienes permisos para cambiar contraseñas' });
+            return res.status(403).json({ error: 'No tienes permisos para modificar roles' });
         }
 
-        // Update the target user's password in Firebase Auth
-        await admin.auth().updateUser(uid, { password: newPassword });
-
-        // Save reference in Firestore on the target user's doc (direct read by uid)
-        const targetRef = admin.firestore().doc(`users/${uid}`);
-        const targetDoc = await targetRef.get();
-        if (targetDoc.exists) {
-            await targetRef.update({
-                lastSetPassword: newPassword,
-                passwordSetAt: new Date().toISOString(),
-                passwordSetBy: callerUid,
-            });
-        }
+        await admin.auth().setCustomUserClaims(uid, { role });
 
         return res.status(200).json({ success: true });
     } catch (error) {
-        console.error('Error setting user password:', error);
+        console.error('Error syncing role claim:', error);
 
         if (error.code === 'auth/user-not-found') {
             return res.status(404).json({ error: 'Usuario no encontrado en Authentication' });

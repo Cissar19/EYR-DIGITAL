@@ -947,6 +947,473 @@ export function exportAbsencesPDF({ dateLabel, dateStr, groupedAbsences, replace
 }
 
 // ============================================
+// AUSENCIAS SEMANALES — Con logo y consolidado
+// ============================================
+
+/**
+ * Exports weekly absences (consolidado) + selected day detail as a styled PDF.
+ *
+ * @param {Object} params
+ * @param {string} params.weekLabel       - e.g. "Semana del 7 al 11 de Abril 2026"
+ * @param {Array}  params.weekDays        - [{ dateStr, date, dayNum, dayName }]
+ * @param {Array}  params.weekConsolidado - [{ userId, userName, roleLabel, days: {dateStr: absence} }]
+ * @param {string} params.dateLabel       - e.g. "Lunes 7 de Abril 2026"
+ * @param {string} params.dateStr         - e.g. "2026-04-07"
+ * @param {Object} params.groupedAbsences - { [typeLabel]: absenceItem[] }
+ */
+export async function exportWeeklyAbsencesPDF({ weekLabel, weekDays, weekConsolidado, dateLabel, dateStr, groupedAbsences }) {
+    const logoDataUrl = await loadImageAsDataUrl(logoEyrUrl);
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const mL = 14, mR = 14, mBot = 16;
+    const cW = pageW - mL - mR;
+
+    // ── Palette ──
+    const I900  = [30, 27, 75];
+    const I700  = [67, 56, 202];
+    const I500  = [99, 102, 241];
+    const I100  = [224, 231, 255];
+    const I50   = [238, 242, 255];
+    const ROSE100 = [255, 228, 230]; const ROSE700 = [190, 18, 60];
+    const AMB100  = [254, 243, 199]; const AMB700  = [180, 83, 9];
+    const VIO100  = [237, 233, 254]; const VIO700  = [109, 40, 217];
+    const TEA100  = [204, 251, 241]; const TEA700  = [15, 118, 110];
+    const LIM100  = [236, 252, 203]; const LIM700  = [63, 98, 18];
+    const S900 = [15, 23, 42];
+    const S500 = [100, 116, 139];
+    const S300 = [148, 163, 184];
+    const S200 = [203, 213, 225];
+    const S100 = [241, 245, 249];
+    const S50  = [248, 250, 252];
+    const WHITE = [255, 255, 255];
+
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    let y = 0;
+
+    // ── Helpers ──
+    const getPillColors = (text) => {
+        if (text === 'Lic. Med.')  return [ROSE100, ROSE700];
+        if (text === 'Día Adm.')   return [I100, I700];
+        if (text === '½ AM')       return [AMB100, AMB700];
+        if (text === '½ PM')       return [VIO100, VIO700];
+        if (text === '½ Día')      return [TEA100, TEA700];
+        if (text === 'Perm. H.')   return [LIM100, LIM700];
+        return null;
+    };
+
+    const accentFor = (typeLabel) => {
+        if (typeLabel === 'Licencia Médica')   return ROSE700;
+        if (typeLabel?.includes('Mañana'))     return AMB700;
+        if (typeLabel?.includes('Tarde'))      return VIO700;
+        if (typeLabel?.includes('½'))          return TEA700;
+        if (typeLabel === 'Permiso de Horas')  return LIM700;
+        return I700;
+    };
+
+    const bgFor = (typeLabel) => {
+        if (typeLabel === 'Licencia Médica')  return [255, 244, 244];
+        if (typeLabel?.includes('Mañana'))    return [255, 252, 244];
+        if (typeLabel?.includes('Tarde'))     return [251, 249, 255];
+        if (typeLabel?.includes('½'))         return [245, 253, 252];
+        return WHITE;
+    };
+
+    // ── Continuation page mini-header ──
+    const addPageHeader = () => {
+        doc.addPage();
+        y = 8;
+        doc.addImage(logoDataUrl, 'JPEG', mL, y, 8, 8);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...I700);
+        doc.text('AUSENCIAS SEMANALES', mL + 11, y + 5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S500);
+        doc.text(weekLabel, pageW - mR, y + 5, { align: 'right' });
+        doc.setDrawColor(...S200);
+        doc.setLineWidth(0.2);
+        doc.line(mL, y + 11, pageW - mR, y + 11);
+        y += 17;
+    };
+
+    const checkBreak = (needed) => {
+        if (y + needed > pageH - mBot - 10) addPageHeader();
+    };
+
+    // ── Section header: card-strip style ──
+    const drawSection = (title, subtitle = '') => {
+        checkBreak(12);
+        doc.setFillColor(...I50);
+        doc.rect(mL, y, cW, 10, 'F');
+        doc.setFillColor(...I700);
+        doc.rect(mL, y, 3, 10, 'F');
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...I900);
+        doc.text(title, mL + 7, y + 6.8);
+        if (subtitle) {
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...S500);
+            doc.text(subtitle, pageW - mR, y + 6.8, { align: 'right' });
+        }
+        y += 13;
+    };
+
+    // ── HEADER ──────────────────────────────────────
+    doc.setFillColor(...I900);
+    doc.rect(0, 0, pageW * 0.6, 5, 'F');
+    doc.setFillColor(...I500);
+    doc.rect(pageW * 0.6, 0, pageW * 0.4, 5, 'F');
+    y = 10;
+
+    const logoSize = 24;
+    doc.addImage(logoDataUrl, 'JPEG', mL, y, logoSize, logoSize);
+
+    const textX = mL + logoSize + 5;
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...I700);
+    doc.text('Centro Educacional', textX, y + 7);
+    doc.text('Ernesto Yañez Rivera', textX, y + 14);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('Escuela Huechuraba · Inspectoría', textX, y + 20);
+
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...S900);
+    doc.text('AUSENCIAS', pageW - mR, y + 8, { align: 'right' });
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('REPORTE SEMANAL', pageW - mR, y + 15, { align: 'right' });
+
+    y += logoSize + 4;
+    doc.setDrawColor(...S200);
+    doc.setLineWidth(0.3);
+    doc.line(mL, y, pageW - mR, y);
+    y += 5;
+
+    // Week label — solid dark pill
+    doc.setFillColor(...I900);
+    doc.roundedRect(mL, y, cW, 9, 2, 2, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...WHITE);
+    doc.text(weekLabel, pageW / 2, y + 6, { align: 'center' });
+    y += 13;
+
+    // ── SECTION 1: CONSOLIDADO SEMANAL ─────────────
+    const totalAbsent = weekConsolidado.length;
+    drawSection(
+        'Ausencias de la Semana',
+        totalAbsent > 0 ? `${totalAbsent} ${totalAbsent === 1 ? 'persona' : 'personas'} con ausencias` : 'Sin ausencias'
+    );
+
+    if (weekConsolidado.length === 0) {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(...S300);
+        doc.text('Sin ausencias registradas esta semana.', mL, y);
+        y += 10;
+    } else {
+        // Col 0: Persona (nombre + rol dibujados manualmente, 2 líneas)
+        // Col 1–5: un día cada uno — 65% del ancho total
+        const personColW = cW * 0.35;
+        const dayColW    = (cW * 0.65) / 5;
+
+        const weekRows = weekConsolidado.map(entry => {
+            const row = [entry.userName]; // rol se dibuja en didDrawCell con data.row.index
+            weekDays.forEach(day => {
+                const abs = entry.days[day.dateStr];
+                if (!abs) row.push('');
+                else if (abs.typeLabel === 'Licencia Médica') row.push('Lic. Med.');
+                else if (abs.isHalfDay === 'am')  row.push('½ AM');
+                else if (abs.isHalfDay === 'pm')  row.push('½ PM');
+                else if (abs.isHalfDay === true)  row.push('½ Día');
+                else if (abs.type === 'hour_permission') row.push('Perm. H.');
+                else row.push('Día Adm.');
+            });
+            return row;
+        });
+
+        const dayHeaders = weekDays.map(d => {
+            const date = new Date(d.dateStr + 'T12:00:00');
+            return `${d.dayName}\n${date.getDate()}`;
+        });
+
+        autoTable(doc, {
+            startY: y,
+            margin: { left: mL, right: mR },
+            head: [['Persona', ...dayHeaders]],
+            body: weekRows,
+            styles: {
+                fontSize: 8,
+                cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
+                lineWidth: 0,
+                fillColor: WHITE,
+                textColor: S900,
+                valign: 'middle',
+                halign: 'center',
+                minCellHeight: 14,
+            },
+            headStyles: {
+                fillColor: I900,
+                textColor: WHITE,
+                fontStyle: 'bold',
+                fontSize: 8,
+                halign: 'center',
+                cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
+                lineWidth: 0,
+                minCellHeight: 12,
+            },
+            columnStyles: {
+                0: { cellWidth: personColW, halign: 'left' },
+                1: { cellWidth: dayColW },
+                2: { cellWidth: dayColW },
+                3: { cellWidth: dayColW },
+                4: { cellWidth: dayColW },
+                5: { cellWidth: dayColW },
+            },
+            didParseCell: (data) => {
+                // Limpia el texto de todas las celdas body — se dibujan en didDrawCell
+                if (data.section === 'body') data.cell.text = [];
+            },
+            didDrawCell: (data) => {
+                if (data.section !== 'body') return;
+
+                // Separador horizontal entre filas
+                doc.setDrawColor(...S100);
+                doc.setLineWidth(0.25);
+                doc.line(
+                    data.cell.x, data.cell.y + data.cell.height,
+                    data.cell.x + data.cell.width, data.cell.y + data.cell.height
+                );
+
+                // Columna 0: Nombre (bold) + Rol (gris, línea 2)
+                if (data.column.index === 0) {
+                    const entry = weekConsolidado[data.row.index];
+                    if (!entry) return; // remainder rows tienen index = -1
+                    const { x: cx, y: cy, height: ch } = data.cell;
+                    const px = cx + 4;
+                    const midY = cy + ch / 2;
+
+                    doc.setFontSize(8.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...S900);
+                    doc.text(entry.userName, px, midY - 1.5);
+
+                    doc.setFontSize(6.5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...S500);
+                    doc.text(entry.roleLabel, px, midY + 4);
+                }
+
+                // Columnas 1–5: pill badge del día
+                if (data.column.index >= 1) {
+                    const rawText = data.cell.raw || '';
+                    if (!rawText) return;
+                    const colors = getPillColors(rawText);
+                    if (!colors) return;
+                    const [bg, fg] = colors;
+
+                    const { x: cx, y: cy, width: cw, height: ch } = data.cell;
+                    const pillW = Math.min(cw - 4, cw * 0.82);
+                    const pillH = 7;
+                    const pillX = cx + (cw - pillW) / 2;
+                    const pillY = cy + (ch - pillH) / 2;
+
+                    doc.setFillColor(...bg);
+                    doc.roundedRect(pillX, pillY, pillW, pillH, 2, 2, 'F');
+                    doc.setFontSize(6.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...fg);
+                    doc.text(rawText, pillX + pillW / 2, pillY + pillH / 2 + 2.2, { align: 'center' });
+                }
+            },
+        });
+
+        y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // ── SECTION 2: AUSENCIAS DEL DÍA (card rows) ───
+    if (dateLabel && groupedAbsences) {
+        const typeEntries = Object.entries(groupedAbsences);
+        const totalDaily = typeEntries.reduce((sum, [, items]) => sum + items.length, 0);
+
+        drawSection(
+            `Ausencias del Día  —  ${dateLabel}`,
+            totalDaily > 0 ? `${totalDaily} ${totalDaily === 1 ? 'persona' : 'personas'}` : ''
+        );
+
+        if (typeEntries.length === 0) {
+            doc.setFontSize(8.5);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(...S300);
+            doc.text('Sin ausencias registradas para este día.', mL, y);
+            y += 10;
+        } else {
+            for (const [typeLabel, items] of typeEntries) {
+                checkBreak(6 + items.length * 14);
+
+                // Group label
+                doc.setFontSize(6.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...S500);
+                doc.text(typeLabel.toUpperCase(), mL, y);
+                y += 4;
+
+                for (const item of items) {
+                    checkBreak(13);
+
+                    const cardH = 12;
+                    const accent = accentFor(item.typeLabel);
+                    const cardBg = bgFor(item.typeLabel);
+                    const initials = (item.userName || '').split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+
+                    // Card background
+                    doc.setFillColor(...cardBg);
+                    doc.rect(mL, y, cW, cardH, 'F');
+
+                    // Left accent strip
+                    doc.setFillColor(...accent);
+                    doc.rect(mL, y, 3, cardH, 'F');
+
+                    // Avatar circle with initials
+                    const avX = mL + 9;
+                    const avY = y + cardH / 2;
+                    doc.setFillColor(...accent);
+                    doc.circle(avX, avY, 3.5, 'F');
+                    doc.setFontSize(5.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...WHITE);
+                    doc.text(initials, avX, avY + 1.8, { align: 'center' });
+
+                    // Name (bold)
+                    const contentX = mL + 15;
+                    doc.setFontSize(8.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...S900);
+                    doc.text(item.userName || '', contentX, y + 4.8);
+                    const nameW = doc.getTextWidth(item.userName || ''); // measure at 8.5pt
+
+                    // Role inline (gray, lighter)
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...S500);
+                    doc.text(`· ${item.roleLabel || ''}`, contentX + nameW + 2, y + 4.8);
+
+                    // Motivo / Diagnosis (second line, truncated)
+                    const motivoText = item.reason || item.diagnosis || '';
+                    if (motivoText && motivoText !== '—') {
+                        doc.setFontSize(7);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(...S500);
+                        const maxW = cW - 55;
+                        let m = motivoText;
+                        while (doc.getTextWidth(m) > maxW && m.length > 3) m = m.slice(0, -1);
+                        if (m !== motivoText) m += '…';
+                        doc.text(m, contentX, y + 9.5);
+                    }
+
+                    // Right badge
+                    let badgeText = null, badgeBg = I50, badgeFg = I700;
+                    if (item.typeLabel === 'Licencia Médica' && item.daysLeft !== undefined) {
+                        badgeText = item.daysLeft === 0 ? 'Último día' : `${item.daysLeft}d restantes`;
+                        badgeBg = item.daysLeft === 0 ? [209, 250, 229] : item.daysLeft <= 2 ? AMB100 : ROSE100;
+                        badgeFg = item.daysLeft === 0 ? [6, 95, 70] : item.daysLeft <= 2 ? AMB700 : ROSE700;
+                    } else if (item.isHalfDay === 'am') {
+                        badgeText = 'Mañana'; badgeBg = AMB100; badgeFg = AMB700;
+                    } else if (item.isHalfDay === 'pm') {
+                        badgeText = 'Tarde'; badgeBg = VIO100; badgeFg = VIO700;
+                    } else if (item.isHalfDay === true) {
+                        badgeText = 'Medio Día'; badgeBg = TEA100; badgeFg = TEA700;
+                    }
+
+                    if (badgeText) {
+                        doc.setFontSize(6);
+                        doc.setFont('helvetica', 'bold');
+                        const bW = doc.getTextWidth(badgeText) + 7;
+                        const bH = 5;
+                        const bX = mL + cW - bW - 3;
+                        const bY = y + (cardH - bH) / 2;
+                        doc.setFillColor(...badgeBg);
+                        doc.roundedRect(bX, bY, bW, bH, 1.5, 1.5, 'F');
+                        doc.setTextColor(...badgeFg);
+                        doc.text(badgeText, bX + bW / 2, bY + bH / 2 + 1.8, { align: 'center' });
+                    }
+
+                    // Separator line below card
+                    doc.setDrawColor(...S200);
+                    doc.setLineWidth(0.2);
+                    doc.line(mL + 3, y + cardH, mL + cW, y + cardH);
+
+                    y += cardH + 1.5;
+                }
+
+                y += 3;
+            }
+        }
+    }
+
+    // ── LEGEND ──────────────────────────────────────
+    checkBreak(12);
+    y += 3;
+    doc.setFillColor(...S50);
+    doc.rect(mL, y, cW, 9, 'F');
+
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...S500);
+    doc.text('LEYENDA', mL + 4, y + 6);
+
+    const LEGEND = [
+        { text: 'Día Adm.', bg: I100,    fg: I700 },
+        { text: '½ AM',     bg: AMB100,  fg: AMB700 },
+        { text: '½ PM',     bg: VIO100,  fg: VIO700 },
+        { text: 'Lic. Med.',bg: ROSE100, fg: ROSE700 },
+        { text: 'Perm. H.', bg: LIM100,  fg: LIM700 },
+    ];
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    let lx = mL + 20;
+    const lPillH = 5;
+    const lPillY = y + (9 - lPillH) / 2;
+    LEGEND.forEach(({ text, bg, fg }) => {
+        const lPillW = doc.getTextWidth(text) + 7;
+        doc.setFillColor(...bg);
+        doc.roundedRect(lx, lPillY, lPillW, lPillH, 1.5, 1.5, 'F');
+        doc.setTextColor(...fg);
+        doc.text(text, lx + lPillW / 2, lPillY + lPillH / 2 + 1.8, { align: 'center' });
+        lx += lPillW + 3;
+    });
+    y += 12;
+
+    // ── FOOTER (todas las páginas) ──────────────────
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const ph = doc.internal.pageSize.getHeight();
+        doc.setDrawColor(...S200);
+        doc.setLineWidth(0.25);
+        doc.line(mL, ph - 12, pageW - mR, ph - 12);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S300);
+        doc.text(`Generado ${timestamp} — EYR Huechuraba`, mL, ph - 8);
+        doc.text(`Página ${i} de ${totalPages}`, pageW - mR, ph - 8, { align: 'right' });
+    }
+
+    const safeDateStr = dateStr ? dateStr.replace(/-/g, '') : 'semana';
+    doc.save(`Ausencias_Semanales_${safeDateStr}.pdf`);
+}
+
+// ============================================
 // ENTREVISTAS — Acta Individual
 // ============================================
 
