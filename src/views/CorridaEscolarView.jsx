@@ -106,18 +106,62 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     const fNum   = hasFonts ? 'MontBlack' : 'helvetica';
     const fNumSt = hasFonts ? 'normal'    : 'bold';
 
+    const PT2MM     = 0.3528;   // 1 pt en mm
+    const CAP_RATIO = 0.72;    // cap-height como fracción del font-size en mm
+
     const pageW = 210, pageH = 297;
     const mX = 8, mY = 8;
-    const bibW = pageW - mX * 2;
+    const bibW = pageW - mX * 2;                                     // 194 mm
     const bibH = (pageH - mY * 2 - (perPage - 1) * 8) / perPage;
 
-    // Header adaptativo según espacio disponible
-    const headerH  = bibH < 80 ? 26 : 48;
-    const numAreaY = headerH + 4;
-    const numAreaH = bibH - numAreaY;
-
-    const end = startNum + items.length - 1;
+    const end      = startNum + items.length - 1;
     const nameMode = items[0]?.name !== undefined;
+
+    // ── Layout pre-calculado (igual para todos los bibs) ──
+    const small       = bibH < 80;
+    const logoSize    = small ? 10 : 14;
+    const schoolFs    = small ? 7  : 8.5;
+    const hasSubtitle = subtitle.trim().length > 0 && !small;
+
+    // Título: tamaño dinámico por ancho, con tope
+    const titleMaxFs = small ? 16 : 38;
+    const titleFs    = Math.min(
+        fitFontSize(doc, title.toUpperCase(), bibW, fText, 'bold', 0.92),
+        titleMaxFs
+    );
+    const titleCapH  = titleFs * PT2MM * CAP_RATIO;
+    const schoolCapH = schoolFs * PT2MM * CAP_RATIO;
+    const subtCapH   = 7.5 * PT2MM * CAP_RATIO;
+
+    //  Posiciones relativas al top del bib (rX = distancia desde by)
+    //  Regla: rBase = rTop + capHeight  →  top del glifo = rBase - capHeight
+    const rLogoTop    = 4;
+    const rLogoBot    = rLogoTop + logoSize;
+
+    const rTitleTop   = rLogoBot + 3;            // 3 mm de aire bajo el logo
+    const rTitleBase  = rTitleTop + titleCapH;   // baseline del título
+
+    const rSchoolTop  = rTitleBase + 3;          // 3 mm de aire bajo baseline título
+    const rSchoolBase = rSchoolTop + schoolCapH;
+
+    const rSubtTop    = rSchoolBase + 2;
+    const rSubtBase   = rSubtTop + subtCapH;
+
+    const rHeaderEnd  = (hasSubtitle ? rSubtBase : rSchoolBase) + 3;  // 3 mm padding
+    const headerH     = rHeaderEnd + 2;                               // 2 mm extra
+
+    const numAreaY    = headerH;
+    const numAreaH    = bibH - numAreaY;
+
+    // Reserva para nombre/curso (adaptada a bibs pequeños)
+    const nameReserve = nameMode ? Math.min(28, numAreaH * 0.38) : 0;
+    const numEffH     = numAreaH - nameReserve;
+
+    // Número: restringido por ancho Y por altura disponible
+    const fsByWidth  = fitFontSize(doc, formatNum(end, end), bibW, fNum, fNumSt, nameMode ? 0.65 : 0.82);
+    const fsByHeight = (numEffH - 4) / (PT2MM * CAP_RATIO);   // 4 mm = padding vertical
+    const numFs      = Math.min(fsByWidth, fsByHeight, 200);
+    const numCapH    = numFs * PT2MM * CAP_RATIO;
 
     for (let slot = 0; slot < items.length; slot++) {
         if (slot > 0 && slot % perPage === 0) doc.addPage();
@@ -126,6 +170,7 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         const row = slot % perPage;
         const bx  = mX;
         const by  = mY + row * (bibH + 8);
+        const cx  = bx + bibW / 2;
 
         // Fondo
         doc.setFillColor(255, 255, 255);
@@ -136,88 +181,72 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         doc.setLineWidth(1.8);
         doc.rect(bx, by, bibW, bibH, 'S');
 
-        // ── Header centrado ──
-        const cx = bx + bibW / 2;
-
-        // Logo centrado
-        const logoSize = bibH < 80 ? 10 : 14;
-        const logoX = cx - logoSize / 2;
-        const logoY = by + 4;
+        // Logo
         if (logoData) {
-            try { doc.addImage(logoData, 'JPEG', logoX, logoY, logoSize, logoSize); } catch { /* */ }
+            try { doc.addImage(logoData, 'JPEG', cx - logoSize / 2, by + rLogoTop, logoSize, logoSize); } catch { /* */ }
         }
 
-        let textY = by + logoSize + 7;
-
-        // Título — escala al ancho completo del letrero
-        const titleMaxFs = bibH < 80 ? 16 : 38;
-        const titleFs = Math.min(
-            fitFontSize(doc, title.toUpperCase(), bibW, fText, 'bold', 0.92),
-            titleMaxFs
-        );
+        // Título
         doc.setFont(fText, 'bold');
         doc.setFontSize(titleFs);
         doc.setTextColor(12, 18, 55);
-        doc.text(title.toUpperCase(), cx, textY, { align: 'center' });
-        textY += titleFs * 0.3528 * 0.72 + 3;   // cap-height + margen
+        doc.text(title.toUpperCase(), cx, by + rTitleBase, { align: 'center' });
 
-        // Colegio centrado
+        // Colegio
         doc.setFont(fText, 'normal');
-        doc.setFontSize(bibH < 80 ? 7 : 8.5);
+        doc.setFontSize(schoolFs);
         doc.setTextColor(55, 65, 95);
-        doc.text(SCHOOL_NAME, cx, textY, { align: 'center', maxWidth: bibW - 10 });
-        textY += 5;
+        doc.text(SCHOOL_NAME, cx, by + rSchoolBase, { align: 'center', maxWidth: bibW - 10 });
 
-        // Subtítulo centrado
-        if (subtitle.trim() && bibH >= 80) {
+        // Subtítulo
+        if (hasSubtitle) {
             doc.setFont(fText, 'italic');
             doc.setFontSize(7.5);
             doc.setTextColor(105, 115, 145);
-            doc.text(subtitle.trim(), cx, textY, { align: 'center', maxWidth: bibW - 10 });
+            doc.text(subtitle.trim(), cx, by + rSubtBase, { align: 'center', maxWidth: bibW - 10 });
         }
 
-        // Número — centrado visual (baseline = centro_área + capHeight/2)
-        const numStr = formatNum(n, end);
-        const fillRatio = nameMode ? 0.65 : 0.82;
-        const nameReserve = nameMode ? 32 : 0;
-        const fs = fitFontSize(doc, numStr, bibW, fNum, fNumSt, fillRatio);
-        doc.setFont(fNum, fNumSt);
-        doc.setFontSize(fs);
-        doc.setTextColor(10, 15, 50);
-        const areaTop     = by + numAreaY;
-        const areaBot     = by + bibH - nameReserve;
-        const areaMid     = (areaTop + areaBot) / 2;
-        const capHeightMm = fs * 0.3528 * 0.72;   // pt → mm × ratio cap-height
-        const numCenterY  = areaMid + capHeightMm / 2;
-        doc.text(numStr, bx + bibW / 2, numCenterY, { align: 'center' });
+        // Número — centrado visual: baseline = mid_área + capHeight/2
+        const numStr  = formatNum(n, end);
+        const areaTop = by + numAreaY;
+        const areaBot = by + bibH - nameReserve;
+        const areaMid = (areaTop + areaBot) / 2;
 
-        // Nombre + curso (solo modo nombres)
+        doc.setFont(fNum, fNumSt);
+        doc.setFontSize(numFs);
+        doc.setTextColor(10, 15, 50);
+        doc.text(numStr, cx, areaMid + numCapH / 2, { align: 'center' });
+
+        // Nombre + curso
         if (nameMode && name) {
-            // Nombre
+            const nameAreaTop = by + bibH - nameReserve;
+
+            // Nombre centrado en la mitad superior del área de nombre
             const nameFontSize = fitNameFontSize(doc, name.toUpperCase(), bibW - 16, fText);
+            const nameCapH     = nameFontSize * PT2MM * CAP_RATIO;
+            const nameBase     = nameAreaTop + nameReserve * 0.38 + nameCapH;
             doc.setFont(fText, 'bold');
             doc.setFontSize(nameFontSize);
             doc.setTextColor(10, 15, 50);
-            doc.text(name.toUpperCase(), bx + bibW / 2, by + bibH - 20, { align: 'center' });
+            doc.text(name.toUpperCase(), cx, nameBase, { align: 'center' });
 
-            // Curso — pill con fondo oscuro y texto blanco Montserrat Bold
-            if (curso) {
+            // Curso — pill
+            if (curso && nameReserve >= 16) {
                 const cursoLabel = curso.toUpperCase();
                 doc.setFont(fText, 'bold');
                 doc.setFontSize(9);
                 const tw       = doc.getTextWidth(cursoLabel);
                 const pillPadX = 5;
-                const pillPadY = 2.2;
-                const pillH    = 9 * 0.3528 + pillPadY * 2;   // ~5.4mm
+                const pillPadY = 2;
+                const pillH    = 9 * PT2MM + pillPadY * 2;
                 const pillW    = tw + pillPadX * 2;
-                const pillX    = bx + bibW / 2 - pillW / 2;
-                const pillY    = by + bibH - 4 - pillH;
+                const pillX    = cx - pillW / 2;
+                const pillY    = by + bibH - 3 - pillH;
 
                 doc.setFillColor(12, 18, 55);
                 doc.roundedRect(pillX, pillY, pillW, pillH, 2, 2, 'F');
-
                 doc.setTextColor(255, 255, 255);
-                doc.text(cursoLabel, bx + bibW / 2, pillY + pillH - pillPadY, { align: 'center' });
+                doc.text(cursoLabel, cx, pillY + pillH - pillPadY, { align: 'center' });
             }
         }
     }
