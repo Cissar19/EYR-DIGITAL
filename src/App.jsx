@@ -39,6 +39,9 @@ import FichaClap from './views/FichaClap';
 import AtencionDiariaView from './views/AtencionDiariaView';
 import EnfermeriaResumenView from './views/EnfermeriaResumenView';
 import CorridaEscolarView from './views/CorridaEscolarView';
+import RetosAdminView from './views/RetosAdminView';
+import RetosSesionView from './views/RetosSesionView';
+import RetoAlumnoView from './views/RetoAlumnoView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -201,6 +204,9 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-right" richColors />
       <Routes>
+        {/* Public — student reto (no auth required) */}
+        <Route path="/reto/:sesionId" element={<RetoAlumnoView />} />
+
         {/* Public */}
         <Route path="/login" element={<Login />} />
 
@@ -226,6 +232,8 @@ export default function App() {
           <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
           <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
           <Route path="/corrida-escolar" element={<PermissionGate moduleKey="corrida_escolar"><CorridaEscolarView /></PermissionGate>} />
+          <Route path="/retos" element={<PermissionGate moduleKey="retos_admin"><RetosAdminView /></PermissionGate>} />
+          <Route path="/retos/sesion" element={<PermissionGate moduleKey="no_pierde_clases"><RetosSesionView /></PermissionGate>} />
           <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
           <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />

@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap
 } from 'lucide-react';
 
 /**
@@ -206,6 +206,24 @@ export const MODULE_REGISTRY = [
         path: '/admin/stats',
         category: 'role_specific',
         defaultRoles: [...MANAGEMENT],
+    },
+    {
+        key: 'retos_admin',
+        name: 'Banco de Retos',
+        icon: BookCheck,
+        path: '/retos',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'utp_head', 'teacher'],
+    },
+    {
+        key: 'no_pierde_clases',
+        name: 'No Pierde Clases',
+        icon: Zap,
+        path: '/retos/sesion',
+        category: 'role_specific',
+        group: 'administracion',
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff'],
     },
     {
         key: 'corrida_escolar',

@@ -288,6 +288,39 @@ service cloud.firestore {
     }
 
     // ============================================
+    // EYR NO PIERDE CLASES
+    // ============================================
+
+    match /retos/{retoId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        getUserRole() in ['super_admin', 'admin', 'utp_head', 'teacher'];
+      allow delete: if isAdmin();
+    }
+
+    match /sesiones_reto/{sesionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        getUserRole() in ['super_admin', 'admin', 'director', 'inspector', 'staff'];
+      allow update: if isAuthenticated() && (
+        resource.data.asistente.uid == request.auth.uid || isManagement()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /respuestas_reto/{respId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      // Anonymous students (role == null) can update any respuesta doc.
+      // Page refresh gives a new anon uid, so we can't restrict by anonUid alone.
+      allow update: if isAuthenticated() && (
+        request.auth.token.role == null ||
+        isManagement()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
     // APP CONFIG (formato de prueba, plantilla UTP)
     // ============================================
     match /app_config/{docId} {
