@@ -212,9 +212,8 @@ export const MODULE_REGISTRY = [
         name: 'Corrida Escolar',
         icon: Flag,
         path: '/corrida-escolar',
-        category: 'role_specific',
-        group: 'administracion',
-        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+        category: 'common',
+        defaultRoles: null,
     },
     {
         key: 'permissions',
