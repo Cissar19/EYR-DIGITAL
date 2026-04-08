@@ -120,28 +120,34 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     // ── Layout pre-calculado (igual para todos los bibs) ──
     const small       = bibH < 80;
     const logoSize    = small ? 10 : 14;
-    const schoolFs    = small ? 7  : 8.5;
     const hasSubtitle = subtitle.trim().length > 0 && !small;
 
-    // Título: tamaño dinámico por ancho, con tope
+    // Título
     const titleMaxFs = small ? 16 : 38;
-    const titleFs    = Math.min(
-        fitFontSize(doc, title.toUpperCase(), bibW, fText, 'bold', 0.92),
-        titleMaxFs
-    );
+    const titleFs    = Math.min(fitFontSize(doc, title.toUpperCase(), bibW, fText, 'bold', 0.92), titleMaxFs);
     const titleCapH  = titleFs * PT2MM * CAP_RATIO;
-    const schoolCapH = schoolFs * PT2MM * CAP_RATIO;
-    const subtCapH   = 7.5 * PT2MM * CAP_RATIO;
+
+    // Colegio — escala al ancho, tope 20pt
+    const schoolMaxFs = small ? 10 : 20;
+    const schoolFs    = Math.min(fitFontSize(doc, SCHOOL_NAME, bibW, fText, 'normal', 0.90), schoolMaxFs);
+    const schoolCapH  = schoolFs * PT2MM * CAP_RATIO;
+
+    // Subtítulo — escala al ancho, tope 14pt
+    const subtMaxFs  = small ? 8 : 14;
+    const subtFs     = hasSubtitle
+        ? Math.min(fitFontSize(doc, subtitle.trim(), bibW, fText, 'italic', 0.90), subtMaxFs)
+        : 0;
+    const subtCapH   = subtFs * PT2MM * CAP_RATIO;
 
     //  Posiciones relativas al top del bib (rX = distancia desde by)
     //  Regla: rBase = rTop + capHeight  →  top del glifo = rBase - capHeight
     const rLogoTop    = 4;
     const rLogoBot    = rLogoTop + logoSize;
 
-    const rTitleTop   = rLogoBot + 3;            // 3 mm de aire bajo el logo
-    const rTitleBase  = rTitleTop + titleCapH;   // baseline del título
+    const rTitleTop   = rLogoBot + 3;
+    const rTitleBase  = rTitleTop + titleCapH;
 
-    const rSchoolTop  = rTitleBase + 3;          // 3 mm de aire bajo baseline título
+    const rSchoolTop  = rTitleBase + 3;
     const rSchoolBase = rSchoolTop + schoolCapH;
 
     const rSubtTop    = rSchoolBase + 2;
@@ -196,14 +202,14 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         doc.setFont(fText, 'normal');
         doc.setFontSize(schoolFs);
         doc.setTextColor(55, 65, 95);
-        doc.text(SCHOOL_NAME, cx, by + rSchoolBase, { align: 'center', maxWidth: bibW - 10 });
+        doc.text(SCHOOL_NAME, cx, by + rSchoolBase, { align: 'center' });
 
         // Subtítulo
         if (hasSubtitle) {
             doc.setFont(fText, 'italic');
-            doc.setFontSize(7.5);
+            doc.setFontSize(subtFs);
             doc.setTextColor(105, 115, 145);
-            doc.text(subtitle.trim(), cx, by + rSubtBase, { align: 'center', maxWidth: bibW - 10 });
+            doc.text(subtitle.trim(), cx, by + rSubtBase, { align: 'center' });
         }
 
         // Número — centrado visual: baseline = mid_área + capHeight/2
