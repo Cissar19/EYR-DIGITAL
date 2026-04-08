@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
-import { Flag, FileDown, Loader2 } from 'lucide-react';
+import { Flag, FileDown, Loader2, Users, Hash, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import logoUrl from '../assets/logo_eyr_pdf.jpeg';
+import { useStudents } from '../context/StudentsContext';
 
 const SCHOOL_NAME = 'Centro Educacional Ernesto Yañez Rivera';
 
-// ── Fuentes Montserrat desde jsDelivr (CORS abierto) ──
+// ── Orden canónico de cursos ──
+const CURSOS_ORDER = [
+    'Pre-Kinder', 'Kinder',
+    '1° Básico', '2° Básico', '3° Básico', '4° Básico',
+    '5° Básico', '6° Básico', '7° Básico', '8° Básico',
+    'I Medio', 'II Medio', 'III Medio', 'IV Medio',
+];
+
+// ── Fuentes Montserrat desde jsDelivr ──
 const FONT_BASE = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/montserrat/static/';
 let _fontCache = null;
 let _fontLoadPromise = null;
@@ -48,7 +57,7 @@ function registerFonts(doc, f) {
     doc.addFileToVFS('Mont-Black.ttf',    f.black);   doc.addFont('Mont-Black.ttf',    'MontBlack', 'normal');
 }
 
-// ── Cargar logo como base64 ──
+// ── Logo ──
 async function loadLogoBase64() {
     try {
         const res = await fetch(logoUrl);
@@ -61,23 +70,31 @@ async function loadLogoBase64() {
     } catch { return null; }
 }
 
-// ── Font size dinámico para el número ──
-function fitFontSize(doc, text, maxWidth, fontName, fontStyle) {
+// ── Tipografía dinámica ──
+function fitFontSize(doc, text, maxWidth, fontName, fontStyle, fillRatio = 0.82) {
     let fs = 200;
     doc.setFont(fontName, fontStyle);
     doc.setFontSize(fs);
     const w = doc.getTextWidth(text);
-    return Math.min(Math.floor(fs * ((maxWidth * 0.82) / w)), 200);
+    return Math.min(Math.floor(fs * ((maxWidth * fillRatio) / w)), 200);
 }
 
-// ── Formatear número con ceros ──
+function fitNameFontSize(doc, text, maxWidth, fontName) {
+    const MAX = 22;
+    doc.setFont(fontName, 'bold');
+    doc.setFontSize(MAX);
+    const w = doc.getTextWidth(text);
+    return w <= maxWidth ? MAX : Math.max(9, Math.floor(MAX * (maxWidth / w)));
+}
+
+// ── Ceros ──
 function formatNum(n, maxNum) {
     const digits = String(maxNum).length;
     return String(n).padStart(Math.max(digits, 3), '0');
 }
 
 // ── Generar PDF ──
-async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
+async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const [logo, fonts] = await Promise.allSettled([loadLogoBase64(), loadFonts()]);
 
@@ -85,36 +102,34 @@ async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
     const hasFonts  = fonts.status === 'fulfilled';
     if (hasFonts) registerFonts(doc, fonts.value);
 
-    // Aliases de fuente (fallback a helvetica si la red falló)
-    const fText   = hasFonts ? 'Mont'      : 'helvetica';
-    const fNum    = hasFonts ? 'MontBlack' : 'helvetica';
-    const fNumSt  = hasFonts ? 'normal'    : 'bold';
+    const fText  = hasFonts ? 'Mont'      : 'helvetica';
+    const fNum   = hasFonts ? 'MontBlack' : 'helvetica';
+    const fNumSt = hasFonts ? 'normal'    : 'bold';
 
     const pageW = 210, pageH = 297;
     const mX = 8, mY = 8;
     const bibW = pageW - mX * 2;
     const bibH = (pageH - mY * 2 - (perPage - 1) * 8) / perPage;
 
-    const headerH = 28;
+    const headerH  = 28;
     const dividerY = headerH + 2;
     const numAreaY = dividerY + 4;
     const numAreaH = bibH - numAreaY;
 
-    const end = startNum + total - 1;
-    let slot = 0;
+    const end = startNum + items.length - 1;
+    const nameMode = items[0]?.name !== undefined;
 
-    for (let n = startNum; n <= end; n++) {
+    for (let slot = 0; slot < items.length; slot++) {
         if (slot > 0 && slot % perPage === 0) doc.addPage();
 
+        const { n, name, curso } = items[slot];
         const row = slot % perPage;
         const bx  = mX;
         const by  = mY + row * (bibH + 8);
 
-        // Fondo blanco
+        // Fondo + borde
         doc.setFillColor(255, 255, 255);
         doc.rect(bx, by, bibW, bibH, 'F');
-
-        // Borde sutil
         doc.setDrawColor(210, 218, 235);
         doc.setLineWidth(0.3);
         doc.rect(bx, by, bibW, bibH, 'S');
@@ -130,13 +145,13 @@ async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
         const textX = logoX + logoSize + 5;
         const textW = bibW - logoSize - 14;
 
-        // Título del evento
+        // Título
         doc.setFont(fText, 'bold');
         doc.setFontSize(12.5);
         doc.setTextColor(12, 18, 55);
         doc.text(title.toUpperCase(), textX, by + 9.5, { maxWidth: textW });
 
-        // Nombre del colegio
+        // Colegio
         doc.setFont(fText, 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(55, 65, 95);
@@ -150,27 +165,44 @@ async function generateBibsPDF({ total, startNum, title, subtitle, perPage }) {
             doc.text(subtitle.trim(), textX, by + 24, { maxWidth: textW });
         }
 
-        // Línea divisora
+        // Divisor
         doc.setDrawColor(215, 222, 240);
         doc.setLineWidth(0.35);
         doc.line(bx + 4, by + dividerY, bx + bibW - 4, by + dividerY);
 
         // Número
         const numStr = formatNum(n, end);
-        const fs = fitFontSize(doc, numStr, bibW, fNum, fNumSt);
+        const fillRatio = nameMode ? 0.65 : 0.82;
+        const nameReserve = nameMode ? 32 : 0;
+        const fs = fitFontSize(doc, numStr, bibW, fNum, fNumSt, fillRatio);
         doc.setFont(fNum, fNumSt);
         doc.setFontSize(fs);
         doc.setTextColor(10, 15, 50);
-        const numCenterY = by + numAreaY + numAreaH * 0.62;
+        const numCenterY = by + numAreaY + (numAreaH - nameReserve) * 0.58;
         doc.text(numStr, bx + bibW / 2, numCenterY, { align: 'center' });
 
-        slot++;
+        // Nombre + curso (solo modo nombres)
+        if (nameMode && name) {
+            const nameFontSize = fitNameFontSize(doc, name.toUpperCase(), bibW - 16, fText);
+            doc.setFont(fText, 'bold');
+            doc.setFontSize(nameFontSize);
+            doc.setTextColor(10, 15, 50);
+            doc.text(name.toUpperCase(), bx + bibW / 2, by + bibH - 19, { align: 'center' });
+
+            if (curso) {
+                doc.setFont(fText, 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(100, 110, 145);
+                doc.text(curso, bx + bibW / 2, by + bibH - 10, { align: 'center' });
+            }
+        }
     }
 
-    doc.save(`corrida-${formatNum(startNum, end)}-${formatNum(end, end)}.pdf`);
+    const tag = nameMode ? 'con-nombres' : 'numeros';
+    doc.save(`corrida-${tag}-${formatNum(startNum, end)}-${formatNum(end, end)}.pdf`);
 }
 
-// ── Opciones de layout ──
+// ── Layouts ──
 const LAYOUTS = [
     { id: '1', label: '1 por página', perPage: 1, desc: 'Muy grande' },
     { id: '2', label: '2 por página', perPage: 2, desc: 'Recomendado' },
@@ -178,23 +210,83 @@ const LAYOUTS = [
 ];
 
 export default function CorridaEscolarView() {
-    const [total,      setTotal]      = useState(100);
-    const [startNum,   setStartNum]   = useState(1);
-    const [title,      setTitle]      = useState('Primera Corrida Escolar');
-    const [subtitle,   setSubtitle]   = useState('Celebrando el Día Mundial de la Actividad Física');
-    const [layoutId,   setLayoutId]   = useState('2');
-    const [generating, setGenerating] = useState(false);
+    const { students, loading: studentsLoading } = useStudents();
+
+    const [mode,          setMode]          = useState('numeros');   // 'numeros' | 'nombres'
+    const [total,         setTotal]         = useState(100);
+    const [startNum,      setStartNum]      = useState(1);
+    const [title,         setTitle]         = useState('Primera Corrida Escolar');
+    const [subtitle,      setSubtitle]      = useState('Celebrando el Día Mundial de la Actividad Física');
+    const [layoutId,      setLayoutId]      = useState('2');
+    const [selectedCursos, setSelectedCursos] = useState(new Set());
+    const [generating,    setGenerating]    = useState(false);
 
     const layout = LAYOUTS.find(l => l.id === layoutId);
-    const end    = startNum + total - 1;
-    const pages  = Math.ceil(total / layout.perPage);
+
+    // ── Cursos disponibles desde los datos reales ──
+    const cursosDisponibles = useMemo(() => {
+        const counts = {};
+        students.forEach(s => { if (s.curso) counts[s.curso] = (counts[s.curso] || 0) + 1; });
+        const known   = CURSOS_ORDER.filter(c => counts[c]).map(c => ({ curso: c, count: counts[c] }));
+        const unknown = Object.entries(counts)
+            .filter(([c]) => !CURSOS_ORDER.includes(c))
+            .sort(([a], [b]) => a.localeCompare(b, 'es'))
+            .map(([curso, count]) => ({ curso, count }));
+        return [...known, ...unknown];
+    }, [students]);
+
+    // ── Alumnos seleccionados, ordenados ──
+    const selectedStudents = useMemo(() => {
+        if (selectedCursos.size === 0) return [];
+        return students
+            .filter(s => selectedCursos.has(s.curso))
+            .sort((a, b) => {
+                const ia = CURSOS_ORDER.indexOf(a.curso);
+                const ib = CURSOS_ORDER.indexOf(b.curso);
+                const ca = ia === -1 ? 999 : ia;
+                const cb = ib === -1 ? 999 : ib;
+                if (ca !== cb) return ca - cb;
+                return a.fullName.localeCompare(b.fullName, 'es');
+            });
+    }, [students, selectedCursos]);
+
+    const toggleCurso = (c) => setSelectedCursos(prev => {
+        const next = new Set(prev);
+        next.has(c) ? next.delete(c) : next.add(c);
+        return next;
+    });
+
+    const toggleAll = () => {
+        if (selectedCursos.size === cursosDisponibles.length) {
+            setSelectedCursos(new Set());
+        } else {
+            setSelectedCursos(new Set(cursosDisponibles.map(c => c.curso)));
+        }
+    };
+
+    // Cálculos de preview
+    const end   = mode === 'numeros' ? startNum + total - 1 : startNum + selectedStudents.length - 1;
+    const count = mode === 'numeros' ? total : selectedStudents.length;
+    const pages = Math.ceil(count / layout.perPage);
 
     const handleGenerate = async () => {
-        if (total < 1 || total > 600) return;
+        if (mode === 'numeros' && (total < 1 || total > 600)) return;
+        if (mode === 'nombres' && selectedStudents.length === 0) return;
+
         setGenerating(true);
         try {
-            await generateBibsPDF({ total, startNum, title, subtitle, perPage: layout.perPage });
-            toast.success(`PDF listo — números ${formatNum(startNum, end)} al ${formatNum(end, end)}`);
+            let items;
+            if (mode === 'numeros') {
+                items = Array.from({ length: total }, (_, i) => ({ n: startNum + i }));
+            } else {
+                items = selectedStudents.map((s, i) => ({
+                    n: startNum + i,
+                    name: s.fullName,
+                    curso: s.curso,
+                }));
+            }
+            await generateBibsPDF({ startNum, title, subtitle, perPage: layout.perPage, items });
+            toast.success(`PDF listo — ${count} letreros (${formatNum(startNum, end)} al ${formatNum(end, end)})`);
         } catch (err) {
             console.error(err);
             toast.error('No se pudo generar el PDF');
@@ -202,6 +294,10 @@ export default function CorridaEscolarView() {
             setGenerating(false);
         }
     };
+
+    const canGenerate = mode === 'numeros'
+        ? total >= 1 && total <= 600
+        : selectedStudents.length > 0;
 
     return (
         <div className="max-w-xl mx-auto pb-20 px-4 sm:px-6">
@@ -212,11 +308,40 @@ export default function CorridaEscolarView() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Corrida Escolar</h1>
-                    <p className="text-slate-500 text-sm">Genera los números para los participantes.</p>
+                    <p className="text-slate-500 text-sm">Genera los letreros para los participantes.</p>
                 </div>
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7 space-y-5">
+
+                {/* Modo */}
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Tipo de letrero</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setMode('numeros')}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-bold text-sm transition-all
+                                ${mode === 'numeros'
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <Hash className="w-4 h-4" />
+                            Solo números
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMode('nombres')}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-bold text-sm transition-all
+                                ${mode === 'nombres'
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <Users className="w-4 h-4" />
+                            Con nombres
+                        </button>
+                    </div>
+                </div>
 
                 {/* Título */}
                 <div>
@@ -244,33 +369,100 @@ export default function CorridaEscolarView() {
                     />
                 </div>
 
-                {/* Rango */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Número inicial</label>
-                        <input
-                            type="number" min={1} max={600}
-                            value={startNum}
-                            onChange={e => setStartNum(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
-                        />
+                {/* ── MODO NÚMEROS ── */}
+                {mode === 'numeros' && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Número inicial</label>
+                            <input
+                                type="number" min={1} max={600}
+                                value={startNum}
+                                onChange={e => setStartNum(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                                Total <span className="text-slate-400 font-normal">(máx. 600)</span>
+                            </label>
+                            <input
+                                type="number" min={1} max={600}
+                                value={total}
+                                onChange={e => setTotal(Math.min(600, Math.max(1, parseInt(e.target.value) || 1)))}
+                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                            Total <span className="text-slate-400 font-normal">(máx. 600)</span>
-                        </label>
-                        <input
-                            type="number" min={1} max={600}
-                            value={total}
-                            onChange={e => setTotal(Math.min(600, Math.max(1, parseInt(e.target.value) || 1)))}
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
-                        />
+                )}
+
+                {/* ── MODO NOMBRES ── */}
+                {mode === 'nombres' && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-bold text-slate-700">Seleccionar cursos</label>
+                            {cursosDisponibles.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={toggleAll}
+                                    className="text-xs text-indigo-600 font-semibold hover:underline"
+                                >
+                                    {selectedCursos.size === cursosDisponibles.length ? 'Ninguno' : 'Todos'}
+                                </button>
+                            )}
+                        </div>
+
+                        {studentsLoading ? (
+                            <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Cargando alumnos…
+                            </div>
+                        ) : cursosDisponibles.length === 0 ? (
+                            <p className="text-sm text-slate-400 italic">No hay alumnos registrados.</p>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                                {cursosDisponibles.map(({ curso, count }) => {
+                                    const sel = selectedCursos.has(curso);
+                                    return (
+                                        <button
+                                            key={curso}
+                                            type="button"
+                                            onClick={() => toggleCurso(curso)}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left
+                                                ${sel
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                                        >
+                                            <span className="flex items-center gap-1.5">
+                                                {sel
+                                                    ? <CheckSquare className="w-3.5 h-3.5 shrink-0" />
+                                                    : <Square className="w-3.5 h-3.5 shrink-0 text-slate-300" />}
+                                                {curso}
+                                            </span>
+                                            <span className={`text-xs font-bold ml-2 shrink-0 ${sel ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Número inicial */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Número inicial</label>
+                            <input
+                                type="number" min={1}
+                                value={startNum}
+                                onChange={e => setStartNum(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Layout */}
                 <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Números por página</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Letreros por página</label>
                     <div className="grid grid-cols-3 gap-3">
                         {LAYOUTS.map(l => (
                             <button
@@ -293,25 +485,33 @@ export default function CorridaEscolarView() {
                 {/* Preview */}
                 <div className="flex items-center justify-around p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm">
                     <div className="text-center">
-                        <p className="text-xl font-extrabold text-slate-800">{formatNum(startNum, end)}</p>
+                        <p className="text-xl font-extrabold text-slate-800">{count > 0 ? formatNum(startNum, end) : '---'}</p>
                         <p className="text-xs text-slate-500">primer número</p>
                     </div>
                     <div className="text-slate-300 text-lg">→</div>
                     <div className="text-center">
-                        <p className="text-xl font-extrabold text-slate-800">{formatNum(end, end)}</p>
+                        <p className="text-xl font-extrabold text-slate-800">{count > 0 ? formatNum(end, end) : '---'}</p>
                         <p className="text-xs text-slate-500">último número</p>
                     </div>
                     <div className="text-slate-300 text-lg">=</div>
                     <div className="text-center">
-                        <p className="text-xl font-extrabold text-indigo-700">{pages}</p>
+                        <p className="text-xl font-extrabold text-indigo-700">{count > 0 ? pages : 0}</p>
                         <p className="text-xs text-slate-500">páginas A4</p>
                     </div>
                 </div>
 
+                {/* Info nombres */}
+                {mode === 'nombres' && selectedStudents.length > 0 && (
+                    <p className="text-xs text-slate-500 text-center -mt-2">
+                        {selectedCursos.size} {selectedCursos.size === 1 ? 'curso' : 'cursos'} · {selectedStudents.length} alumnos
+                        · ordenados por curso y nombre
+                    </p>
+                )}
+
                 {/* Botón */}
                 <button
                     onClick={handleGenerate}
-                    disabled={generating || total < 1 || total > 600}
+                    disabled={generating || !canGenerate}
                     className="w-full flex items-center justify-center gap-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0"
                 >
                     {generating
