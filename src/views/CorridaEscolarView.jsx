@@ -111,9 +111,9 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     const bibW = pageW - mX * 2;
     const bibH = (pageH - mY * 2 - (perPage - 1) * 8) / perPage;
 
-    const headerH  = 28;
-    const dividerY = headerH + 2;
-    const numAreaY = dividerY + 4;
+    // Header adaptativo según espacio disponible
+    const headerH  = bibH < 80 ? 24 : 38;
+    const numAreaY = headerH + 4;
     const numAreaH = bibH - numAreaY;
 
     const end = startNum + items.length - 1;
@@ -127,48 +127,49 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         const bx  = mX;
         const by  = mY + row * (bibH + 8);
 
-        // Fondo + borde
+        // Fondo
         doc.setFillColor(255, 255, 255);
         doc.rect(bx, by, bibW, bibH, 'F');
-        doc.setDrawColor(210, 218, 235);
-        doc.setLineWidth(0.3);
+
+        // Borde grueso
+        doc.setDrawColor(15, 20, 60);
+        doc.setLineWidth(1.8);
         doc.rect(bx, by, bibW, bibH, 'S');
 
-        // Logo
-        const logoSize = 15;
-        const logoX = bx + 6;
-        const logoY = by + (headerH - logoSize) / 2;
+        // ── Header centrado ──
+        const cx = bx + bibW / 2;
+
+        // Logo centrado
+        const logoSize = bibH < 80 ? 10 : 14;
+        const logoX = cx - logoSize / 2;
+        const logoY = by + 4;
         if (logoData) {
             try { doc.addImage(logoData, 'JPEG', logoX, logoY, logoSize, logoSize); } catch { /* */ }
         }
 
-        const textX = logoX + logoSize + 5;
-        const textW = bibW - logoSize - 14;
+        let textY = by + logoSize + 7;
 
-        // Título
+        // Título centrado
         doc.setFont(fText, 'bold');
-        doc.setFontSize(12.5);
+        doc.setFontSize(bibH < 80 ? 10 : 13);
         doc.setTextColor(12, 18, 55);
-        doc.text(title.toUpperCase(), textX, by + 9.5, { maxWidth: textW });
+        doc.text(title.toUpperCase(), cx, textY, { align: 'center', maxWidth: bibW - 10 });
+        textY += bibH < 80 ? 5 : 6;
 
-        // Colegio
+        // Colegio centrado
         doc.setFont(fText, 'normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(bibH < 80 ? 7 : 8.5);
         doc.setTextColor(55, 65, 95);
-        doc.text(SCHOOL_NAME, textX, by + 17, { maxWidth: textW });
+        doc.text(SCHOOL_NAME, cx, textY, { align: 'center', maxWidth: bibW - 10 });
+        textY += 5;
 
-        // Subtítulo
-        if (subtitle.trim()) {
+        // Subtítulo centrado
+        if (subtitle.trim() && bibH >= 80) {
             doc.setFont(fText, 'italic');
             doc.setFontSize(7.5);
             doc.setTextColor(105, 115, 145);
-            doc.text(subtitle.trim(), textX, by + 24, { maxWidth: textW });
+            doc.text(subtitle.trim(), cx, textY, { align: 'center', maxWidth: bibW - 10 });
         }
-
-        // Divisor
-        doc.setDrawColor(215, 222, 240);
-        doc.setLineWidth(0.35);
-        doc.line(bx + 4, by + dividerY, bx + bibW - 4, by + dividerY);
 
         // Número
         const numStr = formatNum(n, end);
