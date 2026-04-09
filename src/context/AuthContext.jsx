@@ -19,7 +19,7 @@ import {
     updateDoc,
     deleteDoc,
 } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { sendPasswordResetNotification } from '../lib/emailService';
 
@@ -263,8 +263,9 @@ export const AuthProvider = ({ children }) => {
                 console.warn('No se pudo sincronizar claim de rol (no crítico):', claimErr);
             }
 
-            // Sign out from secondary app
+            // Sign out and clean up secondary app
             await signOut(secondaryAuth);
+            try { await deleteApp(secondaryApp); } catch (_) { }
 
             // Refresh users list
             await fetchUsers();
@@ -273,6 +274,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Clean up secondary app
             try { await signOut(secondaryAuth); } catch (_) { }
+            try { await deleteApp(secondaryApp); } catch (_) { }
 
             // Handle orphaned Auth user (exists in Auth but not in Firestore)
             if (error.code === 'auth/email-already-in-use') {

@@ -182,12 +182,10 @@ export default function AdminUsers() {
         if (userToDelete) {
             try {
                 await deleteUser(userToDelete.id);
-                setNotification('Usuario eliminado');
-                setTimeout(() => setNotification(null), 3000);
+                toast.success('Usuario eliminado');
                 loadUsers(null, false);
             } catch (error) {
-                setNotification('Error: ' + error.message);
-                setTimeout(() => setNotification(null), 5000);
+                toast.error(error.message);
             }
         }
         setIsDeleteModalOpen(false);
