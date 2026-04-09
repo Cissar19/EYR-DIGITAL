@@ -277,7 +277,9 @@ export const AuthProvider = ({ children }) => {
             try { await deleteApp(secondaryApp); } catch (_) { }
 
             // Handle orphaned Auth user (exists in Auth but not in Firestore)
-            if (error.code === 'auth/email-already-in-use') {
+            // Also handles rate-limit case: try admin recovery so existing orphaned users
+            // can still be created even when client Auth is rate-limited.
+            if (error.code === 'auth/email-already-in-use' || error.code === 'auth/too-many-requests') {
                 const existingInFirestore = await (async () => {
                     try {
                         const { getDocs: _getDocs, collection: _col, query: _q, where: _w } = await import('firebase/firestore');
@@ -326,6 +328,10 @@ export const AuthProvider = ({ children }) => {
                     await fetchUsers();
                     return { id: uid, ...userDoc, tempPassword: recoveredPwd };
                 } catch (recoverError) {
+                    // If recovery fails and original error was rate-limit, surface the rate-limit message
+                    if (error.code === 'auth/too-many-requests') {
+                        throw new Error('Demasiadas solicitudes a Firebase. Intenta crear el usuario en unos minutos.');
+                    }
                     throw recoverError;
                 }
             }
