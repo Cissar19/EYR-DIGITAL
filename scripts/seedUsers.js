@@ -1,10 +1,15 @@
 /**
  * Seed script: Creates users in Firebase Auth AND writes profiles to Firestore
- * Run with: node scripts/seedUsers.js
+ * Run with: node --env-file=.env scripts/seedUsers.js
+ *
+ * Requires in .env:
+ *   SEED_DEFAULT_PASSWORD  — contraseña inicial para usuarios nuevos
+ *   SEED_ADMIN_EMAIL       — email de super_admin ya existente en Firestore
+ *   SEED_ADMIN_PASSWORD    — su contraseña (para autenticar Firestore writes)
  */
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 const requiredEnvVars = [
     'VITE_FIREBASE_API_KEY',
@@ -14,6 +19,8 @@ const requiredEnvVars = [
     'VITE_FIREBASE_MESSAGING_SENDER_ID',
     'VITE_FIREBASE_APP_ID',
     'SEED_DEFAULT_PASSWORD',
+    'SEED_ADMIN_EMAIL',
+    'SEED_ADMIN_PASSWORD',
 ];
 
 const missing = requiredEnvVars.filter(v => !process.env[v]);
@@ -33,6 +40,8 @@ const firebaseConfig = {
 };
 
 const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 const USERS = [
     // --- Roles administrativos ---
@@ -122,9 +131,10 @@ const USERS = [
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 async function createUser(userData) {
-    // Use a temporary app instance to avoid signing out the previous user
+    // Use a temporary app instance so Auth creates don't interfere with the admin session
     const tempApp = initializeApp(firebaseConfig, 'temp-' + Date.now() + '-' + Math.random());
     const tempAuth = getAuth(tempApp);
 
@@ -138,8 +148,7 @@ async function createUser(userData) {
             authCreated = true;
         } catch (authError) {
             if (authError.code === 'auth/email-already-in-use') {
-                // User exists in Auth - sign in to get uid
-                const { signInWithEmailAndPassword } = await import('firebase/auth');
+                // User already exists in Auth — sign in with default password to get uid
                 const credential = await signInWithEmailAndPassword(tempAuth, userData.email, DEFAULT_PASSWORD);
                 uid = credential.user.uid;
             } else {
@@ -147,7 +156,13 @@ async function createUser(userData) {
             }
         }
 
-        // Write profile to Firestore (always, to ensure it exists)
+        // Skip if Firestore profile already exists
+        const existing = await getDoc(doc(db, 'users', uid));
+        if (existing.exists()) {
+            return { success: true, uid, authCreated: false, skipped: true };
+        }
+
+        // Write profile to Firestore authenticated as admin (primary app)
         await setDoc(doc(db, 'users', uid), {
             uid,
             name: userData.name,
@@ -162,13 +177,23 @@ async function createUser(userData) {
     } catch (error) {
         return { success: false, reason: error.message };
     } finally {
-        await deleteApp(tempApp);
+        try { await deleteApp(tempApp); } catch (_) { }
     }
 }
 
 async function main() {
     console.log(`\n🚀 Creando ${USERS.length} usuarios en Auth + Firestore...\n`);
-    console.log(`   Password por defecto: ${DEFAULT_PASSWORD}\n`);
+    console.log(`   Password por defecto: ${DEFAULT_PASSWORD}`);
+    console.log(`   Admin: ${ADMIN_EMAIL}\n`);
+
+    // Authenticate primary app as admin so Firestore writes are authorized
+    try {
+        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+        console.log(`   ✅ Autenticado como ${ADMIN_EMAIL}\n`);
+    } catch (err) {
+        console.error(`   ❌ No se pudo autenticar como admin: ${err.message}`);
+        process.exit(1);
+    }
 
     let created = 0, skipped = 0, failed = 0;
 
@@ -177,17 +202,25 @@ async function main() {
         const result = await createUser(u);
 
         if (result.success) {
-            const label = result.authCreated ? 'Auth+Firestore' : 'Firestore (Auth existia)';
-            console.log(`✅ [${i + 1}/${USERS.length}] ${u.name} (${u.role}) - ${label} - uid: ${result.uid}`);
-            created++;
+            if (result.skipped) {
+                console.log(`⏭️  [${i + 1}/${USERS.length}] ${u.name} — ya existe en Firestore`);
+                skipped++;
+            } else {
+                const label = result.authCreated ? 'Auth+Firestore' : 'Firestore (Auth ya existía)';
+                console.log(`✅ [${i + 1}/${USERS.length}] ${u.name} (${u.role}) — ${label} — uid: ${result.uid}`);
+                created++;
+            }
         } else {
             console.error(`❌ [${i + 1}/${USERS.length}] ${u.name}: ${result.reason}`);
             failed++;
         }
     }
 
+    await signOut(auth);
+
     console.log(`\n📊 Resumen:`);
-    console.log(`   ✅ Creados: ${created}`);
+    console.log(`   ✅ Creados/actualizados: ${created}`);
+    console.log(`   ⏭️  Ya existían: ${skipped}`);
     console.log(`   ❌ Fallidos: ${failed}`);
     console.log(`\n✨ Seed completado!\n`);
 
