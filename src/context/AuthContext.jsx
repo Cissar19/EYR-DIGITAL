@@ -301,8 +301,13 @@ export const AuthProvider = ({ children }) => {
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
                         body: JSON.stringify({ email: newUserData.email }),
                     });
-                    if (!resp.ok) throw new Error((await resp.json()).error);
-                    const { uid, tempPassword: recoveredPwd } = await resp.json();
+                    const respText = await resp.text();
+                    let respData;
+                    try { respData = JSON.parse(respText); } catch {
+                        throw new Error('Error del servidor al recuperar usuario. Verifica que las variables FIREBASE_ADMIN_* estén configuradas en Vercel.');
+                    }
+                    if (!resp.ok) throw new Error(respData.error || 'Error al recuperar usuario');
+                    const { uid, tempPassword: recoveredPwd } = respData;
 
                     const userDoc = {
                         uid,
