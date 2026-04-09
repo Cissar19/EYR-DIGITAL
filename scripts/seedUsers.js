@@ -7,8 +7,8 @@
  *   SEED_ADMIN_EMAIL       — email de super_admin ya existente en Firestore
  *   SEED_ADMIN_PASSWORD    — su contraseña (para autenticar Firestore writes)
  */
+import { execSync } from 'child_process';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 const requiredEnvVars = [
@@ -19,8 +19,6 @@ const requiredEnvVars = [
     'VITE_FIREBASE_MESSAGING_SENDER_ID',
     'VITE_FIREBASE_APP_ID',
     'SEED_DEFAULT_PASSWORD',
-    'SEED_ADMIN_EMAIL',
-    'SEED_ADMIN_PASSWORD',
 ];
 
 const missing = requiredEnvVars.filter(v => !process.env[v]);
@@ -39,9 +37,8 @@ const firebaseConfig = {
     appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
+const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID;
 const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
 const USERS = [
     // --- Roles administrativos ---
@@ -130,70 +127,133 @@ const USERS = [
 ];
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
 
-async function createUser(userData) {
-    // Use a temporary app instance so Auth creates don't interfere with the admin session
-    const tempApp = initializeApp(firebaseConfig, 'temp-' + Date.now() + '-' + Math.random());
-    const tempAuth = getAuth(tempApp);
+// ---------------------------------------------------------------
+// Firestore via REST API con token gcloud (bypassa reglas de seguridad)
+// ---------------------------------------------------------------
+let _gcloudToken = null;
+function getGcloudToken() {
+    if (!_gcloudToken) {
+        try {
+            _gcloudToken = execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim();
+        } catch (e) {
+            console.error('❌ No se pudo obtener token de gcloud. Asegúrate de estar autenticado con: gcloud auth login');
+            process.exit(1);
+        }
+    }
+    return _gcloudToken;
+}
+function toFirestoreFields(data) {
+    const fields = {};
+    for (const [k, v] of Object.entries(data)) {
+        if (v === null || v === undefined) fields[k] = { nullValue: null };
+        else if (typeof v === 'string') fields[k] = { stringValue: v };
+        else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+        else if (typeof v === 'number' && Number.isInteger(v)) fields[k] = { integerValue: String(v) };
+        else if (typeof v === 'number') fields[k] = { doubleValue: v };
+    }
+    return fields;
+}
 
+async function restDocExists(collection, docId) {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${getGcloudToken()}` } });
+    if (resp.status === 404) return false;
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    return true;
+}
+
+async function restSetDoc(collection, docId, data) {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}`;
+    const resp = await fetch(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${getGcloudToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: toFirestoreFields(data) }),
+    });
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+}
+
+// ---------------------------------------------------------------
+
+// Obtener UID de un usuario por email usando Firebase Auth Admin API (gcloud token)
+async function getUidByEmail(email) {
+    const url = `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`;
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${getGcloudToken()}`,
+            'Content-Type': 'application/json',
+            'X-Goog-User-Project': PROJECT_ID,
+        },
+        body: JSON.stringify({ email: [email] }),
+    });
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    if (!data.users || data.users.length === 0) return null;
+    return data.users[0].localId;
+}
+
+async function createUser(userData) {
     try {
         let uid;
         let authCreated = false;
 
-        try {
-            const credential = await createUserWithEmailAndPassword(tempAuth, userData.email, DEFAULT_PASSWORD);
-            uid = credential.user.uid;
-            authCreated = true;
-        } catch (authError) {
-            if (authError.code === 'auth/email-already-in-use') {
-                // User already exists in Auth — sign in with default password to get uid
-                const credential = await signInWithEmailAndPassword(tempAuth, userData.email, DEFAULT_PASSWORD);
+        // 1. Buscar UID en Firebase Auth via Admin API (sin sign-in, evita rate-limiting)
+        uid = await getUidByEmail(userData.email);
+
+        if (!uid) {
+            // 2. Usuario no existe en Auth → crearlo con contraseña por defecto
+            const tempApp = initializeApp(firebaseConfig, 'temp-' + Date.now() + '-' + Math.random());
+            const tempAuth = getAuth(tempApp);
+            try {
+                const credential = await createUserWithEmailAndPassword(tempAuth, userData.email, DEFAULT_PASSWORD);
                 uid = credential.user.uid;
-            } else {
-                throw authError;
+                authCreated = true;
+            } finally {
+                try { await deleteApp(tempApp); } catch (_) { }
             }
         }
 
-        // Skip if Firestore profile already exists
-        const existing = await getDoc(doc(db, 'users', uid));
-        if (existing.exists()) {
+        // 3. Verificar si ya tiene perfil en Firestore
+        const exists = await restDocExists('users', uid);
+        if (exists) {
             return { success: true, uid, authCreated: false, skipped: true };
         }
 
-        // Write profile to Firestore authenticated as admin (primary app)
-        await setDoc(doc(db, 'users', uid), {
+        // 4. Crear perfil en Firestore via REST (gcloud token, bypassa reglas)
+        await restSetDoc('users', uid, {
             uid,
             name: userData.name,
             email: userData.email,
             role: userData.role,
             avatar: null,
             hoursUsed: 0,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         });
 
         return { success: true, uid, authCreated };
     } catch (error) {
         return { success: false, reason: error.message };
-    } finally {
-        try { await deleteApp(tempApp); } catch (_) { }
     }
 }
 
 async function main() {
     console.log(`\n🚀 Creando ${USERS.length} usuarios en Auth + Firestore...\n`);
-    console.log(`   Password por defecto: ${DEFAULT_PASSWORD}`);
-    console.log(`   Admin: ${ADMIN_EMAIL}\n`);
+    console.log(`   Password por defecto: ${DEFAULT_PASSWORD}\n`);
 
-    // Authenticate primary app as admin so Firestore writes are authorized
-    try {
-        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-        console.log(`   ✅ Autenticado como ${ADMIN_EMAIL}\n`);
-    } catch (err) {
-        console.error(`   ❌ No se pudo autenticar como admin: ${err.message}`);
-        process.exit(1);
-    }
+    // Verificar token gcloud disponible
+    getGcloudToken();
+    console.log('   ✅ Token gcloud obtenido\n');
 
     let created = 0, skipped = 0, failed = 0;
 
@@ -215,8 +275,6 @@ async function main() {
             failed++;
         }
     }
-
-    await signOut(auth);
 
     console.log(`\n📊 Resumen:`);
     console.log(`   ✅ Creados/actualizados: ${created}`);
