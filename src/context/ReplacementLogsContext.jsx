@@ -40,7 +40,10 @@ export const ReplacementLogsProvider = ({ children }) => {
             return true;
         } catch (error) {
             console.error('Error asignando reemplazo:', error);
-            toast.error('Error al asignar reemplazo');
+            const msg = error?.code === 'permission-denied'
+                ? 'Sin permisos para escribir. Verifica que estés autenticado como directivo.'
+                : (error?.message || 'Error al asignar reemplazo');
+            toast.error(msg);
             return false;
         }
     }, []);
