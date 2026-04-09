@@ -77,7 +77,7 @@ export default function ScheduleAdminView() {
     const fillFullTime = () => {
         if (!ftCourse) return;
         const newData = { ...scheduleData };
-        for (const block of SCHEDULE_BLOCKS) {
+        for (const block of displayBlocks) {
             if (block.type === 'break') continue;
             for (const day of DAYS) {
                 const key = `${day}-${block.start}`;
@@ -115,6 +115,27 @@ export default function ScheduleAdminView() {
 
     const canShowSchedule = !!selectedTeacherId;
 
+    // Compute which blocks to show — dynamically derived when teacher has non-standard times (Pre-K/Kinder)
+    const displayBlocks = React.useMemo(() => {
+        if (!selectedTeacherId || Object.keys(scheduleData).length === 0) return SCHEDULE_BLOCKS;
+
+        const standardTimes = new Set(SCHEDULE_BLOCKS.map(b => b.start));
+        const teacherTimes = new Set(
+            Object.keys(scheduleData).map(k => k.split('-').slice(1).join('-'))
+        );
+        const hasNonStandard = [...teacherTimes].some(t => !standardTimes.has(t));
+        if (!hasNonStandard) return SCHEDULE_BLOCKS;
+
+        const sorted = [...teacherTimes].sort();
+        return sorted.map((t, i) => ({
+            id: `t_${t.replace(':', '')}`,
+            start: t,
+            end: sorted[i + 1] || '',
+            label: `${i + 1}°`,
+            type: 'class',
+        }));
+    }, [selectedTeacherId, scheduleData]);
+
     // Get cell data helper
     const getCellData = (day, startTime) => {
         const key = `${day}-${startTime}`;
@@ -123,7 +144,7 @@ export default function ScheduleAdminView() {
 
     // Calcular horas en aula y horas libres
     const calcularHoras = () => {
-        const bloquesClase = SCHEDULE_BLOCKS.filter(b => b.type === 'class');
+        const bloquesClase = displayBlocks.filter(b => b.type === 'class');
         const totalBloques = bloquesClase.length * DAYS.length; // 8 × 5 = 40
         const minutosPorBloque = 45;
 
@@ -347,7 +368,7 @@ export default function ScheduleAdminView() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {SCHEDULE_BLOCKS.map((block) => {
+                                            {displayBlocks.map((block) => {
                                                 const isBreak = block.type === 'break';
                                                 const isSpecial = block.type === 'special';
 
