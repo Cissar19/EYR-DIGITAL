@@ -117,6 +117,7 @@ const USERS = [
     { name: "Eva Constanza Vargas Retamal", email: "evargasr@eduhuechuraba.cl", role: "teacher" },
     { name: "Maximiliano Bahamondes", email: "mbahamondes@eduhuechuraba.cl", role: "teacher" },
     { name: "Filippa Leporati", email: "fleporati@eduhuechuraba.cl", role: "teacher" },
+    { name: "Maria Elisa Venegas Bravo", email: "mvenegasb@eduhuechuraba.cl", role: "teacher" },
 ];
 
 const app = initializeApp(firebaseConfig);
