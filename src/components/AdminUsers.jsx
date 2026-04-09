@@ -152,8 +152,7 @@ export default function AdminUsers() {
             const msg = error.code === 'auth/email-already-in-use'
                 ? 'Ya existe un usuario con ese correo'
                 : error.message;
-            setNotification('Error: ' + msg);
-            setTimeout(() => setNotification(null), 5000);
+            toast.error(msg);
         }
     };
 

@@ -273,6 +273,61 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Clean up secondary app
             try { await signOut(secondaryAuth); } catch (_) { }
+
+            // Handle orphaned Auth user (exists in Auth but not in Firestore)
+            if (error.code === 'auth/email-already-in-use') {
+                const existingInFirestore = await (async () => {
+                    try {
+                        const { getDocs: _getDocs, collection: _col, query: _q, where: _w } = await import('firebase/firestore');
+                        const snap = await _getDocs(_q(_col(db, 'users'), _w('email', '==', newUserData.email)));
+                        return !snap.empty;
+                    } catch { return false; }
+                })();
+
+                if (existingInFirestore) {
+                    throw new Error('Ya existe un usuario registrado con ese correo.');
+                }
+
+                // Orphaned: exists in Auth only → recover via admin API
+                try {
+                    const firebaseUser = auth.currentUser;
+                    const idToken = await firebaseUser.getIdToken();
+                    const resp = await fetch('/api/recover-orphaned-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                        body: JSON.stringify({ email: newUserData.email }),
+                    });
+                    if (!resp.ok) throw new Error((await resp.json()).error);
+                    const { uid, tempPassword: recoveredPwd } = await resp.json();
+
+                    const userDoc = {
+                        uid,
+                        name: newUserData.name?.trim().slice(0, 100) || '',
+                        email: newUserData.email,
+                        role: newUserData.role,
+                        accessLevel: newUserData.accessLevel || 'view',
+                        avatar: null,
+                        hoursUsed: 0,
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(db, 'users', uid), userDoc);
+
+                    // Sync role claim
+                    try {
+                        await fetch('/api/sync-role-claim', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                            body: JSON.stringify({ uid, role: newUserData.role }),
+                        });
+                    } catch (_) { }
+
+                    await fetchUsers();
+                    return { id: uid, ...userDoc, tempPassword: recoveredPwd };
+                } catch (recoverError) {
+                    throw recoverError;
+                }
+            }
+
             throw error;
         }
     }, [fetchUsers, user]);
