@@ -4,6 +4,7 @@ import { Shuffle, Search, Trash2, ChevronLeft, ChevronRight, CheckCircle, Calend
 import { cn } from '../lib/utils';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
+import { ReplacementsCard } from '../components/DashboardHome';
 
 const MATCH_CFG = {
     exact: {
@@ -308,6 +309,16 @@ export default function ReplacementLogsView() {
                     )}
                 </div>
             </motion.div>
+
+            {/* Posibles reemplazos hoy */}
+            <ReplacementsCard />
+
+            {/* Separador */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Historial de asignaciones</span>
+                <div className="flex-1 h-px bg-slate-200" />
+            </div>
 
             {/* Date Range Filter */}
             <motion.div

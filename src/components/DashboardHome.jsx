@@ -706,7 +706,7 @@ const DAY_NAME_TO_KEY = {
     'Jueves': 'jueves', 'Viernes': 'viernes',
 };
 
-const ReplacementsCard = ({ externalDate }) => {
+export const ReplacementsCard = ({ externalDate }) => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
     const { schedules } = useSchedule();
