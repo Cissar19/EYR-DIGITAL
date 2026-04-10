@@ -116,6 +116,7 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
 
     const end      = startNum + items.length - 1;
     const nameMode = items[0]?.name !== undefined;
+    const lineMode = !nameMode && items[0]?.withLines === true;
 
     // ── Layout pre-calculado (igual para todos los bibs) ──
     const small       = bibH < 80;
@@ -160,11 +161,11 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
     const numAreaH    = bibH - numAreaY;
 
     // Reserva para nombre/curso (adaptada a bibs pequeños)
-    const nameReserve = nameMode ? Math.min(28, numAreaH * 0.38) : 0;
+    const nameReserve = (nameMode || lineMode) ? Math.min(28, numAreaH * 0.38) : 0;
     const numEffH     = numAreaH - nameReserve;
 
     // Número: restringido por ancho Y por altura disponible
-    const fsByWidth  = fitFontSize(doc, formatNum(end, end), bibW, fNum, fNumSt, nameMode ? 0.65 : 0.82);
+    const fsByWidth  = fitFontSize(doc, formatNum(end, end), bibW, fNum, fNumSt, (nameMode || lineMode) ? 0.65 : 0.82);
     const fsByHeight = (numEffH - 4) / (PT2MM * CAP_RATIO);   // 4 mm = padding vertical
     const numFs      = Math.min(fsByWidth, fsByHeight, 200);
     const numCapH    = numFs * PT2MM * CAP_RATIO;
@@ -222,6 +223,40 @@ async function generateBibsPDF({ startNum, title, subtitle, perPage, items }) {
         doc.setFontSize(numFs);
         doc.setTextColor(10, 15, 50);
         doc.text(numStr, cx, areaMid + numCapH / 2, { align: 'center' });
+
+        // Líneas en blanco para nombre + curso (modo solo números)
+        if (lineMode) {
+            const lineAreaTop = by + bibH - nameReserve;
+            const rowH = nameReserve / 2;
+            const labelFs = small ? 6 : 7;
+            const lineX1 = bx + 8;
+            const lineX2 = bx + bibW - 8;
+
+            // Separador superior
+            doc.setDrawColor(180, 185, 210);
+            doc.setLineWidth(0.3);
+            doc.line(lineX1, lineAreaTop + 1, lineX2, lineAreaTop + 1);
+
+            doc.setFont(fText, 'normal');
+            doc.setFontSize(labelFs);
+            doc.setTextColor(130, 140, 170);
+
+            // Fila nombre
+            const nameLabelY = lineAreaTop + rowH * 0.55;
+            const nameLineY  = lineAreaTop + rowH * 0.88;
+            doc.text('Nombre:', lineX1, nameLabelY);
+            doc.setDrawColor(50, 60, 100);
+            doc.setLineWidth(0.5);
+            doc.line(lineX1, nameLineY, lineX2, nameLineY);
+
+            // Fila curso
+            const cursoLabelY = lineAreaTop + rowH + rowH * 0.55;
+            const cursoLineY  = lineAreaTop + rowH + rowH * 0.88;
+            doc.setTextColor(130, 140, 170);
+            doc.text('Curso:', lineX1, cursoLabelY);
+            doc.setDrawColor(50, 60, 100);
+            doc.line(lineX1, cursoLineY, lineX1 + (lineX2 - lineX1) * 0.45, cursoLineY);
+        }
 
         // Nombre + curso
         if (nameMode && name) {
@@ -350,7 +385,7 @@ export default function CorridaEscolarView() {
         try {
             let items;
             if (mode === 'numeros') {
-                items = Array.from({ length: total }, (_, i) => ({ n: startNum + i }));
+                items = Array.from({ length: total }, (_, i) => ({ n: startNum + i, withLines: true }));
             } else if (mode === 'nombres') {
                 items = selectedStudents.map((s, i) => ({
                     n: startNum + i,
