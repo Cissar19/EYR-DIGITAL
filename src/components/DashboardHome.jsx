@@ -788,6 +788,11 @@ const ReplacementsCard = ({ externalDate }) => {
             replacementName: candidate.name,
             assignedBy: currentUser.id,
             assignedByName: currentUser.name,
+            candidates: block.candidates.map(c => ({
+                id: c.userId,
+                name: c.name,
+                matchLevel: c.matchLevel,
+            })),
         });
         setAssigning(null);
     };

@@ -35,6 +35,7 @@ export const ReplacementLogsProvider = ({ children }) => {
                 replacementName: data.replacementName,
                 assignedBy: data.assignedBy,
                 assignedByName: data.assignedByName,
+                candidates: data.candidates || [],
             });
             toast.success('Reemplazo asignado correctamente');
             return true;

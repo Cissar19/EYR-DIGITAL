@@ -1,9 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shuffle, Search, Trash2, ChevronLeft, ChevronRight, CheckCircle, Calendar } from 'lucide-react';
+import { Shuffle, Search, Trash2, ChevronLeft, ChevronRight, CheckCircle, Calendar, ChevronDown, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
+
+const MATCH_STYLES = {
+    exact:     { dot: 'bg-emerald-500', label: 'text-emerald-700 bg-emerald-50', text: 'exacto' },
+    related:   { dot: 'bg-amber-400',   label: 'text-amber-700 bg-amber-50',     text: 'afín'   },
+    available: { dot: 'bg-slate-400',   label: 'text-slate-600 bg-slate-100',    text: 'libre'  },
+};
 
 const ITEMS_PER_PAGE = 10;
 
@@ -38,6 +44,7 @@ export default function ReplacementLogsView() {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [confirmDelete, setConfirmDelete] = useState(null);
+    const [expandedLog, setExpandedLog] = useState(null);
 
     // Date range filter: default to current week
     const today = new Date();
@@ -191,14 +198,25 @@ export default function ReplacementLogsView() {
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Bloque</th>
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Reemplazante</th>
                                         <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Asignado por</th>
+                                        <th className="text-left px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">Candidatos</th>
                                         {userCanEdit && <th className="text-right px-4 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider"></th>}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {paginatedLogs.map((log) => {
                                         const typeClass = TYPE_COLORS[log.absenceType] || 'bg-slate-50 text-slate-600 border-slate-200';
+                                        const isExpanded = expandedLog === log.id;
+                                        const hasCandidates = log.candidates?.length > 0;
                                         return (
-                                            <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                            <React.Fragment key={log.id}>
+                                            <tr
+                                                className={cn(
+                                                    "border-b border-slate-50 transition-colors",
+                                                    hasCandidates ? "cursor-pointer hover:bg-indigo-50/30" : "hover:bg-slate-50/50",
+                                                    isExpanded && "bg-indigo-50/20"
+                                                )}
+                                                onClick={() => hasCandidates && setExpandedLog(isExpanded ? null : log.id)}
+                                            >
                                                 <td className="px-4 py-3 font-medium text-slate-700">{formatDateDisplay(log.date)}</td>
                                                 <td className="px-4 py-3 font-semibold text-slate-800">{log.absentName}</td>
                                                 <td className="px-4 py-3">
@@ -218,8 +236,17 @@ export default function ReplacementLogsView() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-500">{log.assignedByName}</td>
+                                                <td className="px-4 py-3">
+                                                    {hasCandidates && (
+                                                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                            <Users className="w-3.5 h-3.5" />
+                                                            <span>{log.candidates.length}</span>
+                                                            <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 {userCanEdit && (
-                                                <td className="px-4 py-3 text-right">
+                                                <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                                                     {confirmDelete === log.id ? (
                                                         <div className="flex items-center gap-1 justify-end">
                                                             <button
@@ -247,6 +274,37 @@ export default function ReplacementLogsView() {
                                                 </td>
                                                 )}
                                             </tr>
+                                            {isExpanded && hasCandidates && (
+                                                <tr className="bg-indigo-50/30 border-b border-indigo-100/50">
+                                                    <td colSpan={userCanEdit ? 8 : 7} className="px-6 py-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-0.5 shrink-0">Candidatos disponibles</span>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {log.candidates.map((c, i) => {
+                                                                    const style = MATCH_STYLES[c.matchLevel] || MATCH_STYLES.available;
+                                                                    const isChosen = c.id === log.replacementId;
+                                                                    return (
+                                                                        <span
+                                                                            key={i}
+                                                                            className={cn(
+                                                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+                                                                                isChosen
+                                                                                    ? "bg-emerald-100 text-emerald-800 border-emerald-200 ring-1 ring-emerald-400"
+                                                                                    : cn(style.label, "border-transparent")
+                                                                            )}
+                                                                        >
+                                                                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", style.dot)} />
+                                                                            {c.name}
+                                                                            {isChosen && <CheckCircle className="w-3 h-3 text-emerald-600" />}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>
@@ -257,6 +315,8 @@ export default function ReplacementLogsView() {
                         <div className="md:hidden divide-y divide-slate-100">
                             {paginatedLogs.map((log) => {
                                 const typeClass = TYPE_COLORS[log.absenceType] || 'bg-slate-50 text-slate-600 border-slate-200';
+                                const isExpanded = expandedLog === log.id;
+                                const hasCandidates = log.candidates?.length > 0;
                                 return (
                                     <div key={log.id} className="p-4 space-y-2">
                                         <div className="flex items-center justify-between">
@@ -276,17 +336,49 @@ export default function ReplacementLogsView() {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] text-slate-400">por {log.assignedByName}</span>
-                                            {userCanEdit && (confirmDelete === log.id ? (
-                                                <div className="flex items-center gap-1">
-                                                    <button onClick={() => handleDelete(log.id)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-600 text-white">Confirmar</button>
-                                                    <button onClick={() => setConfirmDelete(null)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600">Cancelar</button>
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => setConfirmDelete(log.id)} className="p-1 text-slate-400 hover:text-red-500">
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            ))}
+                                            <div className="flex items-center gap-2">
+                                                {hasCandidates && (
+                                                    <button
+                                                        onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                                                        className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 hover:text-indigo-700"
+                                                    >
+                                                        <Users className="w-3 h-3" />
+                                                        {log.candidates.length} candidatos
+                                                        <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
+                                                    </button>
+                                                )}
+                                                {userCanEdit && (confirmDelete === log.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => handleDelete(log.id)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-600 text-white">Confirmar</button>
+                                                        <button onClick={() => setConfirmDelete(null)} className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600">Cancelar</button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={() => setConfirmDelete(log.id)} className="p-1 text-slate-400 hover:text-red-500">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
+                                        {isExpanded && hasCandidates && (
+                                            <div className="pt-1 flex flex-wrap gap-1.5">
+                                                {log.candidates.map((c, i) => {
+                                                    const style = MATCH_STYLES[c.matchLevel] || MATCH_STYLES.available;
+                                                    const isChosen = c.id === log.replacementId;
+                                                    return (
+                                                        <span key={i} className={cn(
+                                                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border",
+                                                            isChosen
+                                                                ? "bg-emerald-100 text-emerald-800 border-emerald-200 ring-1 ring-emerald-400"
+                                                                : cn(style.label, "border-transparent")
+                                                        )}>
+                                                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", style.dot)} />
+                                                            {c.name}
+                                                            {isChosen && <CheckCircle className="w-3 h-3 text-emerald-600" />}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
