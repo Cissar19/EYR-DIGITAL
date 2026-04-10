@@ -49,15 +49,13 @@ export default async function handler(req, res) {
         const decoded = await admin.auth().verifyIdToken(idToken);
         const callerUid = decoded.uid;
 
-        // Use custom claim if available, fall back to Firestore for users without claims yet
-        let callerRole = decoded.role;
-        if (!callerRole) {
-            const callerDoc = await admin.firestore().doc(`users/${callerUid}`).get();
-            if (!callerDoc.exists) {
-                return res.status(403).json({ error: 'Usuario no encontrado en Firestore' });
-            }
-            callerRole = callerDoc.data().role;
+        // Always read role from Firestore (source of truth). Claims can be stale
+        // for up to 1 hour after a role change, causing false permission denials.
+        const callerDoc = await admin.firestore().doc(`users/${callerUid}`).get();
+        if (!callerDoc.exists) {
+            return res.status(403).json({ error: 'Usuario no encontrado en Firestore' });
         }
+        const callerRole = callerDoc.data().role;
 
         if (callerRole !== 'super_admin' && callerRole !== 'admin') {
             return res.status(403).json({ error: 'No tienes permisos para cambiar correos' });

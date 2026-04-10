@@ -55,12 +55,10 @@ export default async function handler(req, res) {
     try {
         const decoded = await admin.auth().verifyIdToken(idToken);
 
-        // Use custom claim if available, fall back to Firestore for users without claims yet
-        let callerRole = decoded.role;
-        if (!callerRole) {
-            const callerDoc = await admin.firestore().doc(`users/${decoded.uid}`).get();
-            callerRole = callerDoc.exists ? callerDoc.data().role : null;
-        }
+        // Always read role from Firestore (source of truth). Claims can be stale
+        // for up to 1 hour after a role change, causing false permission denials.
+        const callerDoc = await admin.firestore().doc(`users/${decoded.uid}`).get();
+        const callerRole = callerDoc.exists ? callerDoc.data().role : null;
 
         if (callerRole !== 'super_admin' && callerRole !== 'admin') {
             return res.status(403).json({ error: 'No tienes permisos para modificar roles' });
