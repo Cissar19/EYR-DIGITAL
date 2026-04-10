@@ -11,12 +11,10 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      // Custom claim is set on login and kept in sync by /api/sync-role-claim.
-      // Fall back to a Firestore read for users who were created before claims
-      // were introduced (claim will be missing, not null).
-      return request.auth.token.role != null
-        ? request.auth.token.role
-        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      // Always read from Firestore (source of truth). JWT claims can be stale
+      // if the role was changed directly in Firestore or without a token refresh,
+      // causing false permission denials even for legitimate admins.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isAdmin() {
