@@ -611,6 +611,35 @@ export default function AdminUsers() {
                                         </div>
                                     </button>
                                 )}
+
+                                {/* Hace Clases Toggle */}
+                                {canManageUsers && (
+                                    <button
+                                        onClick={() => {
+                                            const current = u.teachesClasses !== false;
+                                            updateUser(u.id, { teachesClasses: !current });
+                                        }}
+                                        className={`flex items-center justify-between w-full p-3 rounded-xl border transition-all ${
+                                            u.teachesClasses !== false
+                                                ? 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'
+                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <BookOpen className={`w-3.5 h-3.5 ${
+                                                u.teachesClasses !== false ? 'text-emerald-600' : 'text-slate-400'
+                                            }`} />
+                                            <span className="text-xs font-semibold text-slate-600">Hace clases</span>
+                                        </div>
+                                        <div className={`w-9 h-5 rounded-full transition-colors relative ${
+                                            u.teachesClasses !== false ? 'bg-emerald-500' : 'bg-slate-300'
+                                        }`}>
+                                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                                                u.teachesClasses !== false ? 'translate-x-4' : 'translate-x-0.5'
+                                            }`} />
+                                        </div>
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     ))}

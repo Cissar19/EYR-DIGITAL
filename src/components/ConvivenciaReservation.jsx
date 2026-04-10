@@ -844,7 +844,7 @@ export default function ConvivenciaReservation() {
                                                     const reservation = getReservation(dateStr, block.id);
                                                     const blocked = getBlockedSlot(dateStr, block.id);
                                                     const isMyReservation = reservation && user && reservation.userId === user.id;
-                                                    const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                                                    const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'director');
                                                     const teacherClass = getTeacherClass(d.name, block.start);
                                                     const isTodayCol = isToday(d.date);
 
@@ -991,7 +991,7 @@ export default function ConvivenciaReservation() {
                             const reservation = getReservation(dateStr, block.id);
                             const blocked = getBlockedSlot(dateStr, block.id);
                             const isMyReservation = reservation && user && reservation.userId === user.id;
-                            const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                            const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'director');
                             const teacherClass = getTeacherClass(currentDay.name, block.start);
 
                             // Hide blocks after b7 on Fridays

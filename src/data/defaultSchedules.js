@@ -516,6 +516,34 @@ const corinaCamilo = [
     { day: 'Viernes', startTime: '11:30', subject: 'Comprensión Sociocultural', course: 'Kinder A' },
 ];
 
+// MARIA ELISA VENEGAS - Música/Artes/Tecnología (28 hrs)
+const mariaElisaVenegas = [
+    // Lunes
+    { day: 'Lunes', startTime: '09:55', subject: 'Música/Arte', course: '8° Básico' },
+    { day: 'Lunes', startTime: '10:40', subject: 'Música/Arte', course: '8° Básico' },
+    { day: 'Lunes', startTime: '13:55', subject: 'Artes', course: '6° Básico' },
+    { day: 'Lunes', startTime: '14:40', subject: 'Artes', course: '6° Básico' },
+    // Miércoles
+    { day: 'Miércoles', startTime: '08:10', subject: 'Artes', course: '4° Básico' },
+    { day: 'Miércoles', startTime: '08:55', subject: 'Artes', course: '4° Básico' },
+    { day: 'Miércoles', startTime: '09:55', subject: 'Música/Arte', course: '7° Básico' },
+    { day: 'Miércoles', startTime: '10:40', subject: 'Música/Arte', course: '7° Básico' },
+    { day: 'Miércoles', startTime: '11:40', subject: 'Música/Arte', course: '8° Básico' },
+    { day: 'Miércoles', startTime: '12:25', subject: 'Tecnología', course: '8° Básico' },
+    { day: 'Miércoles', startTime: '13:55', subject: 'Artes', course: '2° Básico' },
+    { day: 'Miércoles', startTime: '14:40', subject: 'Artes', course: '2° Básico' },
+    // Jueves
+    { day: 'Jueves', startTime: '08:10', subject: 'Artes', course: '3° Básico' },
+    { day: 'Jueves', startTime: '08:55', subject: 'Artes', course: '3° Básico' },
+    { day: 'Jueves', startTime: '09:55', subject: 'Artes', course: '1° Básico' },
+    { day: 'Jueves', startTime: '10:40', subject: 'Artes', course: '1° Básico' },
+    { day: 'Jueves', startTime: '11:40', subject: 'Artes', course: '5° Básico' },
+    { day: 'Jueves', startTime: '12:25', subject: 'Artes', course: '5° Básico' },
+    { day: 'Jueves', startTime: '14:40', subject: 'Música/Arte', course: '7° Básico' },
+    // Viernes
+    { day: 'Viernes', startTime: '08:10', subject: 'Tecnología', course: '7° Básico' },
+];
+
 /**
  * Mapeo email → horario por defecto
  */
@@ -534,4 +562,5 @@ export const DEFAULT_SCHEDULES = {
     'msilvaa@eduhuechuraba.cl': mariaJoseSilva,
     'cpincheirag@eduhuechuraba.cl': claudiaPincheira,
     'ccamilot@eduhuechuraba.cl': corinaCamilo,
+    'mvenegasb@eduhuechuraba.cl': mariaElisaVenegas,
 };

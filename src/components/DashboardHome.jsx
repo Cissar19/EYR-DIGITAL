@@ -39,6 +39,7 @@ import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import UserDetailPanel from './UserDetailPanel';
 import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
+import { subscribeToCollection } from '../lib/firestoreService';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -692,6 +693,19 @@ const DAY_NAMES_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'V
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+// Parse "HH:MM" to minutes for comparison
+const timeToMin = (t) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + (m || 0);
+};
+
+// Day name (e.g. "Lunes") → teacher_hours key (e.g. "lunes")
+const DAY_NAME_TO_KEY = {
+    'Lunes': 'lunes', 'Martes': 'martes', 'Miércoles': 'miercoles',
+    'Jueves': 'jueves', 'Viernes': 'viernes',
+};
+
 const ReplacementsCard = ({ externalDate }) => {
     const { requests } = useAdministrativeDays();
     const { leaves } = useMedicalLeaves();
@@ -702,6 +716,13 @@ const ReplacementsCard = ({ externalDate }) => {
     const [detailModal, setDetailModal] = useState(null); // { teacherName, absentId, absenceType, block }
     const [assigning, setAssigning] = useState(null); // "absentId-startTime" key while saving
     const [dayOffset, setDayOffset] = useState(0);
+    const [teacherHours, setTeacherHours] = useState([]);
+
+    // Load teacher_hours once
+    React.useEffect(() => {
+        const unsub = subscribeToCollection('teacher_hours', (docs) => setTeacherHours(docs));
+        return () => unsub();
+    }, []);
 
     // Reset dayOffset when external date changes
     React.useEffect(() => {
@@ -800,6 +821,19 @@ const ReplacementsCard = ({ externalDate }) => {
 
         const absentIds = new Set(absentMap.keys());
 
+        // Build permanence lookup: userId → { entryMin, exitMin } for this day
+        const dayKey = DAY_NAME_TO_KEY[dayName];
+        const permanenceByUser = {};
+        for (const th of teacherHours) {
+            if (!th.userId) continue;
+            const slot = th.schedule?.[dayKey];
+            if (!slot?.entry || !slot?.exit) continue;
+            permanenceByUser[th.userId] = {
+                entryMin: timeToMin(slot.entry),
+                exitMin: timeToMin(slot.exit),
+            };
+        }
+
         // Build lookup: which startTimes each user is busy on this day
         const busyByUser = {};
         for (const [uid, blocks] of Object.entries(schedules)) {
@@ -845,6 +879,13 @@ const ReplacementsCard = ({ externalDate }) => {
                     const userBusy = busyByUser[u.id];
                     if (userBusy && userBusy.has(block.startTime)) continue;
 
+                    // Check permanence: if we have data, verify the candidate is at school during this block
+                    const perm = permanenceByUser[u.id];
+                    if (perm) {
+                        const blockMin = timeToMin(block.startTime);
+                        if (blockMin < perm.entryMin || blockMin >= perm.exitMin) continue;
+                    }
+
                     // Determine match level
                     const userSubjects = new Set(
                         (schedules[u.id] || []).map(b => b.subject).filter(Boolean)
@@ -867,12 +908,23 @@ const ReplacementsCard = ({ externalDate }) => {
                         }
                     }
 
+                    const ownBlocksToday = (schedules[u.id] || [])
+                        .filter(b => b.day === dayName && b.startTime !== '08:00').length;
+                    const subjectsList = [...new Set(
+                        (schedules[u.id] || [])
+                            .map(b => b.subject)
+                            .filter(s => s && s !== 'Jefatura')
+                    )];
+
                     candidates.push({
                         userId: u.id,
                         name: u.name,
                         firstName: u.name.split(' ')[0],
+                        role: u.role,
                         matchLevel,
                         matchSubject,
+                        ownBlocksToday,
+                        subjectsList,
                     });
                 }
 
@@ -899,7 +951,7 @@ const ReplacementsCard = ({ externalDate }) => {
         if (teacherSections.length === 0) return null;
 
         return { teacherSections, totalUncovered };
-    }, [requests, leaves, schedules, users, logs, selectedDateStr, selectedDayName]);
+    }, [requests, leaves, schedules, users, logs, selectedDateStr, selectedDayName, teacherHours]);
 
     const teacherSections = replacementData?.teacherSections || [];
     const totalUncovered = replacementData?.totalUncovered || 0;
@@ -972,7 +1024,7 @@ const ReplacementsCard = ({ externalDate }) => {
                 {teacherSections.map(teacher => {
                     const isExpanded = expandedTeacher === teacher.userId;
                     const initials = teacher.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
-                    const totalCandidates = teacher.blocks.reduce((sum, b) => sum + b.candidates.length, 0);
+                    const totalCandidates = new Set(teacher.blocks.flatMap(b => b.candidates.map(c => c.userId))).size;
 
                     return (
                         <div key={teacher.userId} className="border border-slate-200/80 rounded-xl overflow-hidden">
@@ -1133,18 +1185,21 @@ const ReplacementsCard = ({ externalDate }) => {
                                     const isModalAssigning = assigning === modalBlockKey;
                                     return detailModal.block.candidates.map((c) => {
                                         const style = matchColors[c.matchLevel];
+                                        const detail = [
+                                            getRoleLabel(c.role),
+                                            c.ownBlocksToday > 0 ? `${c.ownBlocksToday} ${c.ownBlocksToday === 1 ? 'bloque' : 'bloques'} hoy` : null,
+                                            c.subjectsList.length > 0 ? c.subjectsList.join(', ') : null,
+                                        ].filter(Boolean).join(' · ');
                                         return (
                                             <div
                                                 key={c.userId}
-                                                className={cn("flex items-center justify-between p-3 rounded-xl border", style.bg, style.border)}
+                                                className={cn("flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border", style.bg, style.border)}
                                             >
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", style.dot)} />
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span className={cn("w-2 h-2 rounded-full shrink-0", style.dot)} />
                                                     <div className="min-w-0">
-                                                        <span className={cn("text-sm font-semibold block truncate", style.text)}>{c.name}</span>
-                                                        {c.matchSubject && (
-                                                            <span className="text-xs text-slate-400">Enseña {c.matchSubject}</span>
-                                                        )}
+                                                        <span className={cn("text-sm font-semibold block truncate leading-tight", style.text)}>{c.name}</span>
+                                                        <span className="text-[11px] text-slate-400 truncate block leading-tight">{detail}</span>
                                                     </div>
                                                 </div>
                                                 <button
@@ -1155,13 +1210,13 @@ const ReplacementsCard = ({ externalDate }) => {
                                                         c
                                                     )}
                                                     className={cn(
-                                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ml-2",
+                                                        "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0",
                                                         isModalAssigning
                                                             ? "bg-slate-100 text-slate-400 cursor-wait"
                                                             : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-sm"
                                                     )}
                                                 >
-                                                    <UserPlus className="w-3.5 h-3.5" />
+                                                    <UserPlus className="w-3 h-3" />
                                                     Asignar
                                                 </button>
                                             </div>

@@ -240,7 +240,7 @@ export default function LabReservation() {
                                                     const dateStr = d.date.toLocaleDateString('en-CA'); // YYYY-MM-DD
                                                     const reservation = getReservation(dateStr, block.id);
                                                     const isMyReservation = reservation && user && reservation.userId === user.id;
-                                                    const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                                                    const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'director');
 
                                                     return (
                                                         <div key={d.name} className="p-1 border-l border-slate-100 h-[110px] relative">
@@ -342,7 +342,7 @@ export default function LabReservation() {
                             const dateStr = currentDay.date.toLocaleDateString('en-CA');
                             const reservation = getReservation(dateStr, block.id);
                             const isMyReservation = reservation && user && reservation.userId === user.id;
-                            const isAdmin = user && (user.role === 'admin' || user.role === 'director');
+                            const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'director');
 
                             if (isBreak) {
                                 return (

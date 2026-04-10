@@ -447,11 +447,11 @@ export const AuthProvider = ({ children }) => {
     }, [user, users]);
 
     /**
-     * Delete user from Firestore (auth user remains — admin SDK needed for full delete).
+     * Delete user from both Firebase Auth and Firestore via Admin SDK.
      * Only admins can delete users. Cannot delete yourself.
      */
     const deleteUser = React.useCallback(async (userId) => {
-        if (!user || (!isAdmin(user) && !isDirectorOrHigher(user))) {
+        if (!user || !isAdmin(user)) {
             throw new Error('No tienes permisos para eliminar usuarios');
         }
 
@@ -459,13 +459,25 @@ export const AuthProvider = ({ children }) => {
             throw new Error('No puedes eliminar tu propia cuenta');
         }
 
-        try {
-            await deleteDoc(doc(db, 'users', userId));
-            setUsers(prev => prev.filter(u => u.id !== userId));
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            throw error;
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser) throw new Error('No hay sesión activa');
+
+        const idToken = await firebaseUser.getIdToken();
+        const res = await fetch('/api/delete-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ uid: userId }),
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Error al eliminar usuario');
         }
+
+        setUsers(prev => prev.filter(u => u.id !== userId));
     }, [user]);
 
     /**
