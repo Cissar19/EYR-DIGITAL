@@ -956,12 +956,17 @@ const ReplacementsCard = ({ externalDate }) => {
     const teacherSections = replacementData?.teacherSections || [];
     const totalUncovered = replacementData?.totalUncovered || 0;
 
-    const VISIBLE_COUNT = 3;
+    const VISIBLE_COUNT = 5;
 
     const matchColors = {
-        exact: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Ideal' },
-        related: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Afín' },
-        available: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', dot: 'bg-green-500', label: 'Disponible' },
+        exact:     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', avatar: 'bg-emerald-500', label: 'Ideal' },
+        related:   { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   avatar: 'bg-amber-400',   label: 'Afín' },
+        available: { bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-600',   dot: 'bg-slate-400',   avatar: 'bg-slate-400',   label: 'Disponible' },
+    };
+
+    const absenceStyle = {
+        'Día Administrativo': { border: 'border-l-amber-400',  avatar: 'from-amber-400 to-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+        'Licencia Médica':    { border: 'border-l-rose-400',   avatar: 'from-rose-400 to-rose-500',    badge: 'bg-rose-50 text-rose-700 border-rose-200' },
     };
 
     const totalAbsent = teacherSections.length;
@@ -969,7 +974,7 @@ const ReplacementsCard = ({ externalDate }) => {
     return (
         <BentoCard delay={0.08} className="md:col-span-2 lg:col-span-3 border-teal-100/50 bg-gradient-to-br from-white to-teal-50/20">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-teal-50 rounded-xl text-teal-600">
                         <Shuffle className="w-5 h-5" />
@@ -977,26 +982,15 @@ const ReplacementsCard = ({ externalDate }) => {
                     <div>
                         <h3 className="font-bold text-slate-700">Posibles Reemplazos</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                            <button
-                                onClick={() => { setDayOffset(d => d - 1); setExpandedTeacher(null); }}
-                                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                            >
+                            <button onClick={() => { setDayOffset(d => d - 1); setExpandedTeacher(null); }} className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            <span className="text-sm font-semibold text-slate-600 min-w-[180px] text-center">
-                                {selectedDateLabel}
-                            </span>
-                            <button
-                                onClick={() => { setDayOffset(d => d + 1); setExpandedTeacher(null); }}
-                                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                            >
+                            <span className="text-sm font-semibold text-slate-600 min-w-[180px] text-center">{selectedDateLabel}</span>
+                            <button onClick={() => { setDayOffset(d => d + 1); setExpandedTeacher(null); }} className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                             {!isToday && (
-                                <button
-                                    onClick={() => { setDayOffset(0); setExpandedTeacher(null); }}
-                                    className="ml-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 px-2 py-0.5 rounded-md hover:bg-indigo-50 transition-colors"
-                                >
+                                <button onClick={() => { setDayOffset(0); setExpandedTeacher(null); }} className="ml-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 px-2 py-0.5 rounded-md hover:bg-indigo-50 transition-colors">
                                     Hoy
                                 </button>
                             )}
@@ -1015,34 +1009,66 @@ const ReplacementsCard = ({ externalDate }) => {
 
             {/* Teacher sections */}
             {teacherSections.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-10">
                     <Shuffle className="w-8 h-8 text-slate-200 mx-auto mb-2" />
                     <p className="text-slate-400 text-sm">No hay ausencias registradas para este día.</p>
                 </div>
             ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
                 {teacherSections.map(teacher => {
                     const isExpanded = expandedTeacher === teacher.userId;
                     const initials = teacher.userName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
                     const totalCandidates = new Set(teacher.blocks.flatMap(b => b.candidates.map(c => c.userId))).size;
+                    const aStyle = absenceStyle[teacher.typeLabel] || absenceStyle['Día Administrativo'];
+                    const coveredBlocks = teacher.blocks.filter(b => getAssignedLog(teacher.userId, b.startTime)).length;
 
                     return (
-                        <div key={teacher.userId} className="border border-slate-200/80 rounded-xl overflow-hidden">
+                        <div key={teacher.userId} className={cn("border border-slate-200 border-l-4 rounded-xl overflow-hidden", aStyle.border)}>
                             {/* Teacher header */}
                             <button
                                 onClick={() => setExpandedTeacher(isExpanded ? null : teacher.userId)}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50/80 hover:bg-slate-100/80 transition-colors"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50/80 transition-colors text-left"
                             >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                                        {initials}
+                                {/* Avatar */}
+                                <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm", aStyle.avatar)}>
+                                    {initials}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-bold text-slate-800 truncate">{teacher.userName}</span>
+                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", aStyle.badge)}>
+                                            {teacher.typeLabel}
+                                        </span>
                                     </div>
-                                    <div className="text-left min-w-0">
-                                        <span className="text-sm font-semibold text-slate-700 truncate block">{teacher.userName}</span>
-                                        <span className="text-[11px] text-slate-400">{teacher.typeLabel} · {teacher.blocks.length} {teacher.blocks.length === 1 ? 'bloque' : 'bloques'} · {totalCandidates} {totalCandidates === 1 ? 'candidato' : 'candidatos'}</span>
+                                    {/* Block status pills */}
+                                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                        {teacher.blocks.map((block, i) => {
+                                            const assigned = getAssignedLog(teacher.userId, block.startTime);
+                                            const schedBlock = SCHEDULE_BLOCKS.find(sb => sb.start === block.startTime);
+                                            const label = schedBlock?.label?.replace(' Hora', '°') || block.startTime;
+                                            return (
+                                                <span key={i} title={`${label} · ${block.subject}${block.course ? ` · ${block.course}` : ''}`}
+                                                    className={cn(
+                                                        "text-[10px] font-bold px-1.5 py-0.5 rounded-md border",
+                                                        assigned
+                                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                                            : block.candidates.length > 0
+                                                                ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                                                : 'bg-red-50 text-red-500 border-red-200'
+                                                    )}>
+                                                    {assigned ? '✓ ' : ''}{label}
+                                                </span>
+                                            );
+                                        })}
+                                        <span className="text-[10px] text-slate-400 ml-1">
+                                            {coveredBlocks}/{teacher.blocks.length} cubiertos · {totalCandidates} candidatos
+                                        </span>
                                     </div>
                                 </div>
-                                <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform shrink-0 ml-2", isExpanded && "rotate-180")} />
+
+                                <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform shrink-0", isExpanded && "rotate-180")} />
                             </button>
 
                             {/* Expanded blocks */}
@@ -1052,79 +1078,76 @@ const ReplacementsCard = ({ externalDate }) => {
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2 }}
+                                        transition={{ duration: 0.18 }}
                                         className="overflow-hidden"
                                     >
-                                        <div className="px-4 py-3 space-y-3 border-t border-slate-100">
+                                        <div className="divide-y divide-slate-100 border-t border-slate-100">
                                             {teacher.blocks.map((block, idx) => {
                                                 const assignedLog = getAssignedLog(teacher.userId, block.startTime);
                                                 const blockKey = `${teacher.userId}-${block.startTime}`;
                                                 const isAssigning = assigning === blockKey;
+                                                const schedBlock = SCHEDULE_BLOCKS.find(sb => sb.start === block.startTime);
+                                                const blockLabel = schedBlock?.label || block.startTime;
                                                 const visibleCandidates = block.candidates.slice(0, VISIBLE_COUNT);
                                                 const hiddenCount = block.candidates.length - VISIBLE_COUNT;
 
                                                 return (
-                                                    <div key={idx}>
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                                                {block.startTime}
+                                                    <div key={idx} className={cn("px-4 py-3", assignedLog ? 'bg-emerald-50/40' : 'bg-white')}>
+                                                        {/* Block info row */}
+                                                        <div className="flex items-center gap-2 mb-2.5">
+                                                            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
+                                                                {blockLabel}
                                                             </span>
-                                                            <span className="text-sm font-medium text-slate-700">
-                                                                {block.subject}
-                                                            </span>
-                                                            {block.course && (
-                                                                <span className="text-xs text-slate-400">· {block.course}</span>
-                                                            )}
-                                                            {!assignedLog && block.candidates.length > 0 && (
-                                                                <span className="text-[10px] text-slate-400 ml-auto">{block.candidates.length} disponibles</span>
-                                                            )}
+                                                            <span className="text-sm font-semibold text-slate-700">{block.subject}</span>
+                                                            {block.course && <span className="text-xs text-slate-400">· {block.course}</span>}
                                                         </div>
 
+                                                        {/* Assigned state */}
                                                         {assignedLog ? (
-                                                            <div className="ml-1">
-                                                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                                                                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                                                                    <span className="text-sm font-semibold text-emerald-700">Asignado: {assignedLog.replacementName}</span>
-                                                                </div>
+                                                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-100/60 border border-emerald-200">
+                                                                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                                <span className="text-sm font-bold text-emerald-700">{assignedLog.replacementName}</span>
+                                                                <span className="text-xs text-emerald-500 ml-auto">Asignado</span>
                                                             </div>
                                                         ) : block.candidates.length > 0 ? (
-                                                            <div className="ml-1">
-                                                                <div className="flex flex-wrap gap-1.5">
-                                                                    {visibleCandidates.map(c => {
-                                                                        const style = matchColors[c.matchLevel];
-                                                                        return (
-                                                                            <button
-                                                                                key={c.userId}
-                                                                                disabled={isAssigning}
-                                                                                onClick={() => handleAssign(teacher, block, c)}
-                                                                                title={`Asignar a ${c.name}${c.matchSubject ? ` — enseña ${c.matchSubject}` : ''}`}
-                                                                                className={cn(
-                                                                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all",
-                                                                                    style.bg, style.border, style.text,
-                                                                                    isAssigning ? "opacity-50 cursor-wait" : "hover:ring-2 hover:ring-offset-1 hover:ring-indigo-300 cursor-pointer active:scale-95"
-                                                                                )}
-                                                                            >
-                                                                                <span className={cn("w-2 h-2 rounded-full shrink-0", style.dot)} />
-                                                                                <span>{c.firstName}</span>
-                                                                                {c.matchSubject && (
-                                                                                    <span className="opacity-70">({c.matchSubject})</span>
-                                                                                )}
-                                                                                <span className="opacity-50 hidden sm:inline">· {style.label}</span>
-                                                                            </button>
-                                                                        );
-                                                                    })}
-                                                                    {hiddenCount > 0 && (
+                                                            /* Candidate avatars */
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                {visibleCandidates.map(c => {
+                                                                    const style = matchColors[c.matchLevel];
+                                                                    const cInitials = c.name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+                                                                    return (
                                                                         <button
-                                                                            onClick={() => setDetailModal({ teacherName: teacher.userName, absentId: teacher.userId, absenceType: teacher.typeLabel, block })}
-                                                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                                                                            key={c.userId}
+                                                                            disabled={isAssigning}
+                                                                            onClick={() => handleAssign(teacher, block, c)}
+                                                                            title={`${c.name}${c.matchSubject ? ` · ${c.matchSubject}` : ''} · ${style.label}`}
+                                                                            className={cn(
+                                                                                "flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border text-xs font-semibold transition-all",
+                                                                                style.bg, style.border, style.text,
+                                                                                isAssigning ? "opacity-50 cursor-wait" : "hover:shadow-md hover:scale-105 cursor-pointer active:scale-95"
+                                                                            )}
                                                                         >
-                                                                            +{hiddenCount} más
+                                                                            <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0", style.avatar)}>
+                                                                                {cInitials}
+                                                                            </span>
+                                                                            <span>{c.firstName}</span>
                                                                         </button>
-                                                                    )}
-                                                                </div>
+                                                                    );
+                                                                })}
+                                                                {hiddenCount > 0 && (
+                                                                    <button
+                                                                        onClick={() => setDetailModal({ teacherName: teacher.userName, absentId: teacher.userId, absenceType: teacher.typeLabel, block })}
+                                                                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-slate-300 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:border-slate-400 transition-all"
+                                                                    >
+                                                                        +{hiddenCount} más
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ) : (
-                                                            <p className="text-xs text-slate-400 italic ml-1">Sin sugerencias disponibles</p>
+                                                            <div className="flex items-center gap-1.5 text-xs text-red-400">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-red-300 shrink-0" />
+                                                                Sin candidatos disponibles
+                                                            </div>
                                                         )}
                                                     </div>
                                                 );

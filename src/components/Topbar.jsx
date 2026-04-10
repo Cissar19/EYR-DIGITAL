@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth, getRoleLabel, ROLES } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { DEFAULT_SCHEDULES } from '../data/defaultSchedules';
 import { User, Bell, Search, Menu, LogOut, Settings, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +20,12 @@ export default function Topbar({ onMenuClick }) {
         if (!userCanEdit) return [];
         return users
             .filter(u => u.role === ROLES.TEACHER)
-            .filter(u => !schedules[u.id] || schedules[u.id].length === 0)
+            .filter(u => u.teachesClasses !== false)
+            .filter(u => {
+                const hasFirestore = schedules[u.id]?.length > 0;
+                const hasDefault   = !!DEFAULT_SCHEDULES[u.email];
+                return !hasFirestore && !hasDefault;
+            })
             .map(u => u.name);
     }, [users, schedules, userCanEdit]);
 
