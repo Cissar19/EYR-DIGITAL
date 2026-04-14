@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Search, Users, ChevronDown, Calendar, Sun, Moon, ArrowRight, User, Filter } from 'lucide-react';
-import { subscribeToCollection } from '../lib/firestoreService';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Clock, Search, Users, ChevronDown, Calendar, Sun, Moon, ArrowRight, User, Filter, Plus, Pencil, Trash2, X, Save, Check } from 'lucide-react';
+import { subscribeToCollection, setDocument, removeDocument, createDocument } from '../lib/firestoreService';
+import { useAuth, canEdit as canEditHelper } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 const DAYS = [
     { key: 'lunes', label: 'Lunes', short: 'Lun' },
@@ -15,21 +17,18 @@ const DAYS = [
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
 
-// Detect which day is today (0=Mon .. 4=Fri, -1 = weekend)
 function getTodayIndex() {
-    const jsDay = new Date().getDay(); // 0=Sun, 1=Mon .. 6=Sat
+    const jsDay = new Date().getDay();
     if (jsDay >= 1 && jsDay <= 5) return jsDay - 1;
     return -1;
 }
 
-// Parse time string "HH:MM" to minutes for sorting/comparison
 function timeToMinutes(t) {
     if (!t) return 0;
     const [h, m] = t.split(':').map(Number);
     return (h || 0) * 60 + (m || 0);
 }
 
-// Compute total hours for a schedule
 function totalWeeklyHours(schedule) {
     let total = 0;
     for (const day of DAYS) {
@@ -47,13 +46,198 @@ function formatHoursMinutes(totalMinutes) {
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// ── Edit Modal ──────────────────────────────────────────────────────────────
+function EditModal({ teacher, onClose, onSave, onDelete }) {
+    const isNew = !teacher?.id;
+    const [name, setName] = useState(teacher?.name || '');
+    const [idReloj, setIdReloj] = useState(teacher?.idReloj || '');
+    const [schedule, setSchedule] = useState(() => {
+        const base = {};
+        for (const d of DAYS) {
+            base[d.key] = {
+                entry: teacher?.schedule?.[d.key]?.entry || '',
+                exit: teacher?.schedule?.[d.key]?.exit || '',
+            };
+        }
+        return base;
+    });
+    const [saving, setSaving] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    const handleSlot = (dayKey, field, value) => {
+        setSchedule(prev => ({
+            ...prev,
+            [dayKey]: { ...prev[dayKey], [field]: value },
+        }));
+    };
+
+    const handleSave = async () => {
+        if (!name.trim()) {
+            toast.error('El nombre es obligatorio');
+            return;
+        }
+        setSaving(true);
+        // Clean up empty slots
+        const cleanSchedule = {};
+        for (const d of DAYS) {
+            const slot = schedule[d.key];
+            if (slot.entry && slot.exit) {
+                cleanSchedule[d.key] = slot;
+            }
+        }
+        await onSave({ name: name.trim(), idReloj: idReloj.trim(), schedule: cleanSchedule }, teacher?.id);
+        setSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                    <h2 className="text-base font-bold text-slate-800">
+                        {isNew ? 'Agregar funcionario' : 'Editar horario'}
+                    </h2>
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
+                        <X className="w-4 h-4 text-slate-500" />
+                    </button>
+                </div>
+
+                <div className="p-5 space-y-5">
+                    {/* Nombre */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            placeholder="Nombre completo"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
+                        />
+                    </div>
+
+                    {/* ID Reloj */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">ID Reloj (opcional)</label>
+                        <input
+                            type="text"
+                            value={idReloj}
+                            onChange={e => setIdReloj(e.target.value)}
+                            placeholder="Ej: 42"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
+                        />
+                    </div>
+
+                    {/* Horarios por día */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-3 uppercase tracking-wider">Horario semanal</label>
+                        <div className="space-y-2">
+                            {DAYS.map(d => (
+                                <div key={d.key} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+                                    <span className="text-xs font-bold text-slate-600 w-10 shrink-0">{d.short}</span>
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <input
+                                            type="time"
+                                            value={schedule[d.key].entry}
+                                            onChange={e => handleSlot(d.key, 'entry', e.target.value)}
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-mono text-emerald-700 focus:outline-none focus:border-indigo-400 transition-all"
+                                        />
+                                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                                        <input
+                                            type="time"
+                                            value={schedule[d.key].exit}
+                                            onChange={e => handleSlot(d.key, 'exit', e.target.value)}
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-mono text-red-500 focus:outline-none focus:border-indigo-400 transition-all"
+                                        />
+                                        {/* Clear day */}
+                                        {(schedule[d.key].entry || schedule[d.key].exit) && (
+                                            <button
+                                                onClick={() => handleSlot(d.key, 'entry', '') || handleSlot(d.key, 'exit', '')}
+                                                className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2">Deja vacío el día si el funcionario no trabaja ese día.</p>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 gap-3">
+                    {!isNew && (
+                        confirmDelete ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-red-600 font-medium">¿Confirmar eliminación?</span>
+                                <button
+                                    onClick={() => onDelete(teacher.id, teacher.name)}
+                                    className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+                                >
+                                    Eliminar
+                                </button>
+                                <button
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setConfirmDelete(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-50 text-xs font-bold transition-colors"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Eliminar
+                            </button>
+                        )
+                    )}
+                    <div className={cn("flex items-center gap-2 ml-auto", isNew && "w-full justify-end")}>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                        >
+                            {saving ? (
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Save className="w-3.5 h-3.5" />
+                            )}
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+// ── Main View ───────────────────────────────────────────────────────────────
 export default function TeacherHoursView() {
+    const { user } = useAuth();
+    const userCanEdit = canEditHelper(user);
+
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterDay, setFilterDay] = useState('');
-    const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
-    const [sortBy, setSortBy] = useState('name'); // 'name' | 'entry' | 'hours'
+    const [viewMode, setViewMode] = useState('table');
+    const [sortBy, setSortBy] = useState('name');
+    const [editMode, setEditMode] = useState(false);
+    const [editingTeacher, setEditingTeacher] = useState(null); // null = closed, {} = new, teacher obj = editing
 
     const todayIndex = useMemo(() => getTodayIndex(), []);
 
@@ -78,7 +262,6 @@ export default function TeacherHoursView() {
             list = list.filter(t => t.schedule?.[filterDay]?.entry);
         }
 
-        // Sort
         if (sortBy === 'entry') {
             const dayKey = filterDay || DAYS[todayIndex >= 0 ? todayIndex : 0].key;
             list.sort((a, b) => {
@@ -102,7 +285,6 @@ export default function TeacherHoursView() {
             ? teachers.filter(t => t.schedule?.[todayKey]?.entry).length
             : 0;
 
-        // Earliest entry today
         let earliest = null;
         let latest = null;
         if (todayKey) {
@@ -116,6 +298,34 @@ export default function TeacherHoursView() {
 
         return { total: teachers.length, presentToday, earliest, latest };
     }, [teachers, todayIndex]);
+
+    // ── CRUD ──
+    const handleSave = async (data, docId) => {
+        try {
+            if (docId) {
+                await setDocument('teacher_hours', docId, data);
+                toast.success('Horario actualizado', { description: data.name });
+            } else {
+                await createDocument('teacher_hours', data);
+                toast.success('Funcionario agregado', { description: data.name });
+            }
+            setEditingTeacher(null);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al guardar');
+        }
+    };
+
+    const handleDelete = async (docId, name) => {
+        try {
+            await removeDocument('teacher_hours', docId);
+            toast.info('Funcionario eliminado', { description: name });
+            setEditingTeacher(null);
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al eliminar');
+        }
+    };
 
     if (loading) {
         return (
@@ -138,7 +348,46 @@ export default function TeacherHoursView() {
                     </h1>
                     <p className="text-slate-500 mt-1 text-lg">Horarios de entrada y salida del personal</p>
                 </div>
+
+                {/* Admin controls */}
+                {userCanEdit && (
+                    <div className="flex items-center gap-2 shrink-0">
+                        {editMode && (
+                            <button
+                                onClick={() => setEditingTeacher({})}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Agregar funcionario
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setEditMode(e => !e)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-colors border",
+                                editMode
+                                    ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            )}
+                        >
+                            {editMode ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+                            {editMode ? 'Listo' : 'Editar'}
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {/* Edit mode banner */}
+            {editMode && (
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium"
+                >
+                    <Pencil className="w-4 h-4 shrink-0" />
+                    Modo edición activo — haz clic en el ícono de editar junto a cada funcionario para modificar su horario.
+                </motion.div>
+            )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -242,6 +491,7 @@ export default function TeacherHoursView() {
                                         </th>
                                     ))}
                                     <th className="py-3 px-3 font-bold text-slate-600 text-center min-w-[90px]">Hrs/Sem</th>
+                                    {editMode && <th className="py-3 px-3 w-12" />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -295,6 +545,17 @@ export default function TeacherHoursView() {
                                                     {formatHoursMinutes(weeklyMin)}
                                                 </span>
                                             </td>
+                                            {editMode && (
+                                                <td className="py-3 px-3 text-center">
+                                                    <button
+                                                        onClick={() => setEditingTeacher(teacher)}
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors mx-auto"
+                                                        title="Editar horario"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -335,6 +596,15 @@ export default function TeacherHoursView() {
                                                 <span className="font-bold text-indigo-500">{formatHoursMinutes(weeklyMin)}/sem</span>
                                             </div>
                                         </div>
+                                        {editMode && (
+                                            <button
+                                                onClick={() => setEditingTeacher(teacher)}
+                                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/60 text-indigo-600 hover:bg-white transition-colors shrink-0"
+                                                title="Editar horario"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -383,6 +653,18 @@ export default function TeacherHoursView() {
                     )}
                 </div>
             )}
+
+            {/* Edit Modal */}
+            <AnimatePresence>
+                {editingTeacher !== null && (
+                    <EditModal
+                        teacher={editingTeacher}
+                        onClose={() => setEditingTeacher(null)}
+                        onSave={handleSave}
+                        onDelete={handleDelete}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
