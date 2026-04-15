@@ -232,11 +232,13 @@ function ItemsEditor({ pregunta, editMode, onSetInstruccion, onAddItem, onUpdate
 
 // ── Tarjeta individual ────────────────────────────────────────────────────────
 
+const HABILIDADES = ['Recordar', 'Comprender', 'Aplicar', 'Analizar', 'Evaluar', 'Crear'];
+
 function PreguntaCard({
     pregunta, editMode,
     onSetCorrect, onSetPauta, onSetEnunciado, onSetAlternativa, onFieldFocus, onSetImagen, onDelete,
     onSetInstruccionItems, onAddItem, onUpdateItem, onDeleteItem, onMoveUp, onMoveDown, onSetPuntaje,
-    onSaveToBanco,
+    onSaveToBanco, onSetHabilidad,
 }) {
     const [open, setOpen] = useState(true);
     const imageInputRef = useRef(null);
@@ -390,6 +392,28 @@ function PreguntaCard({
             {/* Cuerpo */}
             {open && (
                 <div className="px-4 pb-3 pt-1 bg-slate-50/60 border-t border-slate-100 space-y-2">
+                    {/* Habilidad (nivel Bloom) */}
+                    {editMode ? (
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <label className="text-[11px] font-medium text-slate-500 shrink-0">Habilidad:</label>
+                            <select
+                                value={pregunta.habilidad || ''}
+                                onChange={e => onSetHabilidad?.(pregunta.number, e.target.value)}
+                                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300"
+                            >
+                                <option value="">Sin especificar</option>
+                                {HABILIDADES.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                        </div>
+                    ) : pregunta.habilidad ? (
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-slate-400">Habilidad:</span>
+                            <span className="text-[11px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                                {pregunta.habilidad}
+                            </span>
+                        </div>
+                    ) : null}
+
                     {/* Imagen — vista */}
                     {!editMode && imagenSrc && (
                         <img
@@ -720,6 +744,9 @@ export default function PreguntasPanel({ evaluacion }) {
     const handleSetPuntaje = (questionNumber, value) =>
         updateQuestion(questionNumber, q => ({ ...q, puntaje: value }));
 
+    const handleSetHabilidad = (questionNumber, value) =>
+        updateQuestion(questionNumber, q => ({ ...q, habilidad: value }));
+
     const handleMoveUp = (questionNumber) => {
         setLocalQuestions(prev => {
             const idx = prev.findIndex(q => q.number === questionNumber);
@@ -937,6 +964,7 @@ export default function PreguntasPanel({ evaluacion }) {
                             onMoveDown={editMode && idx < displayQuestions.length - 1 ? handleMoveDown : undefined}
                             onSetPuntaje={editMode ? handleSetPuntaje : undefined}
                             onSaveToBanco={!editMode && puedeEditar ? handleSaveToBanco : undefined}
+                            onSetHabilidad={editMode ? handleSetHabilidad : undefined}
                         />
                     ))}
                 </div>

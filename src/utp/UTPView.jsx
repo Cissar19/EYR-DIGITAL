@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye, Copy, Table2, Map } from 'lucide-react';
+import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye, Copy, Table2, Map, ClipboardCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -18,6 +18,7 @@ import IndicadoresSelectionPanel from './IndicadoresSelectionPanel';
 import PreguntasPanel from './PreguntasPanel';
 import VistaPrevia from './VistaPrevia';
 import TablaEspecificaciones from './TablaEspecificaciones';
+import PautaEspecificacion from './PautaEspecificacion';
 import CoberturaOA from './CoberturaOA';
 import ComentariosPanel from './ComentariosPanel';
 
@@ -402,8 +403,9 @@ export default function UTPView() {
                         { id: 'preview',     icon: ScanEye,       label: 'Vista previa' },
                         { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
                         { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
-                        { id: 'tabla',       icon: Table2,        label: 'Tabla espec.' },
-                        { id: 'comentarios', icon: MessageSquare, label: 'Comentarios' },
+                        { id: 'tabla',       icon: Table2,         label: 'Tabla espec.' },
+                        { id: 'pauta_esp',   icon: ClipboardCheck, label: 'Pauta espec.' },
+                        { id: 'comentarios', icon: MessageSquare,  label: 'Comentarios' },
                     ].map(({ id, icon: Icon, label }) => (
                         <button
                             key={id}
@@ -431,6 +433,8 @@ export default function UTPView() {
                     <VistaPrevia evaluacion={liveEval} />
                 ) : detailTab === 'tabla' ? (
                     <TablaEspecificaciones evaluacion={liveEval} />
+                ) : detailTab === 'pauta_esp' ? (
+                    <PautaEspecificacion evaluacion={liveEval} />
                 ) : detailTab === 'comentarios' ? (
                     <ComentariosPanel evaluacion={liveEval} />
                 ) : (
