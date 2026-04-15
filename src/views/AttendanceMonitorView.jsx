@@ -747,7 +747,7 @@ export default function AttendanceMonitorView() {
                                             {conDescuento.length} funcionario{conDescuento.length !== 1 ? 's' : ''} superan 1h
                                         </span>
                                         <span className="text-[10px] text-red-400 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                                            Sujetos a descuento de día administrativo
+                                            Sujetos a descuento
                                         </span>
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
