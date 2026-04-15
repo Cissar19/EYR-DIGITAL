@@ -27,14 +27,10 @@ const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
 
-/** Format total minutes as "Xh Ymin" or "Ymin" */
+/** Format total minutes as decimal hours, e.g. 75 → "1.25h" */
 function fmtMin(min) {
-    if (!min || min <= 0) return '0 min';
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    if (h === 0) return `${m} min`;
-    if (m === 0) return `${h}h`;
-    return `${h}h ${m}min`;
+    if (!min || min <= 0) return '0h';
+    return `${(min / 60).toFixed(2).replace(/\.?0+$/, '')}h`;
 }
 
 /** Parse "HH:MM" to total minutes */
@@ -755,41 +751,36 @@ export default function AttendanceMonitorView() {
                                         </span>
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {conDescuento.map((teacher, i) => {
-                                            const horas = Math.floor(teacher.lateMinutes / 60);
-                                            const resto = teacher.lateMinutes % 60;
-                                            return (
-                                                <motion.div
-                                                    key={teacher.name}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: i * 0.05 }}
-                                                    className="bg-red-50 rounded-xl border border-red-200 p-4 shadow-sm"
-                                                >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-bold text-slate-800 truncate">{teacher.name}</p>
-                                                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                                <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-full">
-                                                                    {teacher.lateMinutes} min
-                                                                </span>
-                                                                <span className="text-xs font-bold text-red-800">
-                                                                    {horas > 0 && `${horas}h `}{resto > 0 && `${resto}min`}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-[10px] text-slate-500 mt-1.5">
-                                                                {teacher.lateCount} atraso{teacher.lateCount !== 1 ? 's' : ''}
-                                                                {teacher.earlyExitCount > 0 && ` · ${teacher.earlyExitCount} sal. anticipada${teacher.earlyExitCount !== 1 ? 's' : ''}`}
-                                                            </p>
+                                        {conDescuento.map((teacher, i) => (
+                                            <motion.div
+                                                key={teacher.name}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: i * 0.05 }}
+                                                className="bg-red-50 rounded-xl border border-red-200 p-4 shadow-sm"
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-slate-800 truncate">{teacher.name}</p>
+                                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                            <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-full">
+                                                                {teacher.lateMinutes} min
+                                                            </span>
+                                                            <span className="text-xs font-bold text-red-800">
+                                                                {fmtMin(teacher.lateMinutes)}
+                                                            </span>
                                                         </div>
-                                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-red-100 flex flex-col items-center justify-center">
-                                                            <span className="text-sm font-black text-red-700 leading-none">{horas}h</span>
-                                                            {resto > 0 && <span className="text-[9px] text-red-500 leading-none mt-0.5">{resto}m</span>}
-                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-1.5">
+                                                            {teacher.lateCount} atraso{teacher.lateCount !== 1 ? 's' : ''}
+                                                            {teacher.earlyExitCount > 0 && ` · ${teacher.earlyExitCount} sal. anticipada${teacher.earlyExitCount !== 1 ? 's' : ''}`}
+                                                        </p>
                                                     </div>
-                                                </motion.div>
-                                            );
-                                        })}
+                                                    <div className="shrink-0 w-12 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                                                        <span className="text-sm font-black text-red-700">{fmtMin(teacher.lateMinutes)}</span>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
                                     </div>
                                 </div>
                             );
