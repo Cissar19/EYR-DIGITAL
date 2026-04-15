@@ -43,6 +43,7 @@ import RetosAdminView from './views/RetosAdminView';
 import RetosSesionView from './views/RetosSesionView';
 import RetoAlumnoView from './views/RetoAlumnoView';
 import TasksView from './views/TasksView';
+import TodoView from './views/TodoView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -215,6 +216,7 @@ export default function App() {
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/tasks" element={<TasksView />} />
+          <Route path="/todo" element={<TodoView />} />
           <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
           <Route path="/administrative-days" element={<AdministrativeDaysView />} />
           <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />

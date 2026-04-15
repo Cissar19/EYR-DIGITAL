@@ -25,6 +25,7 @@ import { QuestionBankProvider } from './context/QuestionBankContext.jsx'
 import { RetosProvider } from './context/RetosContext.jsx'
 import { TasksProvider } from './context/TasksContext.jsx'
 import { WorkshopsProvider } from './context/WorkshopsContext.jsx'
+import { TodoProvider } from './context/TodoContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -56,7 +57,9 @@ const DataProviders = ({ children }) => {
                                     <RetosProvider>
                                       <TasksProvider>
                                         <WorkshopsProvider>
-                                          {children}
+                                          <TodoProvider>
+                                            {children}
+                                          </TodoProvider>
                                         </WorkshopsProvider>
                                       </TasksProvider>
                                     </RetosProvider>
