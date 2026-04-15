@@ -42,6 +42,7 @@ import CorridaEscolarView from './views/CorridaEscolarView';
 import RetosAdminView from './views/RetosAdminView';
 import RetosSesionView from './views/RetosSesionView';
 import RetoAlumnoView from './views/RetoAlumnoView';
+import TasksView from './views/TasksView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -213,6 +214,7 @@ export default function App() {
         {/* Private Routes */}
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomeRedirect />} />
+          <Route path="/tasks" element={<TasksView />} />
           <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
           <Route path="/administrative-days" element={<AdministrativeDaysView />} />
           <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />

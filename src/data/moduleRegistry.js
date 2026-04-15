@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks
 } from 'lucide-react';
 
 /**
@@ -26,6 +26,14 @@ export const MODULE_REGISTRY = [
         name: 'Inicio',
         icon: LayoutDashboard,
         path: '/',
+        category: 'common',
+        defaultRoles: null, // everyone
+    },
+    {
+        key: 'tasks',
+        name: 'Tareas',
+        icon: ListChecks,
+        path: '/tasks',
         category: 'common',
         defaultRoles: null, // everyone
     },

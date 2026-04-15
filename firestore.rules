@@ -347,5 +347,18 @@ service cloud.firestore {
         resource.data.createdBy.id == request.auth.uid || isAdmin()
       );
     }
+    // ── TASKS ──────────────────────────────────────────────────────────────
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        resource.data.assignedTo == request.auth.uid ||
+        isManagement()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid || isAdmin()
+      );
+    }
   }
 }
