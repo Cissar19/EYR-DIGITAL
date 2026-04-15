@@ -4,7 +4,7 @@ import {
     Clock, Upload, Search, AlertTriangle, ChevronDown, ChevronUp,
     FileSpreadsheet, Users, CalendarDays, LogIn, LogOut, UserX,
     Filter, ArrowUpDown, X, CheckCircle2, Save, Trash2, Eye, Pencil, Check,
-    History, ChevronLeft, Download,
+    History, ChevronLeft, Download, Scissors,
 } from 'lucide-react';
 import { subscribeToCollection, createDocument, removeDocument, updateDocument } from '../lib/firestoreService';
 import { orderBy } from 'firebase/firestore';
@@ -26,6 +26,16 @@ const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(
 
 const normalizeSearch = (text) =>
     text?.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
+
+/** Format total minutes as "Xh Ymin" or "Ymin" */
+function fmtMin(min) {
+    if (!min || min <= 0) return '0 min';
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return `${m} min`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}min`;
+}
 
 /** Parse "HH:MM" to total minutes */
 function timeToMinutes(t) {
@@ -684,7 +694,8 @@ export default function AttendanceMonitorView() {
                                                                     <span className="font-bold text-red-600">{teacher.lateCount}</span> atrasos
                                                                 </span>
                                                                 <span className="text-xs text-slate-500">
-                                                                    <span className="font-bold text-red-600">{teacher.lateMinutes}</span> min total
+                                                                    <span className="font-bold text-red-600">{teacher.lateMinutes} min</span>
+                                                                    <span className="text-slate-400 ml-1">({fmtMin(teacher.lateMinutes)})</span>
                                                                 </span>
                                                             </div>
                                                             {teacher.earlyExitCount > 0 && (
@@ -723,6 +734,63 @@ export default function AttendanceMonitorView() {
                                             )}
                                         </button>
                                     )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Sección Descuento — más de 60 min acumulados */}
+                        {(() => {
+                            const conDescuento = displaySummary.byTeacher.filter(t => t.lateMinutes > 60);
+                            if (conDescuento.length === 0) return null;
+                            return (
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
+                                        <Scissors className="w-4 h-4 text-red-500" />
+                                        Descuento
+                                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                                            {conDescuento.length} funcionario{conDescuento.length !== 1 ? 's' : ''} superan 1h
+                                        </span>
+                                        <span className="text-[10px] text-red-400 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                                            Sujetos a descuento de día administrativo
+                                        </span>
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {conDescuento.map((teacher, i) => {
+                                            const horas = Math.floor(teacher.lateMinutes / 60);
+                                            const resto = teacher.lateMinutes % 60;
+                                            return (
+                                                <motion.div
+                                                    key={teacher.name}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: i * 0.05 }}
+                                                    className="bg-red-50 rounded-xl border border-red-200 p-4 shadow-sm"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-bold text-slate-800 truncate">{teacher.name}</p>
+                                                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                                <span className="text-xs text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-full">
+                                                                    {teacher.lateMinutes} min
+                                                                </span>
+                                                                <span className="text-xs font-bold text-red-800">
+                                                                    {horas > 0 && `${horas}h `}{resto > 0 && `${resto}min`}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-500 mt-1.5">
+                                                                {teacher.lateCount} atraso{teacher.lateCount !== 1 ? 's' : ''}
+                                                                {teacher.earlyExitCount > 0 && ` · ${teacher.earlyExitCount} sal. anticipada${teacher.earlyExitCount !== 1 ? 's' : ''}`}
+                                                            </p>
+                                                        </div>
+                                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-red-100 flex flex-col items-center justify-center">
+                                                            <span className="text-sm font-black text-red-700 leading-none">{horas}h</span>
+                                                            {resto > 0 && <span className="text-[9px] text-red-500 leading-none mt-0.5">{resto}m</span>}
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             );
                         })()}
