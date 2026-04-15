@@ -648,16 +648,10 @@ export default function TasksView() {
     };
 
     return (
-        <div className={cn(
-            "bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20",
-            mainTab === 'workshop' && activeWorkshop ? "h-screen flex flex-col" : "min-h-screen p-4 md:p-8"
-        )}>
-            <div className={cn("mx-auto", mainTab === 'workshop' && activeWorkshop ? "w-full h-full flex flex-col" : "max-w-6xl")}>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20 p-4 md:p-8">
+            <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className={cn(
-                    "flex flex-col md:flex-row items-start md:items-center justify-between gap-4",
-                    mainTab === 'workshop' && activeWorkshop ? "px-6 pt-4 pb-3 shrink-0" : "mb-8"
-                )}>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-xl shadow-indigo-300/50">
                             <ClipboardList className="w-7 h-7 text-white" />
@@ -688,10 +682,7 @@ export default function TasksView() {
                 </div>
 
                 {/* Main tabs */}
-                <div className={cn(
-                    "flex gap-1 bg-slate-100/80 p-1 rounded-2xl w-fit",
-                    mainTab === 'workshop' && activeWorkshop ? "mx-6 mb-3 shrink-0" : "mb-6"
-                )}>
+                <div className="flex gap-1 bg-slate-100/80 p-1 rounded-2xl w-fit mb-6">
                     <button
                         onClick={() => setMainTab('tareas')}
                         className={cn(
@@ -814,9 +805,9 @@ export default function TasksView() {
             {mainTab === 'workshop' && (
                 activeWorkshop ? (
                     /* Canvas view */
-                    <div className="flex-1 flex flex-col min-h-0 px-6 pb-4">
+                    <div className="px-4 md:px-8 pb-4">
                         {/* Breadcrumb */}
-                        <div className="flex items-center gap-2 mb-2 shrink-0">
+                        <div className="flex items-center gap-2 mb-3">
                             <button
                                 onClick={() => setActiveWorkshop(null)}
                                 className="text-xs text-indigo-600 hover:underline font-medium"
@@ -826,7 +817,10 @@ export default function TasksView() {
                             <span className="text-slate-300">/</span>
                             <span className="text-xs font-semibold text-slate-600">{activeWorkshop.title}</span>
                         </div>
-                        <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                        <div
+                            className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm"
+                            style={{ height: 'calc(100vh - 240px)' }}
+                        >
                             <WorkshopCanvas
                                 workshop={activeWorkshop}
                                 onSave={(nodes, edges) => saveWorkshop(activeWorkshop.id, nodes, edges)}

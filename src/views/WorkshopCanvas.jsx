@@ -1,19 +1,14 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     ReactFlow, Background, Controls, MiniMap,
     addEdge, useNodesState, useEdgesState,
-    Handle, Position, Panel,
-    MarkerType,
+    Handle, Position, Panel, MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Save, Plus, Trash2, X, Check, ChevronDown,
-    Square, Diamond, Circle, ArrowRight, Type, Palette,
-} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Save, Trash2, X, Check, Square, Diamond, Circle, Type } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-// ── Colores de nodos ───────────────────────────────────────────────────────────
 export const NODE_COLORS = [
     { bg: '#EFF6FF', border: '#3B82F6', text: '#1E3A8A', label: 'Azul' },
     { bg: '#F0FDF4', border: '#22C55E', text: '#14532D', label: 'Verde' },
@@ -25,143 +20,119 @@ export const NODE_COLORS = [
     { bg: '#F8FAFC', border: '#64748B', text: '#0F172A', label: 'Gris' },
 ];
 
-// ── Tipos de nodos ─────────────────────────────────────────────────────────────
-const NODE_TYPES_CONFIG = [
-    { type: 'process',  label: 'Proceso',    shape: 'rect' },
-    { type: 'decision', label: 'Decisión',   shape: 'diamond' },
-    { type: 'terminal', label: 'Inicio/Fin', shape: 'oval' },
-    { type: 'text',     label: 'Texto',      shape: 'text' },
+const NODE_TYPES_DEF = [
+    { type: 'process',  label: 'Proceso',    icon: Square },
+    { type: 'decision', label: 'Decisión',   icon: Diamond },
+    { type: 'terminal', label: 'Inicio/Fin', icon: Circle },
+    { type: 'note',     label: 'Nota',       icon: Type },
 ];
 
-// ── Custom Node ────────────────────────────────────────────────────────────────
+// ── Custom node ───────────────────────────────────────────────────────────────
 function FlowNode({ data, selected }) {
     const color = NODE_COLORS[data.colorIdx ?? 0];
-    const isText = data.nodeType === 'text';
-    const isDiamond = data.nodeType === 'decision';
-    const isOval = data.nodeType === 'terminal';
+    const isNote = data.nodeType === 'note';
+    const isDec  = data.nodeType === 'decision';
+    const isTerm = data.nodeType === 'terminal';
 
-    const baseStyle = {
-        background: isText ? 'transparent' : color.bg,
-        border: isText ? 'none' : `2px solid ${color.border}`,
-        color: color.text,
+    const containerStyle = {
+        background: isNote ? '#FFFBEB' : color.bg,
+        border: `2px solid ${isNote ? '#FCD34D' : color.border}`,
+        color: isNote ? '#92400E' : color.text,
+        borderRadius: isTerm ? '9999px' : isDec ? '6px' : '12px',
+        transform: isDec ? 'rotate(45deg)' : undefined,
+        minWidth: 100,
+        minHeight: 44,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '8px 16px',
+        boxShadow: selected ? `0 0 0 2px #6366F1` : 'none',
+        fontWeight: 600,
+        fontSize: 13,
+        fontFamily: 'inherit',
+        cursor: 'grab',
     };
 
-    const shapeClass = cn(
-        "min-w-[100px] min-h-[40px] flex items-center justify-center px-4 py-2 text-sm font-semibold transition-all",
-        isOval ? "rounded-full" : isDiamond ? "rotate-45" : isText ? "" : "rounded-xl",
-        selected && !isText && "ring-2 ring-offset-1 ring-indigo-400",
-    );
-
     return (
-        <div style={{ position: 'relative' }}>
-            <Handle type="target" position={Position.Top} style={{ opacity: 0.6 }} />
-            <Handle type="target" position={Position.Left} style={{ opacity: 0.6 }} />
-            <div className={shapeClass} style={baseStyle}>
-                <span className={isDiamond ? "-rotate-45 block" : "block"}>
-                    {data.label || (isText ? 'Texto…' : 'Nodo')}
+        <>
+            <Handle type="target" position={Position.Top}    style={{ opacity: 0 }} />
+            <Handle type="target" position={Position.Left}   style={{ opacity: 0 }} />
+            <div style={containerStyle}>
+                <span style={{ transform: isDec ? 'rotate(-45deg)' : undefined, display: 'block', textAlign: 'center', maxWidth: 120, wordBreak: 'break-word' }}>
+                    {data.label || '…'}
                 </span>
             </div>
-            <Handle type="source" position={Position.Bottom} style={{ opacity: 0.6 }} />
-            <Handle type="source" position={Position.Right} style={{ opacity: 0.6 }} />
-        </div>
+            <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+            <Handle type="source" position={Position.Right}  style={{ opacity: 0 }} />
+        </>
     );
 }
 
-const nodeTypes = { flowNode: FlowNode };
+const NODE_TYPES = { flowNode: FlowNode };
 
-// ── Node Editor Panel ──────────────────────────────────────────────────────────
+// ── Node editor ───────────────────────────────────────────────────────────────
 function NodeEditor({ node, onUpdate, onDelete, onClose }) {
-    const [label, setLabel] = useState(node.data.label || '');
+    const [label,    setLabel]    = useState(node.data.label    ?? '');
     const [colorIdx, setColorIdx] = useState(node.data.colorIdx ?? 0);
-    const [nodeType, setNodeType] = useState(node.data.nodeType || 'process');
+    const [nodeType, setNodeType] = useState(node.data.nodeType ?? 'process');
 
-    const handleSave = () => {
-        onUpdate(node.id, { label, colorIdx, nodeType });
-        onClose();
-    };
+    const apply = () => { onUpdate(node.id, { label, colorIdx, nodeType }); onClose(); };
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute top-4 right-4 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10"
+            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute top-16 right-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 z-20 overflow-hidden"
         >
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-700">Editar nodo</h3>
-                <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg">
-                    <X className="w-4 h-4 text-slate-400" />
-                </button>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <span className="text-sm font-bold text-slate-700">Editar nodo</span>
+                <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
             </div>
-
             <div className="px-4 py-3 space-y-3">
-                {/* Label */}
                 <div>
-                    <label className="text-xs font-semibold text-slate-400 mb-1 block">Etiqueta</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Etiqueta</label>
                     <input
                         autoFocus
                         value={label}
                         onChange={e => setLabel(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSave()}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-400"
-                        placeholder="Texto del nodo…"
+                        onKeyDown={e => e.key === 'Enter' && apply()}
+                        placeholder="Texto…"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-indigo-400 focus:outline-none"
                     />
                 </div>
-
-                {/* Node type */}
                 <div>
-                    <label className="text-xs font-semibold text-slate-400 mb-1 block">Forma</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Forma</label>
                     <div className="grid grid-cols-2 gap-1.5">
-                        {NODE_TYPES_CONFIG.map(t => (
-                            <button
-                                key={t.type}
-                                onClick={() => setNodeType(t.type)}
-                                className={cn(
-                                    "px-2 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                                    nodeType === t.type
-                                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                                )}
-                            >
-                                {t.label}
+                        {NODE_TYPES_DEF.map(t => (
+                            <button key={t.type} onClick={() => setNodeType(t.type)}
+                                className={cn("flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                                    nodeType === t.type ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                )}>
+                                <t.icon className="w-3 h-3" />{t.label}
                             </button>
                         ))}
                     </div>
                 </div>
-
-                {/* Color */}
                 <div>
-                    <label className="text-xs font-semibold text-slate-400 mb-1.5 block">Color</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1.5">Color</label>
                     <div className="grid grid-cols-4 gap-1.5">
                         {NODE_COLORS.map((c, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setColorIdx(i)}
-                                title={c.label}
-                                className={cn(
-                                    "h-7 rounded-lg border-2 transition-all",
-                                    colorIdx === i ? "scale-110 border-slate-600" : "border-transparent hover:scale-105"
-                                )}
-                                style={{ background: c.bg, borderColor: colorIdx === i ? c.border : 'transparent', outlineColor: c.border }}
-                            >
-                                <span className="sr-only">{c.label}</span>
-                            </button>
+                            <button key={i} onClick={() => setColorIdx(i)} title={c.label}
+                                style={{ background: c.bg, borderColor: colorIdx === i ? c.border : 'transparent' }}
+                                className={cn("h-7 rounded-lg border-2 transition-all", colorIdx === i ? "scale-110" : "hover:scale-105")}
+                            />
                         ))}
                     </div>
                 </div>
             </div>
-
-            <div className="px-4 pb-4 flex gap-2">
-                <button
-                    onClick={handleSave}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
-                >
+            <div className="flex gap-2 px-4 pb-4">
+                <button onClick={apply}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700">
                     <Check className="w-3.5 h-3.5" /> Aplicar
                 </button>
-                <button
-                    onClick={() => { onDelete(node.id); onClose(); }}
-                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                >
+                <button onClick={() => { onDelete(node.id); onClose(); }}
+                    className="p-2 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
                     <Trash2 className="w-4 h-4" />
                 </button>
             </div>
@@ -169,77 +140,70 @@ function NodeEditor({ node, onUpdate, onDelete, onClose }) {
     );
 }
 
-// ── Main Canvas ────────────────────────────────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function WorkshopCanvas({ workshop, onSave }) {
     const [nodes, setNodes, onNodesChange] = useNodesState(workshop.nodes || []);
     const [edges, setEdges, onEdgesChange] = useEdgesState(workshop.edges || []);
     const [editingNode, setEditingNode] = useState(null);
-    const [isDirty, setIsDirty] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const reactFlowWrapper = useRef(null);
-    const [rfInstance, setRfInstance] = useState(null);
+    const [isDirty,     setIsDirty]     = useState(false);
+    const [saving,      setSaving]      = useState(false);
+    const [rfInstance,  setRfInstance]  = useState(null);
 
-    // Reset when workshop changes
     useEffect(() => {
         setNodes(workshop.nodes || []);
         setEdges(workshop.edges || []);
         setIsDirty(false);
+        setEditingNode(null);
     }, [workshop.id]);
 
-    const markDirty = useCallback(() => setIsDirty(true), []);
+    const dirty = useCallback(() => setIsDirty(true), []);
 
     const onConnect = useCallback((params) => {
         setEdges(eds => addEdge({
             ...params,
             markerEnd: { type: MarkerType.ArrowClosed },
             style: { stroke: '#6366F1', strokeWidth: 2 },
-            animated: false,
         }, eds));
-        markDirty();
-    }, [markDirty]);
+        dirty();
+    }, [dirty]);
 
-    const onNodesChangeTracked = useCallback((changes) => {
+    const onNodesChangeWrapped = useCallback((changes) => {
         onNodesChange(changes);
-        if (changes.some(c => c.type === 'position' || c.type === 'remove')) markDirty();
-    }, [onNodesChange, markDirty]);
+        if (changes.some(c => c.type !== 'select')) dirty();
+    }, [onNodesChange, dirty]);
 
-    const onEdgesChangeTracked = useCallback((changes) => {
+    const onEdgesChangeWrapped = useCallback((changes) => {
         onEdgesChange(changes);
-        markDirty();
-    }, [onEdgesChange, markDirty]);
+        if (changes.some(c => c.type !== 'select')) dirty();
+    }, [onEdgesChange, dirty]);
 
     const addNode = useCallback((nodeType = 'process') => {
-        const id = crypto.randomUUID();
-        const center = rfInstance
+        const pos = rfInstance
             ? rfInstance.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-            : { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 };
-
-        const newNode = {
-            id,
+            : { x: 200 + Math.random() * 200, y: 150 + Math.random() * 150 };
+        setNodes(nds => [...nds, {
+            id: crypto.randomUUID(),
             type: 'flowNode',
-            position: center,
-            data: { label: NODE_TYPES_CONFIG.find(t => t.type === nodeType)?.label || 'Nodo', colorIdx: 0, nodeType },
-        };
-        setNodes(nds => [...nds, newNode]);
-        markDirty();
-    }, [rfInstance, markDirty]);
+            position: pos,
+            data: { label: NODE_TYPES_DEF.find(t => t.type === nodeType)?.label ?? 'Nodo', colorIdx: 0, nodeType },
+        }]);
+        dirty();
+    }, [rfInstance, dirty]);
 
-    const onNodeDoubleClick = useCallback((_, node) => {
-        setEditingNode(node);
-    }, []);
+    const onNodeDoubleClick = useCallback((_, node) => setEditingNode(node), []);
 
-    const handleUpdateNode = useCallback((nodeId, newData) => {
-        setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n));
-        markDirty();
-    }, []);
+    const updateNode = useCallback((id, data) => {
+        setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n));
+        dirty();
+    }, [dirty]);
 
-    const handleDeleteNode = useCallback((nodeId) => {
-        setNodes(nds => nds.filter(n => n.id !== nodeId));
-        setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
-        markDirty();
-    }, []);
+    const deleteNode = useCallback((id) => {
+        setNodes(nds => nds.filter(n => n.id !== id));
+        setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
+        dirty();
+    }, [dirty]);
 
-    const handleSave = async () => {
+    const save = async () => {
         setSaving(true);
         await onSave(nodes, edges);
         setIsDirty(false);
@@ -247,56 +211,43 @@ export default function WorkshopCanvas({ workshop, onSave }) {
     };
 
     return (
-        <div className="relative w-full h-full" ref={reactFlowWrapper}>
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
-                onNodesChange={onNodesChangeTracked}
-                onEdgesChange={onEdgesChangeTracked}
+                onNodesChange={onNodesChangeWrapped}
+                onEdgesChange={onEdgesChangeWrapped}
                 onConnect={onConnect}
                 onNodeDoubleClick={onNodeDoubleClick}
                 onInit={setRfInstance}
-                nodeTypes={nodeTypes}
-                fitView
-                deleteKeyCode="Delete"
-                className="bg-slate-50/50"
+                nodeTypes={NODE_TYPES}
+                fitView={nodes.length > 0}
+                deleteKeyCode={['Delete', 'Backspace']}
+                style={{ background: '#F8FAFC' }}
+                proOptions={{ hideAttribution: true }}
             >
                 <Background variant="dots" gap={20} size={1} color="#CBD5E1" />
-                <Controls />
+                <Controls showInteractive={false} />
                 <MiniMap
-                    nodeColor={n => NODE_COLORS[n.data?.colorIdx ?? 0]?.border || '#94A3B8'}
-                    className="!bg-white !border !border-slate-200 !rounded-xl !shadow-sm"
+                    nodeColor={n => NODE_COLORS[n.data?.colorIdx ?? 0]?.border ?? '#94A3B8'}
+                    style={{ border: '1px solid #E2E8F0', borderRadius: 12 }}
                 />
 
-                {/* Toolbar panel */}
+                {/* Toolbar */}
                 <Panel position="top-left">
-                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur rounded-2xl shadow-md border border-slate-200 px-3 py-2">
-                        <span className="text-xs font-bold text-slate-400 mr-1">Agregar</span>
-                        {NODE_TYPES_CONFIG.map(t => (
-                            <button
-                                key={t.type}
-                                onClick={() => addNode(t.type)}
-                                title={t.label}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 transition-all"
-                            >
-                                {t.type === 'process' && <Square className="w-3 h-3" />}
-                                {t.type === 'decision' && <Diamond className="w-3 h-3" />}
-                                {t.type === 'terminal' && <Circle className="w-3 h-3" />}
-                                {t.type === 'text' && <Type className="w-3 h-3" />}
-                                {t.label}
+                    <div className="flex items-center gap-2 bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-slate-200 px-3 py-2.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Agregar</span>
+                        {NODE_TYPES_DEF.map(t => (
+                            <button key={t.type} onClick={() => addNode(t.type)} title={t.label}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 transition-all">
+                                <t.icon className="w-3 h-3" />{t.label}
                             </button>
                         ))}
-                        <div className="w-px h-5 bg-slate-200 mx-1" />
-                        <button
-                            onClick={handleSave}
-                            disabled={!isDirty || saving}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                                isDirty
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                                    : "text-slate-400 cursor-default"
-                            )}
-                        >
+                        <div className="w-px h-5 bg-slate-200 mx-0.5" />
+                        <button onClick={save} disabled={!isDirty || saving}
+                            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
+                                isDirty ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm" : "text-slate-400 cursor-default"
+                            )}>
                             <Save className="w-3.5 h-3.5" />
                             {saving ? 'Guardando…' : isDirty ? 'Guardar' : 'Guardado'}
                         </button>
@@ -304,19 +255,19 @@ export default function WorkshopCanvas({ workshop, onSave }) {
                 </Panel>
 
                 <Panel position="top-right">
-                    <p className="text-[10px] text-slate-400 bg-white/80 px-2 py-1 rounded-lg border border-slate-100">
-                        Doble clic para editar · <kbd>Delete</kbd> para borrar seleccionado
-                    </p>
+                    <div className="bg-white/80 backdrop-blur px-3 py-1.5 rounded-xl border border-slate-100 text-[10px] text-slate-400">
+                        Doble clic para editar · Arrastrar bordes para conectar · <kbd className="bg-slate-100 px-1 rounded">Del</kbd> para borrar
+                    </div>
                 </Panel>
             </ReactFlow>
 
-            {/* Node editor */}
+            {/* Node editor overlay */}
             <AnimatePresence>
                 {editingNode && (
                     <NodeEditor
                         node={editingNode}
-                        onUpdate={handleUpdateNode}
-                        onDelete={handleDeleteNode}
+                        onUpdate={updateNode}
+                        onDelete={deleteNode}
                         onClose={() => setEditingNode(null)}
                     />
                 )}
