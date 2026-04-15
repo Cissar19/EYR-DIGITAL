@@ -117,6 +117,32 @@ export const TasksProvider = ({ children }) => {
         }
     }, [tasks]);
 
+    const addCollaborator = React.useCallback(async (taskId, collabUser) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const already = (task.collaborators || []).some(c => c.id === collabUser.id);
+        if (already) return;
+        const updated = [...(task.collaborators || []), { id: collabUser.id, name: collabUser.name }];
+        try {
+            await updateDocument('tasks', taskId, { collaborators: updated });
+        } catch (error) {
+            console.error('Error agregando colaborador:', error);
+            toast.error('Error al agregar colaborador');
+        }
+    }, [tasks]);
+
+    const removeCollaborator = React.useCallback(async (taskId, collabId) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const updated = (task.collaborators || []).filter(c => c.id !== collabId);
+        try {
+            await updateDocument('tasks', taskId, { collaborators: updated });
+        } catch (error) {
+            console.error('Error eliminando colaborador:', error);
+            toast.error('Error al eliminar colaborador');
+        }
+    }, [tasks]);
+
     const value = React.useMemo(() => ({
         tasks,
         addTask,
@@ -125,7 +151,9 @@ export const TasksProvider = ({ children }) => {
         deleteTask,
         addNote,
         deleteNote,
-    }), [tasks, addTask, updateTaskStatus, updateTask, deleteTask, addNote, deleteNote]);
+        addCollaborator,
+        removeCollaborator,
+    }), [tasks, addTask, updateTaskStatus, updateTask, deleteTask, addNote, deleteNote, addCollaborator, removeCollaborator]);
 
     return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 };
