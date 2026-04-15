@@ -1748,3 +1748,138 @@ export function exportEntrevistasResumenPDF({ entrevistas, stats, filters }) {
     const safeDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     doc.save(`Entrevistas_Resumen_${safeDate}.pdf`);
 }
+
+/**
+ * Exports the approved admin-day requests history as a PDF table.
+ *
+ * @param {Array}  requests  - approved request objects (already filtered)
+ * @param {Object} filters   - { month, type } labels for subtitle
+ */
+export function exportAdminDaysHistoryPDF(requests, filters = {}) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 14;
+    const marginR = 14;
+    const contentW = pageW - marginL - marginR;
+    const mainColor = [55, 48, 163];
+    let y = 18;
+
+    // ─── HEADER ───
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text('Centro Educacional Ernesto Yañez Rivera', pageW / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Historial de Días Administrativos Aprobados', pageW / 2, y, { align: 'center' });
+    y += 8;
+
+    // Subtitle filters
+    const subtitleParts = [];
+    if (filters.month && filters.month !== 'all') subtitleParts.push(`Mes: ${filters.monthLabel}`);
+    if (filters.type && filters.type !== 'all') subtitleParts.push(`Tipo: ${filters.typeLabel}`);
+    if (filters.search) subtitleParts.push(`Persona: ${filters.search}`);
+    const subtitle = subtitleParts.length > 0 ? subtitleParts.join('  •  ') : 'Todos los registros';
+
+    doc.setFillColor(238, 242, 255);
+    doc.roundedRect(marginL, y, contentW, 9, 2, 2, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mainColor);
+    doc.text(subtitle, pageW / 2, y + 6, { align: 'center' });
+    y += 14;
+
+    // ─── KPI chips ───
+    const byType = {};
+    requests.forEach(r => {
+        const key = r.type || (r.reason?.startsWith('[Excepcion]') ? 'special' : r.isHalfDay ? 'half_day' : 'day');
+        byType[key] = (byType[key] || 0) + 1;
+    });
+    const kpis = [
+        { label: 'Total registros', value: String(requests.length) },
+        { label: 'Días completos', value: String(byType['day'] || 0) },
+        { label: 'Medios días', value: String(byType['half_day'] || 0) },
+        { label: 'Perm. Horas', value: String(byType['hour_permission'] || 0) },
+        { label: 'Descuentos', value: String(byType['discount'] || 0) },
+    ];
+    const kpiW = contentW / kpis.length;
+    for (let i = 0; i < kpis.length; i++) {
+        const x = marginL + i * kpiW;
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(x + 1, y, kpiW - 2, 14, 2, 2, 'F');
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(kpis[i].value, x + kpiW / 2, y + 8, { align: 'center' });
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpis[i].label, x + kpiW / 2, y + 12.5, { align: 'center' });
+    }
+    y += 20;
+
+    // ─── TABLE ───
+    const getTypeLabel = (r) => {
+        if (r.type === 'hour_return') return 'Devolucion Horas';
+        if (r.type === 'hour_permission') return 'Permiso Horas';
+        if (r.type === 'discount') return 'Descuento';
+        if (r.reason?.startsWith('[Excepcion]')) return 'Excepcion';
+        if (r.isHalfDay === 'am') return 'Medio Dia AM';
+        if (r.isHalfDay === 'pm') return 'Medio Dia PM';
+        if (r.isHalfDay) return 'Medio Dia';
+        return 'Dia Admin.';
+    };
+
+    const formatDateStr = (d) => {
+        if (!d) return '';
+        const date = new Date(d + 'T12:00:00');
+        return date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    const rows = requests.map(r => [
+        formatDateStr(r.date),
+        r.userName || '',
+        getTypeLabel(r),
+        (r.reason || '').replace(/^\[(Excepcion|Horas|Devolucion|Descuento)\]\s*/, ''),
+    ]);
+
+    autoTable(doc, {
+        startY: y,
+        head: [['Fecha', 'Funcionario', 'Tipo', 'Motivo']],
+        body: rows,
+        margin: { left: marginL, right: marginR },
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: {
+            fillColor: mainColor,
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 9,
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 'auto' },
+        },
+        didDrawPage: (data) => {
+            const totalPages = doc.internal.getNumberOfPages();
+            const timestamp = new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(148, 163, 184);
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 8);
+                doc.text(`Pagina ${i} de ${totalPages}`, pageW - marginR, pageH - 8, { align: 'right' });
+            }
+        },
+    });
+
+    const safeDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    doc.save(`Historial_DiasAdmin_${safeDate}.pdf`);
+}

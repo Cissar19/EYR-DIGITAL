@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
 import {
     CalendarCheck, Search, TrendingDown, TrendingUp, Circle,
-    Eye, AlertCircle, Users, ChevronLeft, ChevronRight, X, Calendar, Plus, Check, Clock, Ban, RotateCcw, Bell
+    Eye, AlertCircle, Users, ChevronLeft, ChevronRight, X, Calendar, Plus, Check, Clock, Ban, RotateCcw, Bell,
+    ClipboardList, Filter, Download
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { exportAdminDaysHistoryPDF } from '../lib/pdfExport';
 import { useAuth, ROLES, getRoleLabel } from '../context/AuthContext';
 import { useAdministrativeDays } from '../context/AdministrativeDaysContext';
 import UserDetailPanel from '../components/UserDetailPanel';
@@ -44,11 +46,17 @@ export default function AdminDaysTrackingView() {
     const { users: MOCK_USERS, canEdit, isUtpHead } = useAuth();
     const userCanEdit = canEdit();
     const canReturn = userCanEdit || isUtpHead();
-    const { getBalance, getHoursUsed, getDiscountDays, getUserRequests, getPendingRequests, approveRequest, rejectRequest, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay } = useAdministrativeDays();
+    const { requests, getBalance, getHoursUsed, getDiscountDays, getUserRequests, getPendingRequests, approveRequest, rejectRequest, assignDayManual, assignSpecialPermission, assignHoursManual, returnHoursManual, assignDiscountDay } = useAdministrativeDays();
     const { users: allUsers } = useAuth();
+    const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'historial'
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedUser, setSelectedUser] = useState(null);
+    // History tab filters
+    const [historySearch, setHistorySearch] = useState('');
+    const [historyType, setHistoryType] = useState('all');
+    const [historyMonth, setHistoryMonth] = useState('all');
+    const [historyPage, setHistoryPage] = useState(1);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -215,6 +223,59 @@ export default function AdminDaysTrackingView() {
                 }
             }
         }
+    };
+
+    // --- History helpers ---
+    const getRequestTypeConfig = (request) => {
+        if (request.type === 'hour_return') return { label: 'Devolución Horas', icon: RotateCcw, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
+        if (request.type === 'hour_permission') return { label: 'Permiso Horas', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
+        if (request.type === 'discount') return { label: 'Descuento', icon: Ban, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+        if (request.reason?.startsWith('[Excepcion]')) return { label: 'Excepción', icon: AlertCircle, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
+        if (request.isHalfDay) return { label: request.isHalfDay === 'am' ? '½ Día AM' : '½ Día PM', icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+        return { label: 'Día Admin.', icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' };
+    };
+
+    const getRequestTypeKey = (request) => {
+        if (request.type === 'hour_return') return 'hour_return';
+        if (request.type === 'hour_permission') return 'hour_permission';
+        if (request.type === 'discount') return 'discount';
+        if (request.reason?.startsWith('[Excepcion]')) return 'special';
+        if (request.isHalfDay) return 'half_day';
+        return 'day';
+    };
+
+    const approvedRequests = React.useMemo(() => {
+        return requests
+            .filter(r => r.status === 'approved')
+            .filter(r => historySearch === '' || normalizeText(r.userName).includes(normalizeText(historySearch)))
+            .filter(r => historyType === 'all' || getRequestTypeKey(r) === historyType)
+            .filter(r => {
+                if (historyMonth === 'all') return true;
+                const month = r.date?.substring(5, 7);
+                return month === historyMonth;
+            })
+            .sort((a, b) => b.date?.localeCompare(a.date));
+    }, [requests, historySearch, historyType, historyMonth]);
+
+    const HISTORY_PER_PAGE = 15;
+    const historyTotalPages = Math.max(1, Math.ceil(approvedRequests.length / HISTORY_PER_PAGE));
+    const effectiveHistoryPage = Math.min(historyPage, historyTotalPages);
+    const historyStart = (effectiveHistoryPage - 1) * HISTORY_PER_PAGE;
+    const paginatedHistory = approvedRequests.slice(historyStart, historyStart + HISTORY_PER_PAGE);
+
+    const TYPE_LABELS = {
+        day: 'Día Admin.', half_day: 'Medio Día', hour_permission: 'Permiso Horas',
+        hour_return: 'Devolución Horas', discount: 'Descuento', special: 'Excepción'
+    };
+
+    const handleExportHistory = () => {
+        exportAdminDaysHistoryPDF(approvedRequests, {
+            month: historyMonth,
+            monthLabel: historyMonth !== 'all' ? MONTHS[parseInt(historyMonth) - 1] : '',
+            type: historyType,
+            typeLabel: TYPE_LABELS[historyType] || '',
+            search: historySearch,
+        });
     };
 
     const handleOpenAssignModal = (mode = 'day') => {
@@ -387,8 +448,41 @@ export default function AdminDaysTrackingView() {
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="flex gap-1 mb-8 bg-slate-100/80 p-1 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setActiveTab('usuarios')}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                            activeTab === 'usuarios'
+                                ? "bg-white text-indigo-700 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700"
+                        )}
+                    >
+                        <Users className="w-4 h-4" />
+                        Usuarios
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('historial')}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                            activeTab === 'historial'
+                                ? "bg-white text-indigo-700 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700"
+                        )}
+                    >
+                        <ClipboardList className="w-4 h-4" />
+                        Historial Aprobados
+                        {approvedRequests.length > 0 && (
+                            <span className="bg-indigo-100 text-indigo-700 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                                {approvedRequests.length}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
                 {/* Search Bar and Assign Button */}
-                <div className="mb-8 flex flex-col md:flex-row items-center gap-4">
+                {activeTab === 'usuarios' && <div className="mb-8 flex flex-col md:flex-row items-center gap-4">
                     <div className="relative w-full md:flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                         <input
@@ -439,10 +533,10 @@ export default function AdminDaysTrackingView() {
                             )}
                         </div>
                     )}
-                </div>
+                </div>}
 
                 {/* Pending Approvals */}
-                {userCanEdit && pendingRequests.length > 0 && (
+                {activeTab === 'usuarios' && userCanEdit && pendingRequests.length > 0 && (
                     <div className="mb-8">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
@@ -492,7 +586,7 @@ export default function AdminDaysTrackingView() {
                 )}
 
                 {/* Users Grid */}
-                <div className="space-y-3 mb-8">
+                {activeTab === 'usuarios' && <div className="space-y-3 mb-8">
                     {paginatedUsers.map((user, index) => {
                         const balance = getBalance(user.id);
                         const hoursUsed = getHoursUsed(user.id);
@@ -588,10 +682,10 @@ export default function AdminDaysTrackingView() {
                             </motion.div>
                         );
                     })}
-                </div>
+                </div>}
 
                 {/* Pagination Controls */}
-                {filteredUsers.length > 0 && (
+                {activeTab === 'usuarios' && filteredUsers.length > 0 && (
                     <div className="flex items-center justify-center gap-3 md:gap-6 py-8">
                         {/* Previous Button */}
                         <button
@@ -642,7 +736,7 @@ export default function AdminDaysTrackingView() {
                 )}
 
                 {/* Empty State */}
-                {filteredUsers.length === 0 && (
+                {activeTab === 'usuarios' && filteredUsers.length === 0 && (
                     <div className="text-center py-20">
                         <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Search className="w-12 h-12 text-slate-400" />
@@ -653,6 +747,170 @@ export default function AdminDaysTrackingView() {
                         <p className="text-slate-400 text-sm">
                             Intenta con otro término de búsqueda
                         </p>
+                    </div>
+                )}
+
+                {/* Historial Tab */}
+                {activeTab === 'historial' && (
+                    <div>
+                        {/* Filters + Export */}
+                        <div className="flex flex-wrap gap-3 mb-6 items-center">
+                            {/* Search by name */}
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre..."
+                                    value={historySearch}
+                                    onChange={(e) => setHistorySearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none text-sm"
+                                />
+                            </div>
+                            {/* Month filter */}
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                <select
+                                    value={historyMonth}
+                                    onChange={(e) => setHistoryMonth(e.target.value)}
+                                    className="pl-9 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm appearance-none"
+                                >
+                                    <option value="all">Todos los meses</option>
+                                    {MONTHS.map((m, i) => (
+                                        <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {/* Type filter */}
+                            <select
+                                value={historyType}
+                                onChange={(e) => setHistoryType(e.target.value)}
+                                className="px-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm"
+                            >
+                                <option value="all">Todos los tipos</option>
+                                <option value="day">Día Admin.</option>
+                                <option value="half_day">Medio Día</option>
+                                <option value="hour_permission">Permiso Horas</option>
+                                <option value="hour_return">Devolución Horas</option>
+                                <option value="discount">Descuento</option>
+                                <option value="special">Excepción</option>
+                            </select>
+
+                            {/* Export button */}
+                            {approvedRequests.length > 0 && (
+                                <button
+                                    onClick={handleExportHistory}
+                                    className="ml-auto flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all hover:scale-105 active:scale-95"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Exportar PDF
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Summary chips */}
+                        <div className="flex flex-wrap gap-2 mb-6 text-xs">
+                            <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg font-medium">
+                                {approvedRequests.length} {approvedRequests.length === 1 ? 'registro' : 'registros'}
+                            </span>
+                            {approvedRequests.filter(r => getRequestTypeKey(r) === 'day').length > 0 && (
+                                <span className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-medium">
+                                    {approvedRequests.filter(r => getRequestTypeKey(r) === 'day').length} días completos
+                                </span>
+                            )}
+                            {approvedRequests.filter(r => getRequestTypeKey(r) === 'half_day').length > 0 && (
+                                <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-medium">
+                                    {approvedRequests.filter(r => getRequestTypeKey(r) === 'half_day').length} medios días
+                                </span>
+                            )}
+                            {approvedRequests.filter(r => getRequestTypeKey(r) === 'hour_permission').length > 0 && (
+                                <span className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg font-medium">
+                                    {approvedRequests.filter(r => getRequestTypeKey(r) === 'hour_permission').length} permisos de horas
+                                </span>
+                            )}
+                            {approvedRequests.filter(r => getRequestTypeKey(r) === 'discount').length > 0 && (
+                                <span className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg font-medium">
+                                    {approvedRequests.filter(r => getRequestTypeKey(r) === 'discount').length} descuentos
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Records list */}
+                        {paginatedHistory.length > 0 ? (
+                            <div className="space-y-2 mb-6">
+                                {paginatedHistory.map((req) => {
+                                    const typeConfig = getRequestTypeConfig(req);
+                                    const TypeIcon = typeConfig.icon;
+                                    return (
+                                        <div
+                                            key={req.id}
+                                            className="bg-white rounded-2xl px-5 py-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3"
+                                        >
+                                            {/* Date */}
+                                            <div className="flex items-center gap-2 text-xs text-slate-500 sm:w-32 shrink-0">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span>{formatDate(req.date)}</span>
+                                            </div>
+                                            {/* User */}
+                                            <div className="sm:w-44 shrink-0">
+                                                <span className="text-sm font-semibold text-slate-800">{req.userName}</span>
+                                            </div>
+                                            {/* Type badge */}
+                                            <div className={cn(
+                                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border shrink-0",
+                                                typeConfig.bg, typeConfig.color, typeConfig.border
+                                            )}>
+                                                <TypeIcon className="w-3.5 h-3.5" />
+                                                {typeConfig.label}
+                                            </div>
+                                            {/* Reason */}
+                                            <p className="text-sm text-slate-600 truncate flex-1">{req.reason}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-16">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <ClipboardList className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <p className="text-slate-500 text-sm">No hay registros aprobados con los filtros seleccionados</p>
+                            </div>
+                        )}
+
+                        {/* History Pagination */}
+                        {historyTotalPages > 1 && (
+                            <div className="flex items-center justify-center gap-3 py-4">
+                                <button
+                                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                                    disabled={effectiveHistoryPage === 1}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all border-2",
+                                        effectiveHistoryPage === 1
+                                            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                                    )}
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                    Anterior
+                                </button>
+                                <span className="text-sm text-slate-600 font-medium">
+                                    {effectiveHistoryPage} / {historyTotalPages}
+                                </span>
+                                <button
+                                    onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))}
+                                    disabled={effectiveHistoryPage === historyTotalPages}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all border-2",
+                                        effectiveHistoryPage === historyTotalPages
+                                            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                                    )}
+                                >
+                                    Siguiente
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
