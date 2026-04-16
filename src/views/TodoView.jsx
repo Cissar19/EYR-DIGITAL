@@ -212,7 +212,9 @@ function TodoCard({ todo, onClick, onUpdate }) {
     const cycleStatus = (e) => {
         e.stopPropagation();
         const order = ['pendiente', 'en_progreso', 'completado'];
-        onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+        const next = order[(order.indexOf(todo.status) + 1) % order.length];
+        const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+        onUpdate(todo.id, { status: next }, msg);
     };
 
     return (
@@ -260,7 +262,9 @@ function WeekTodoChip({ todo, onClick, onUpdate }) {
     const cycleStatus = (e) => {
         e.stopPropagation();
         const order = ['pendiente', 'en_progreso', 'completado'];
-        onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+        const next = order[(order.indexOf(todo.status) + 1) % order.length];
+        const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+        onUpdate(todo.id, { status: next }, msg);
     };
 
     return (
@@ -296,13 +300,15 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
     useEffect(() => { if (editingTitle) titleRef.current?.focus(); }, [editingTitle]);
     useEffect(() => { setTitleDraft(todo.text); setDescription(todo.description || ''); }, [todo.id]);
 
-    const saveTitle = () => { if (titleDraft.trim()) onUpdate(todo.id, { text: titleDraft.trim() }); setEditingTitle(false); };
-    const saveDesc  = () => { onUpdate(todo.id, { description: description.trim() || null }); setDescEditing(false); };
+    const saveTitle = () => { if (titleDraft.trim()) onUpdate(todo.id, { text: titleDraft.trim() }, 'Título actualizado'); setEditingTitle(false); };
+    const saveDesc  = () => { onUpdate(todo.id, { description: description.trim() || null }, 'Descripción guardada'); setDescEditing(false); };
     const sendNote  = async () => { if (!noteText.trim()) return; await addTodoNote(todo.id, noteText.trim()); setNoteText(''); };
 
     const cycleStatus = () => {
         const order = ['pendiente', 'en_progreso', 'completado'];
-        onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+        const next = order[(order.indexOf(todo.status) + 1) % order.length];
+        const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+        onUpdate(todo.id, { status: next }, msg);
     };
 
     const currentStatus = getStatus(todo.status);
@@ -356,7 +362,7 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                         <span className={cn('px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1', priority.cls)}>
                             <Flag className="w-3 h-3" />{priority.label}
                         </span>
-                        <button onClick={() => onUpdate(todo.id, { pinned: !todo.pinned })}
+                        <button onClick={() => onUpdate(todo.id, { pinned: !todo.pinned }, todo.pinned ? 'Tarea desfijada' : 'Tarea fijada')}
                             className={cn('ml-auto p-1.5 rounded-xl transition-colors', todo.pinned ? 'text-amber-500 bg-amber-50' : 'text-eyr-on-variant hover:bg-eyr-surface-low')}
                             title={todo.pinned ? 'Desfijar' : 'Fijar'}>
                             {todo.pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
@@ -383,7 +389,7 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                         <label className="text-xs font-semibold text-eyr-on-variant block mb-2">Prioridad</label>
                         <div className="flex gap-2">
                             {PRIORITIES.map(p => (
-                                <button key={p.key} onClick={() => onUpdate(todo.id, { priority: p.key })}
+                                <button key={p.key} onClick={() => onUpdate(todo.id, { priority: p.key }, 'Prioridad actualizada')}
                                     className={cn('flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                                         todo.priority === p.key ? p.cls + ' border-transparent shadow-sm' : 'border-eyr-outline-variant/20 text-eyr-on-variant hover:bg-eyr-surface-low'
                                     )}>{p.label}</button>
@@ -395,7 +401,7 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                         <label className="text-xs font-semibold text-eyr-on-variant block mb-2 flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" /> Fecha límite
                         </label>
-                        <input type="date" value={todo.dueDate || ''} onChange={e => onUpdate(todo.id, { dueDate: e.target.value || null })}
+                        <input type="date" value={todo.dueDate || ''} onChange={e => onUpdate(todo.id, { dueDate: e.target.value || null }, 'Fecha actualizada')}
                             className={cn('w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-eyr-primary bg-white transition-colors',
                                 overdue ? 'border-red-300 text-red-600' : 'border-eyr-outline-variant/30')} />
                         {overdue && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Esta tarea está vencida</p>}
@@ -587,7 +593,9 @@ function DayModal({ day, todos, onClose, onSelect, onUpdate, onAdd }) {
                                 const cycleStatus = (e) => {
                                     e.stopPropagation();
                                     const order = ['pendiente', 'en_progreso', 'completado'];
-                                    onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+                                    const next = order[(order.indexOf(todo.status) + 1) % order.length];
+                                    const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+                                    onUpdate(todo.id, { status: next }, msg);
                                 };
                                 return (
                                     <motion.div
@@ -808,7 +816,9 @@ function WeeklyView({ todos, onSelect, onUpdate, onAdd }) {
                             const cycleStatus = (e) => {
                                 e.stopPropagation();
                                 const order = ['pendiente', 'en_progreso', 'completado'];
-                                onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+                                const next = order[(order.indexOf(todo.status) + 1) % order.length];
+                                const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+                                onUpdate(todo.id, { status: next }, msg);
                             };
 
                             return (

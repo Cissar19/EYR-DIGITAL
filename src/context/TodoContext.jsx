@@ -42,15 +42,17 @@ export const TodoProvider = ({ children }) => {
                 pinned:   false,
                 createdAt: serverTimestamp(),
             });
+            toast.success('Tarea creada');
         } catch (e) {
             console.error(e);
             toast.error('Error al crear tarea');
         }
     }, [user]);
 
-    const updateTodo = React.useCallback(async (id, data) => {
+    const updateTodo = React.useCallback(async (id, data, successMsg) => {
         try {
             await updateDoc(doc(db, 'todos', id), data);
+            if (successMsg) toast.success(successMsg);
         } catch (e) {
             toast.error('Error al actualizar');
         }
@@ -59,6 +61,7 @@ export const TodoProvider = ({ children }) => {
     const deleteTodo = React.useCallback(async (id) => {
         try {
             await deleteDoc(doc(db, 'todos', id));
+            toast.success('Tarea eliminada');
         } catch (e) {
             toast.error('Error al eliminar');
         }
@@ -70,6 +73,7 @@ export const TodoProvider = ({ children }) => {
         const note = { id: crypto.randomUUID(), text: text.trim(), createdAt: new Date().toISOString() };
         try {
             await updateDoc(doc(db, 'todos', todoId), { notes: [...(todo.notes || []), note] });
+            toast.success('Nota agregada');
         } catch (e) {
             toast.error('Error al agregar nota');
         }
@@ -80,6 +84,7 @@ export const TodoProvider = ({ children }) => {
         if (!todo) return;
         try {
             await updateDoc(doc(db, 'todos', todoId), { notes: (todo.notes || []).filter(n => n.id !== noteId) });
+            toast.success('Nota eliminada');
         } catch (e) {
             toast.error('Error al eliminar nota');
         }
