@@ -133,20 +133,38 @@ function getMessages(todos) {
 }
 
 // ── Add form ──────────────────────────────────────────────────────────────────
+const addDays = (n) => {
+    const d = new Date(); d.setDate(d.getDate() + n); return toDateStr(d);
+};
+const DATE_SHORTCUTS = [
+    { label: 'Hoy',      get: () => addDays(0) },
+    { label: 'Mañana',   get: () => addDays(1) },
+    { label: 'En 7 días',get: () => addDays(7) },
+];
+
 function AddTodoForm({ onAdd }) {
-    const [open,     setOpen]     = useState(false);
-    const [text,     setText]     = useState('');
-    const [color,    setColor]    = useState('indigo');
-    const [priority, setPriority] = useState('media');
-    const [dueDate,  setDueDate]  = useState('');
-    const inputRef = useRef(null);
+    const [open,          setOpen]          = useState(false);
+    const [text,          setText]          = useState('');
+    const [color,         setColor]         = useState('indigo');
+    const [priority,      setPriority]      = useState('media');
+    const [dueDate,       setDueDate]       = useState('');
+    const [showCustomDate,setShowCustomDate] = useState(false);
+    const inputRef   = useRef(null);
+    const dateRef    = useRef(null);
 
     useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+    useEffect(() => { if (showCustomDate) dateRef.current?.showPicker?.(); }, [showCustomDate]);
 
     const submit = async () => {
         if (!text.trim()) return;
         await onAdd({ text, color, priority, dueDate: dueDate || null });
-        setText(''); setDueDate(''); setOpen(false);
+        setText(''); setDueDate(''); setShowCustomDate(false); setOpen(false);
+    };
+
+    const selectShortcut = (get) => {
+        const val = get();
+        setDueDate(prev => prev === val ? '' : val); // toggle
+        setShowCustomDate(false);
     };
 
     if (!open) return (
@@ -158,12 +176,16 @@ function AddTodoForm({ onAdd }) {
 
     return (
         <motion.div initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="w-full bg-white rounded-3xl border border-eyr-outline-variant/20 shadow-xl p-6 space-y-4">
+            className="w-full bg-white rounded-3xl border border-eyr-outline-variant/20 shadow-xl p-6 space-y-5">
+
+            {/* Text input */}
             <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setOpen(false); }}
                 placeholder="¿Qué necesitas hacer?"
                 className="w-full text-lg font-semibold text-eyr-on-surface placeholder:text-eyr-on-variant/40 bg-transparent border-b-2 border-eyr-outline-variant/20 pb-2 focus:outline-none focus:border-eyr-primary transition-colors" />
-            <div className="flex flex-wrap items-center gap-4">
+
+            {/* Color + Priority */}
+            <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-1.5">
                     <span className="text-xs text-eyr-on-variant font-medium mr-1">Color</span>
                     {COLORS.map(c => (
@@ -181,14 +203,79 @@ function AddTodoForm({ onAdd }) {
                             )}>{p.label}</button>
                     ))}
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-eyr-on-variant" />
-                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                        className="text-xs text-eyr-on-surface bg-eyr-surface-low border border-eyr-outline-variant/20 rounded-lg px-2 py-1 focus:outline-none focus:border-eyr-primary" />
-                </div>
             </div>
-            <div className="flex gap-2 pt-1">
-                <button onClick={() => setOpen(false)}
+
+            {/* Date picker — intuitive */}
+            <div>
+                <p className="text-xs font-semibold text-eyr-on-variant mb-2 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Fecha límite
+                </p>
+                <div className="flex flex-wrap gap-2 items-center">
+                    {/* Shortcut chips */}
+                    {DATE_SHORTCUTS.map(s => {
+                        const val     = s.get();
+                        const active  = dueDate === val;
+                        return (
+                            <button key={s.label} onClick={() => selectShortcut(s.get)}
+                                className={cn(
+                                    'px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all',
+                                    active
+                                        ? 'bg-eyr-primary text-white border-transparent shadow-sm'
+                                        : 'border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low hover:border-eyr-primary/30'
+                                )}>
+                                {s.label}
+                            </button>
+                        );
+                    })}
+
+                    {/* Custom date — shown as chip if set from custom, or trigger button */}
+                    {dueDate && !DATE_SHORTCUTS.some(s => s.get() === dueDate) ? (
+                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-eyr-primary text-white border border-transparent shadow-sm">
+                            <Calendar className="w-3 h-3" />
+                            {formatDateShort(dueDate)}
+                            <button onClick={() => { setDueDate(''); setShowCustomDate(false); }} className="hover:opacity-70 transition-opacity">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    ) : (
+                        <button onClick={() => setShowCustomDate(v => !v)}
+                            className={cn('px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5',
+                                showCustomDate
+                                    ? 'border-eyr-primary/40 text-eyr-primary bg-eyr-primary/5'
+                                    : 'border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low'
+                            )}>
+                            <Calendar className="w-3.5 h-3.5" /> Elegir fecha
+                        </button>
+                    )}
+
+                    {/* Clear all */}
+                    {dueDate && (
+                        <button onClick={() => { setDueDate(''); setShowCustomDate(false); }}
+                            className="text-[10px] text-eyr-on-variant hover:text-red-500 transition-colors flex items-center gap-0.5">
+                            <X className="w-3 h-3" /> Quitar
+                        </button>
+                    )}
+                </div>
+
+                {/* Hidden custom date input */}
+                <AnimatePresence>
+                    {showCustomDate && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden mt-2">
+                            <input
+                                ref={dateRef}
+                                type="date"
+                                value={dueDate}
+                                onChange={e => { setDueDate(e.target.value); setShowCustomDate(false); }}
+                                className="w-full px-3 py-2 rounded-xl border border-eyr-primary/30 text-sm focus:outline-none focus:border-eyr-primary bg-white"
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            <div className="flex gap-2">
+                <button onClick={() => { setOpen(false); setDueDate(''); setShowCustomDate(false); }}
                     className="px-4 py-2 rounded-xl text-sm font-semibold text-eyr-on-variant hover:bg-eyr-surface-low transition-colors border border-eyr-outline-variant/20">Cancelar</button>
                 <button onClick={submit} disabled={!text.trim()}
                     className="flex items-center gap-1.5 px-6 py-2 rounded-xl bg-eyr-primary text-white text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-all">
