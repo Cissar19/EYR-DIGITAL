@@ -1089,15 +1089,18 @@ function WeeklyView({ todos, onSelect, onUpdate, onAdd }) {
                 <div>
                     <div className="flex items-center gap-2 mb-4">
                         <Target className="w-5 h-5 text-eyr-primary" />
-                        <h2 className="text-base font-bold text-eyr-on-surface font-headline">Próximas tareas</h2>
+                        <h2 className="text-base font-extrabold text-eyr-on-surface font-headline">Próximas tareas</h2>
+                        <span className="ml-auto text-xs font-semibold text-eyr-on-variant bg-eyr-surface-high px-2.5 py-1 rounded-full">{upcoming.length}</span>
                     </div>
                     <div className="space-y-2">
-                        {upcoming.map(todo => {
+                        {upcoming.map((todo, idx) => {
                             const color    = getColor(todo.color);
                             const priority = getPriority(todo.priority);
-                            const dl       = daysLabel(daysUntil(todo.dueDate));
-                            const status   = getStatus(todo.status);
-                            const StatusIcon = status.icon;
+                            const n        = daysUntil(todo.dueDate);
+                            const dl       = daysLabel(n);
+                            const done     = todo.status === 'completado';
+                            const inProg   = todo.status === 'en_progreso';
+                            const overdue  = n < 0;
 
                             const cycleStatus = (e) => {
                                 e.stopPropagation();
@@ -1107,33 +1110,60 @@ function WeeklyView({ todos, onSelect, onUpdate, onAdd }) {
                                 onUpdate(todo.id, { status: next }, msg);
                             };
 
+                            // Days badge accent
+                            const dayNum   = Math.abs(n);
+                            const dayLabel = overdue ? 'vencida' : n === 0 ? 'hoy' : n === 1 ? 'mañana' : `día${dayNum !== 1 ? 's' : ''}`;
+                            const accentBg = overdue ? '#fef2f2' : n === 0 ? '#fff7ed' : n <= 3 ? '#fefce8' : '#f0fdf4';
+                            const accentTx = overdue ? '#dc2626' : n === 0 ? '#ea580c' : n <= 3 ? '#ca8a04' : '#16a34a';
+
                             return (
-                                <motion.div key={todo.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                                <motion.div key={todo.id} layout
+                                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.04 } }}
                                     onClick={() => onSelect(todo)}
-                                    className="flex items-center gap-4 px-4 py-3.5 bg-white rounded-2xl border border-eyr-outline-variant/15 hover:shadow-md hover:border-eyr-primary/20 transition-all cursor-pointer group">
-                                    {/* Color strip */}
-                                    <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: color.dot }} />
+                                    className="flex items-stretch bg-white rounded-2xl border border-eyr-outline-variant/15 hover:shadow-lg hover:border-eyr-primary/25 transition-all cursor-pointer group overflow-hidden">
 
-                                    {/* Status button */}
-                                    <button onClick={cycleStatus} className="shrink-0 hover:scale-110 transition-transform">
-                                        <StatusIcon className="w-4 h-4" style={{ color: status.color }} />
-                                    </button>
-
-                                    {/* Text */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-eyr-on-surface truncate group-hover:text-eyr-primary transition-colors">
-                                            {todo.text}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', priority.cls)}>{priority.label}</span>
-                                            <span className="text-[10px] text-eyr-on-variant">{formatDateShort(todo.dueDate)}</span>
-                                        </div>
+                                    {/* Days accent panel */}
+                                    <div className="w-[72px] flex flex-col items-center justify-center shrink-0 py-3 gap-0.5"
+                                        style={{ background: accentBg }}>
+                                        <span className="text-2xl font-extrabold font-headline leading-none" style={{ color: accentTx }}>
+                                            {overdue ? dayNum : n === 0 ? '!' : n}
+                                        </span>
+                                        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: accentTx + 'bb' }}>
+                                            {dayLabel}
+                                        </span>
                                     </div>
 
-                                    {/* Days remaining */}
-                                    <span className={cn('shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border whitespace-nowrap', dl.cls)}>
-                                        {dl.text}
-                                    </span>
+                                    {/* Color strip */}
+                                    <div className="w-1 shrink-0 self-stretch" style={{ background: color.dot }} />
+
+                                    {/* Content */}
+                                    <div className="flex items-center gap-3 flex-1 px-4 py-3 min-w-0">
+                                        {/* Big check circle */}
+                                        <button onClick={cycleStatus}
+                                            title={done ? 'Marcar pendiente' : 'Marcar completada'}
+                                            className={cn(
+                                                'shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all active:scale-90',
+                                                done   && 'border-emerald-500 bg-emerald-500 text-white',
+                                                inProg && !done && 'border-amber-400 text-amber-500 bg-amber-50',
+                                                !done && !inProg && 'border-slate-300 bg-white text-transparent hover:border-eyr-primary hover:text-eyr-primary/50',
+                                            )}>
+                                            {done   && <Check className="w-4 h-4" strokeWidth={3} />}
+                                            {inProg && !done && <Clock className="w-4 h-4" />}
+                                            {!done  && !inProg && <Check className="w-4 h-4" />}
+                                        </button>
+
+                                        <div className="flex-1 min-w-0">
+                                            <p className={cn('text-sm font-semibold text-eyr-on-surface truncate group-hover:text-eyr-primary transition-colors', done && 'line-through opacity-50')}>
+                                                {todo.text}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1', priority.cls)}>
+                                                    <Flag className="w-2.5 h-2.5" />{priority.label}
+                                                </span>
+                                                <span className="text-[10px] text-eyr-on-variant">{formatDateShort(todo.dueDate)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </motion.div>
                             );
                         })}
