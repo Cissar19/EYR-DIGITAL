@@ -475,10 +475,210 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
     );
 }
 
+// ── Day modal ─────────────────────────────────────────────────────────────────
+function DayModal({ day, todos, onClose, onSelect, onUpdate, onAdd }) {
+    const todayStr  = toDateStr(new Date());
+    const ds        = toDateStr(day);
+    const isToday   = ds === todayStr;
+    const isPast    = ds < todayStr;
+    const dl        = daysLabel(daysUntil(ds));
+
+    const done     = todos.filter(t => t.status === 'completado').length;
+    const pending  = todos.filter(t => t.status === 'pendiente').length;
+    const inProg   = todos.filter(t => t.status === 'en_progreso').length;
+
+    const [quickText,    setQuickText]    = useState('');
+    const [quickColor,   setQuickColor]   = useState('indigo');
+    const [quickPriority,setQuickPriority]= useState('media');
+    const [adding,       setAdding]       = useState(false);
+    const inputRef = useRef(null);
+    useEffect(() => { if (adding) inputRef.current?.focus(); }, [adding]);
+
+    const submit = async () => {
+        if (!quickText.trim()) return;
+        await onAdd({ text: quickText.trim(), color: quickColor, priority: quickPriority, dueDate: ds });
+        setQuickText('');
+        setAdding(false);
+    };
+
+    const dayName = day.toLocaleDateString('es-CL', { weekday: 'long' });
+    const dayNum  = day.getDate();
+    const monthName = day.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+
+    // Accent color based on state
+    const accentBg  = isToday ? '#e0e7ff' : isPast ? '#f1f5f9' : '#f0fdf4';
+    const accentDot = isToday ? '#6366f1' : isPast ? '#94a3b8' : '#10b981';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                onClick={e => e.stopPropagation()}
+                className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+                {/* Color accent top */}
+                <div className="h-1.5 w-full shrink-0" style={{ background: accentDot }} />
+
+                {/* Header bento */}
+                <div className="px-6 pt-5 pb-4" style={{ background: accentBg }}>
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentDot }}>
+                                {isToday ? '— Hoy' : dayName.charAt(0).toUpperCase() + dayName.slice(1)}
+                            </p>
+                            <div className="flex items-end gap-3">
+                                <span className="text-6xl font-extrabold leading-none text-eyr-on-surface">{dayNum}</span>
+                                <div className="mb-1">
+                                    <p className="text-base font-bold text-eyr-on-surface capitalize">{dayName}</p>
+                                    <p className="text-xs text-eyr-on-variant capitalize">{monthName}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="p-2 rounded-xl hover:bg-black/10 transition-colors">
+                            <X className="w-5 h-5 text-eyr-on-variant" />
+                        </button>
+                    </div>
+
+                    {/* Mini KPIs */}
+                    <div className="flex gap-2 mt-4">
+                        {[
+                            { label: 'Total',      value: todos.length, cls: 'bg-white/70 text-eyr-on-surface' },
+                            { label: 'Pendiente',  value: pending,      cls: 'bg-white/70 text-amber-700' },
+                            { label: 'En progreso',value: inProg,       cls: 'bg-white/70 text-sky-700' },
+                            { label: 'Listo',      value: done,         cls: 'bg-white/70 text-emerald-700' },
+                        ].map(kpi => (
+                            <div key={kpi.label} className={cn('flex-1 rounded-2xl px-3 py-2 text-center', kpi.cls)}>
+                                <p className="text-xl font-extrabold">{kpi.value}</p>
+                                <p className="text-[9px] font-bold uppercase tracking-wide opacity-70">{kpi.label}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Days label badge */}
+                    {!isToday && (
+                        <div className="mt-3">
+                            <span className={cn('inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full border', dl.cls)}>
+                                <Calendar className="w-3 h-3" /> {dl.text}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Task list */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+                    {todos.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-2 text-eyr-on-variant">
+                            <Calendar className="w-10 h-10 opacity-20" />
+                            <p className="text-sm font-semibold">No hay tareas para este día</p>
+                            <button onClick={() => setAdding(true)} className="text-sm text-eyr-primary hover:underline font-medium">
+                                + Agregar tarea
+                            </button>
+                        </div>
+                    ) : (
+                        <AnimatePresence>
+                            {todos.map(todo => {
+                                const color    = getColor(todo.color);
+                                const priority = getPriority(todo.priority);
+                                const status   = getStatus(todo.status);
+                                const StatusIcon = status.icon;
+                                const cycleStatus = (e) => {
+                                    e.stopPropagation();
+                                    const order = ['pendiente', 'en_progreso', 'completado'];
+                                    onUpdate(todo.id, { status: order[(order.indexOf(todo.status) + 1) % order.length] });
+                                };
+                                return (
+                                    <motion.div
+                                        key={todo.id}
+                                        layout
+                                        initial={{ opacity: 0, x: -8 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 8 }}
+                                        onClick={() => { onSelect(todo); onClose(); }}
+                                        style={{ background: color.bg, borderLeft: `4px solid ${color.dot}` }}
+                                        className="rounded-2xl px-4 py-3 cursor-pointer hover:shadow-md transition-all group flex items-start gap-3"
+                                    >
+                                        <button onClick={cycleStatus} className="shrink-0 mt-0.5 hover:scale-125 transition-transform" title={status.label}>
+                                            <StatusIcon className="w-4 h-4" style={{ color: status.color }} />
+                                        </button>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={cn('text-sm font-semibold text-eyr-on-surface group-hover:text-eyr-primary transition-colors truncate',
+                                                todo.status === 'completado' && 'line-through opacity-50'
+                                            )} style={{ color: color.text }}>
+                                                {todo.text}
+                                            </p>
+                                            {todo.description && (
+                                                <p className="text-xs text-eyr-on-variant mt-0.5 line-clamp-1">{todo.description}</p>
+                                            )}
+                                        </div>
+                                        <span className={cn('shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full', priority.cls)}>
+                                            {priority.label}
+                                        </span>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    )}
+                </div>
+
+                {/* Quick add */}
+                <div className="px-4 pb-5 pt-2 border-t border-eyr-outline-variant/10">
+                    {adding ? (
+                        <div className="space-y-3">
+                            <input
+                                ref={inputRef}
+                                value={quickText}
+                                onChange={e => setQuickText(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setAdding(false); }}
+                                placeholder="Nueva tarea para este día…"
+                                className="w-full px-4 py-2.5 rounded-2xl border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none text-sm"
+                            />
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-1.5">
+                                    {COLORS.map(c => (
+                                        <button key={c.key} onClick={() => setQuickColor(c.key)} title={c.label}
+                                            style={{ background: c.dot }}
+                                            className={cn('w-4 h-4 rounded-full transition-all',
+                                                quickColor === c.key ? 'ring-2 ring-offset-1 ring-eyr-primary scale-125' : 'opacity-50 hover:opacity-100 hover:scale-110'
+                                            )} />
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {PRIORITIES.map(p => (
+                                        <button key={p.key} onClick={() => setQuickPriority(p.key)}
+                                            className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all',
+                                                quickPriority === p.key ? p.cls + ' border-transparent' : 'border-eyr-outline-variant/20 text-eyr-on-variant'
+                                            )}>{p.label}</button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2 ml-auto">
+                                    <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-xs text-eyr-on-variant border border-eyr-outline-variant/20 rounded-xl hover:bg-eyr-surface-low transition-colors">Cancelar</button>
+                                    <button onClick={submit} disabled={!quickText.trim()}
+                                        className="px-3 py-1.5 text-xs font-bold bg-eyr-primary text-white rounded-xl hover:opacity-90 disabled:opacity-40 transition-all flex items-center gap-1">
+                                        <Check className="w-3 h-3" /> Agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <button onClick={() => setAdding(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed border-eyr-outline-variant/30 text-sm font-semibold text-eyr-on-variant hover:border-eyr-primary/40 hover:text-eyr-primary hover:bg-eyr-primary/5 transition-all">
+                            <Plus className="w-4 h-4" /> Agregar tarea para este día
+                        </button>
+                    )}
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
 // ── Weekly view ───────────────────────────────────────────────────────────────
-function WeeklyView({ todos, onSelect, onUpdate }) {
+function WeeklyView({ todos, onSelect, onUpdate, onAdd }) {
     const weekDays = useMemo(() => getWeekDays(), []);
     const todayStr = toDateStr(new Date());
+    const [selectedDay, setSelectedDay] = useState(null);
 
     // Map dateStr → todos
     const byDate = useMemo(() => {
@@ -538,14 +738,18 @@ function WeeklyView({ todos, onSelect, onUpdate }) {
                         const dayTodos = byDate[ds] || [];
 
                         return (
-                            <div key={ds} className={cn(
-                                'rounded-2xl p-3 min-h-[160px] flex flex-col gap-2 border transition-all',
-                                isToday
-                                    ? 'bg-eyr-primary-container/30 border-eyr-primary/30 shadow-sm'
-                                    : isPast
-                                        ? 'bg-eyr-surface-low/60 border-eyr-outline-variant/10 opacity-80'
-                                        : 'bg-white border-eyr-outline-variant/15 hover:shadow-sm'
-                            )}>
+                            <div
+                                key={ds}
+                                onClick={() => setSelectedDay(day)}
+                                className={cn(
+                                    'rounded-2xl p-3 min-h-[160px] flex flex-col gap-2 border transition-all cursor-pointer',
+                                    isToday
+                                        ? 'bg-eyr-primary-container/30 border-eyr-primary/30 shadow-sm hover:shadow-md'
+                                        : isPast
+                                            ? 'bg-eyr-surface-low/60 border-eyr-outline-variant/10 opacity-80 hover:opacity-100 hover:shadow-sm'
+                                            : 'bg-white border-eyr-outline-variant/15 hover:shadow-md hover:border-eyr-primary/20'
+                                )}
+                            >
                                 {/* Day header */}
                                 <div className="text-center mb-1">
                                     <p className={cn('text-[10px] font-bold uppercase tracking-wider', isToday ? 'text-eyr-primary' : 'text-eyr-on-variant')}>
@@ -562,11 +766,13 @@ function WeeklyView({ todos, onSelect, onUpdate }) {
                                 <div className="flex flex-col gap-1.5 flex-1">
                                     {dayTodos.length > 0 ? (
                                         dayTodos.map(t => (
-                                            <WeekTodoChip key={t.id} todo={t} onClick={() => onSelect(t)} onUpdate={onUpdate} />
+                                            <div key={t.id} onClick={e => e.stopPropagation()}>
+                                                <WeekTodoChip todo={t} onClick={() => onSelect(t)} onUpdate={onUpdate} />
+                                            </div>
                                         ))
                                     ) : (
                                         <div className="flex-1 flex items-center justify-center">
-                                            <span className="text-[10px] text-eyr-on-variant/30 font-medium">—</span>
+                                            <span className="text-[10px] text-eyr-on-variant/30 font-medium">+</span>
                                         </div>
                                     )}
                                 </div>
@@ -659,6 +865,20 @@ function WeeklyView({ todos, onSelect, onUpdate }) {
                     </div>
                 </div>
             )}
+
+            {/* ── Day modal ── */}
+            <AnimatePresence>
+                {selectedDay && (
+                    <DayModal
+                        day={selectedDay}
+                        todos={byDate[toDateStr(selectedDay)] || []}
+                        onClose={() => setSelectedDay(null)}
+                        onSelect={onSelect}
+                        onUpdate={onUpdate}
+                        onAdd={onAdd}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -785,7 +1005,7 @@ export default function TodoView() {
 
             {/* ══ SEMANA ══ */}
             {mainTab === 'semana' && !loading && (
-                <WeeklyView todos={todos} onSelect={setSelectedTodo} onUpdate={updateTodo} />
+                <WeeklyView todos={todos} onSelect={setSelectedTodo} onUpdate={updateTodo} onAdd={addTodo} />
             )}
 
             {/* ══ MIS TAREAS (grid) ══ */}
