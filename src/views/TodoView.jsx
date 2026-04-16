@@ -4,7 +4,8 @@ import {
     CheckSquare, Square, Trash2, Plus, CheckCircle2, Clock,
     ListChecks, Loader2, Pencil, Check, X, Pin, PinOff,
     Search, SortAsc, Calendar, MessageSquare, Flag, Send,
-    AlertCircle, ChevronDown, CalendarDays, Sparkles, PartyPopper,
+    AlertCircle, ChevronDown, ChevronLeft, ChevronRight,
+    CalendarDays, Sparkles, PartyPopper,
     Target, Flame, Zap, Star,
 } from 'lucide-react';
 import { useTodos } from '../context/TodoContext';
@@ -132,6 +133,115 @@ function getMessages(todos) {
     return msgs;
 }
 
+// ── Calendar modal ────────────────────────────────────────────────────────────
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAL_HEADERS = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
+
+function CalendarModal({ value, onChange, onClose }) {
+    const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+    const init  = value ? new Date(value + 'T00:00:00') : today;
+    const [yr,  setYr]  = useState(init.getFullYear());
+    const [mo,  setMo]  = useState(init.getMonth());
+
+    const prevMo = () => { if (mo === 0) { setYr(y => y-1); setMo(11); } else setMo(m => m-1); };
+    const nextMo = () => { if (mo === 11) { setYr(y => y+1); setMo(0);  } else setMo(m => m+1); };
+
+    const cells = useMemo(() => {
+        const first = new Date(yr, mo, 1);
+        const last  = new Date(yr, mo + 1, 0);
+        const pad   = (first.getDay() + 6) % 7; // Mon = 0
+        const arr   = [];
+        for (let i = pad; i > 0; i--) {
+            const d = new Date(first); d.setDate(d.getDate() - i);
+            arr.push({ date: d, current: false });
+        }
+        for (let d = 1; d <= last.getDate(); d++) arr.push({ date: new Date(yr, mo, d), current: true });
+        while (arr.length % 7 !== 0) {
+            const prev = arr[arr.length - 1].date;
+            const nxt  = new Date(prev); nxt.setDate(prev.getDate() + 1);
+            arr.push({ date: nxt, current: false });
+        }
+        return arr;
+    }, [yr, mo]);
+
+    return (
+        <motion.div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+            <motion.div className="relative bg-white rounded-3xl shadow-2xl p-6 w-full max-w-xs"
+                initial={{ scale: 0.9, y: 24, opacity: 0 }}
+                animate={{ scale: 1,   y: 0,  opacity: 1 }}
+                exit   ={{ scale: 0.9, y: 24, opacity: 0 }}
+                transition={{ type: 'spring', damping: 22, stiffness: 300 }}>
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                    <div>
+                        <p className="font-headline font-extrabold text-xl text-eyr-on-surface capitalize leading-tight">
+                            {MONTH_NAMES[mo]}
+                        </p>
+                        <p className="text-xs font-semibold text-eyr-on-variant">{yr}</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                        <button onClick={prevMo} className="w-8 h-8 rounded-xl border border-eyr-outline-variant/20 flex items-center justify-center hover:bg-eyr-surface-low transition-colors text-eyr-on-variant">
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button onClick={nextMo} className="w-8 h-8 rounded-xl border border-eyr-outline-variant/20 flex items-center justify-center hover:bg-eyr-surface-low transition-colors text-eyr-on-variant">
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-1">
+                    {CAL_HEADERS.map(h => (
+                        <div key={h} className="text-center text-[10px] font-bold text-eyr-on-variant/50 py-1">{h}</div>
+                    ))}
+                </div>
+
+                {/* Day grid */}
+                <div className="grid grid-cols-7 gap-0.5">
+                    {cells.map((cell, i) => {
+                        const ds         = toDateStr(cell.date);
+                        const isToday    = ds === toDateStr(today);
+                        const isSelected = ds === value;
+                        const isPast     = cell.date < today && !isToday;
+                        return (
+                            <button key={i}
+                                onClick={() => { onChange(ds); onClose(); }}
+                                disabled={!cell.current}
+                                className={cn(
+                                    'w-full aspect-square rounded-xl text-sm font-semibold transition-all flex items-center justify-center',
+                                    !cell.current  && 'opacity-0 pointer-events-none',
+                                    isSelected     && 'bg-eyr-primary text-white shadow-lg scale-105',
+                                    isToday  && !isSelected && 'bg-eyr-primary/10 text-eyr-primary font-extrabold ring-1 ring-eyr-primary/40',
+                                    !isSelected && !isToday && cell.current && !isPast && 'hover:bg-eyr-surface-low text-eyr-on-surface',
+                                    isPast   && !isSelected && 'text-eyr-on-variant/35',
+                                )}>
+                                {cell.date.getDate()}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-eyr-outline-variant/10">
+                    <button onClick={() => { onChange(''); onClose(); }}
+                        className="text-xs font-semibold text-eyr-on-variant hover:text-red-500 transition-colors">
+                        Sin fecha
+                    </button>
+                    <button onClick={() => { onChange(toDateStr(today)); onClose(); }}
+                        className="px-4 py-1.5 rounded-xl bg-eyr-primary/10 text-eyr-primary text-xs font-bold hover:bg-eyr-primary/20 transition-colors">
+                        Hoy
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+}
+
 // ── Add form ──────────────────────────────────────────────────────────────────
 const addDays = (n) => {
     const d = new Date(); d.setDate(d.getDate() + n); return toDateStr(d);
@@ -143,28 +253,25 @@ const DATE_SHORTCUTS = [
 ];
 
 function AddTodoForm({ onAdd }) {
-    const [open,          setOpen]          = useState(false);
-    const [text,          setText]          = useState('');
-    const [color,         setColor]         = useState('indigo');
-    const [priority,      setPriority]      = useState('media');
-    const [dueDate,       setDueDate]       = useState('');
-    const [showCustomDate,setShowCustomDate] = useState(false);
-    const inputRef   = useRef(null);
-    const dateRef    = useRef(null);
+    const [open,         setOpen]         = useState(false);
+    const [text,         setText]         = useState('');
+    const [color,        setColor]        = useState('indigo');
+    const [priority,     setPriority]     = useState('media');
+    const [dueDate,      setDueDate]      = useState('');
+    const [showCalendar, setShowCalendar] = useState(false);
+    const inputRef = useRef(null);
 
     useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
-    useEffect(() => { if (showCustomDate) dateRef.current?.showPicker?.(); }, [showCustomDate]);
 
     const submit = async () => {
         if (!text.trim()) return;
         await onAdd({ text, color, priority, dueDate: dueDate || null });
-        setText(''); setDueDate(''); setShowCustomDate(false); setOpen(false);
+        setText(''); setDueDate(''); setOpen(false);
     };
 
     const selectShortcut = (get) => {
         const val = get();
-        setDueDate(prev => prev === val ? '' : val); // toggle
-        setShowCustomDate(false);
+        setDueDate(prev => prev === val ? '' : val);
     };
 
     if (!open) return (
@@ -175,6 +282,7 @@ function AddTodoForm({ onAdd }) {
     );
 
     return (
+        <>
         <motion.div initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
             className="w-full bg-white rounded-3xl border border-eyr-outline-variant/20 shadow-xl p-6 space-y-5">
 
@@ -205,16 +313,15 @@ function AddTodoForm({ onAdd }) {
                 </div>
             </div>
 
-            {/* Date picker — intuitive */}
+            {/* Date picker */}
             <div>
                 <p className="text-xs font-semibold text-eyr-on-variant mb-2 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" /> Fecha límite
                 </p>
                 <div className="flex flex-wrap gap-2 items-center">
-                    {/* Shortcut chips */}
                     {DATE_SHORTCUTS.map(s => {
-                        const val     = s.get();
-                        const active  = dueDate === val;
+                        const val    = s.get();
+                        const active = dueDate === val;
                         return (
                             <button key={s.label} onClick={() => selectShortcut(s.get)}
                                 className={cn(
@@ -228,54 +335,34 @@ function AddTodoForm({ onAdd }) {
                         );
                     })}
 
-                    {/* Custom date — shown as chip if set from custom, or trigger button */}
+                    {/* Custom date chip or calendar trigger */}
                     {dueDate && !DATE_SHORTCUTS.some(s => s.get() === dueDate) ? (
-                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-eyr-primary text-white border border-transparent shadow-sm">
+                        <button onClick={() => setShowCalendar(true)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-eyr-primary text-white border border-transparent shadow-sm hover:opacity-90 transition-opacity">
                             <Calendar className="w-3 h-3" />
                             {formatDateShort(dueDate)}
-                            <button onClick={() => { setDueDate(''); setShowCustomDate(false); }} className="hover:opacity-70 transition-opacity">
+                            <span onClick={e => { e.stopPropagation(); setDueDate(''); }} className="hover:opacity-70">
                                 <X className="w-3 h-3" />
-                            </button>
-                        </span>
+                            </span>
+                        </button>
                     ) : (
-                        <button onClick={() => setShowCustomDate(v => !v)}
-                            className={cn('px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5',
-                                showCustomDate
-                                    ? 'border-eyr-primary/40 text-eyr-primary bg-eyr-primary/5'
-                                    : 'border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low'
-                            )}>
-                            <Calendar className="w-3.5 h-3.5" /> Elegir fecha
+                        <button onClick={() => setShowCalendar(true)}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low hover:border-eyr-primary/30">
+                            <CalendarDays className="w-3.5 h-3.5" /> Elegir fecha
                         </button>
                     )}
 
-                    {/* Clear all */}
                     {dueDate && (
-                        <button onClick={() => { setDueDate(''); setShowCustomDate(false); }}
+                        <button onClick={() => setDueDate('')}
                             className="text-[10px] text-eyr-on-variant hover:text-red-500 transition-colors flex items-center gap-0.5">
                             <X className="w-3 h-3" /> Quitar
                         </button>
                     )}
                 </div>
-
-                {/* Hidden custom date input */}
-                <AnimatePresence>
-                    {showCustomDate && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden mt-2">
-                            <input
-                                ref={dateRef}
-                                type="date"
-                                value={dueDate}
-                                onChange={e => { setDueDate(e.target.value); setShowCustomDate(false); }}
-                                className="w-full px-3 py-2 rounded-xl border border-eyr-primary/30 text-sm focus:outline-none focus:border-eyr-primary bg-white"
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             <div className="flex gap-2">
-                <button onClick={() => { setOpen(false); setDueDate(''); setShowCustomDate(false); }}
+                <button onClick={() => { setOpen(false); setDueDate(''); }}
                     className="px-4 py-2 rounded-xl text-sm font-semibold text-eyr-on-variant hover:bg-eyr-surface-low transition-colors border border-eyr-outline-variant/20">Cancelar</button>
                 <button onClick={submit} disabled={!text.trim()}
                     className="flex items-center gap-1.5 px-6 py-2 rounded-xl bg-eyr-primary text-white text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-all">
@@ -283,6 +370,17 @@ function AddTodoForm({ onAdd }) {
                 </button>
             </div>
         </motion.div>
+
+        <AnimatePresence>
+            {showCalendar && (
+                <CalendarModal
+                    value={dueDate}
+                    onChange={setDueDate}
+                    onClose={() => setShowCalendar(false)}
+                />
+            )}
+        </AnimatePresence>
+        </>
     );
 }
 
