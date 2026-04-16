@@ -513,11 +513,12 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
     const overdue  = isOverdue(todo.dueDate, todo.status);
     const dl       = todo.dueDate ? daysLabel(daysUntil(todo.dueDate)) : null;
 
-    const [editingTitle, setEditingTitle] = useState(false);
-    const [titleDraft,   setTitleDraft]   = useState(todo.text);
-    const [description,  setDescription]  = useState(todo.description || '');
-    const [descEditing,  setDescEditing]  = useState(false);
-    const [noteText,     setNoteText]     = useState('');
+    const [editingTitle,  setEditingTitle]  = useState(false);
+    const [titleDraft,    setTitleDraft]    = useState(todo.text);
+    const [description,   setDescription]   = useState(todo.description || '');
+    const [descEditing,   setDescEditing]   = useState(false);
+    const [noteText,      setNoteText]      = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const titleRef = useRef(null);
 
     useEffect(() => { if (editingTitle) titleRef.current?.focus(); }, [editingTitle]);
@@ -694,12 +695,47 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                     <span className="text-xs text-eyr-on-variant">
                         {todo.createdAt?.toDate ? `Creada ${todo.createdAt.toDate().toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}` : ''}
                     </span>
-                    <button onClick={() => { if (confirm('¿Eliminar esta tarea?')) { onDelete(todo.id); onClose(); } }}
+                    <button onClick={() => setConfirmDelete(true)}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="w-4 h-4" /> Eliminar
                     </button>
                 </div>
             </motion.div>
+
+            {/* Delete confirmation modal */}
+            <AnimatePresence>
+                {confirmDelete && (
+                    <motion.div className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDelete(false)} />
+                        <motion.div className="relative bg-white rounded-3xl shadow-2xl p-7 w-full max-w-xs flex flex-col items-center gap-5"
+                            initial={{ scale: 0.88, y: 20, opacity: 0 }}
+                            animate={{ scale: 1,    y: 0,  opacity: 1 }}
+                            exit   ={{ scale: 0.88, y: 20, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 22, stiffness: 300 }}>
+                            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+                                <Trash2 className="w-7 h-7 text-red-500" />
+                            </div>
+                            <div className="text-center">
+                                <p className="font-headline font-extrabold text-lg text-eyr-on-surface">¿Eliminar tarea?</p>
+                                <p className="text-sm text-eyr-on-variant mt-1 leading-snug">
+                                    "<span className="font-semibold text-eyr-on-surface">{todo.text}</span>" se eliminará permanentemente.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setConfirmDelete(false)}
+                                    className="flex-1 py-2.5 rounded-xl border border-eyr-outline-variant/20 text-sm font-semibold text-eyr-on-variant hover:bg-eyr-surface-low transition-colors">
+                                    Cancelar
+                                </button>
+                                <button onClick={() => { onDelete(todo.id); onClose(); }}
+                                    className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors shadow-sm">
+                                    Eliminar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
