@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CheckSquare, Square, Trash2, Plus, CheckCircle2, Clock,
@@ -164,7 +165,7 @@ function CalendarModal({ value, onChange, onClose }) {
         return arr;
     }, [yr, mo]);
 
-    return (
+    return createPortal(
         <motion.div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {/* Backdrop */}
@@ -238,7 +239,8 @@ function CalendarModal({ value, onChange, onClose }) {
                     </button>
                 </div>
             </motion.div>
-        </motion.div>
+        </motion.div>,
+        document.body
     );
 }
 
@@ -539,8 +541,8 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
     const currentStatus = getStatus(todo.status);
     const StatusIcon = currentStatus.icon;
 
-    return (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+    return createPortal(
+        <div className="fixed inset-0 z-[60] flex justify-end" onClick={onClose}>
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 28, stiffness: 280 }}
@@ -759,7 +761,8 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div>,
+        document.body
     );
 }
 
@@ -797,8 +800,8 @@ function DayModal({ day, todos, onClose, onSelect, onUpdate, onAdd }) {
     const accentBg  = isToday ? '#e0e7ff' : isPast ? '#f1f5f9' : '#f0fdf4';
     const accentDot = isToday ? '#6366f1' : isPast ? '#94a3b8' : '#10b981';
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -960,7 +963,8 @@ function DayModal({ day, todos, onClose, onSelect, onUpdate, onAdd }) {
                     )}
                 </div>
             </motion.div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
