@@ -386,53 +386,83 @@ function AddTodoForm({ onAdd }) {
 
 // ── Todo card (grid view) ─────────────────────────────────────────────────────
 function TodoCard({ todo, onClick, onUpdate }) {
-    const color   = getColor(todo.color);
+    const color    = getColor(todo.color);
     const priority = getPriority(todo.priority);
-    const status  = getStatus(todo.status);
-    const overdue = isOverdue(todo.dueDate, todo.status);
-    const done    = todo.status === 'completado';
-    const dl      = todo.dueDate ? daysLabel(daysUntil(todo.dueDate)) : null;
-    const StatusIcon = status.icon;
+    const overdue  = isOverdue(todo.dueDate, todo.status);
+    const done     = todo.status === 'completado';
+    const inProg   = todo.status === 'en_progreso';
+    const dl       = todo.dueDate ? daysLabel(daysUntil(todo.dueDate)) : null;
 
     const cycleStatus = (e) => {
         e.stopPropagation();
         const order = ['pendiente', 'en_progreso', 'completado'];
-        const next = order[(order.indexOf(todo.status) + 1) % order.length];
-        const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+        const next  = order[(order.indexOf(todo.status) + 1) % order.length];
+        const msg   = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
         onUpdate(todo.id, { status: next }, msg);
     };
 
     return (
         <motion.div layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
             onClick={onClick} style={{ background: color.bg }}
-            className="rounded-3xl p-5 flex flex-col gap-3 group hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
-            {todo.pinned && <div className="absolute top-3 right-3" style={{ color: color.dot }}><Pin className="w-3.5 h-3.5 opacity-70" /></div>}
-            <div className="flex items-start gap-3 pr-5">
-                <button onClick={cycleStatus} className="shrink-0 mt-0.5 transition-all hover:scale-125" title={status.label}>
-                    <StatusIcon className="w-5 h-5" style={{ color: status.color }} />
+            className="rounded-3xl p-4 flex flex-col gap-3 group hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
+
+            {todo.pinned && (
+                <div className="absolute top-3 right-3" style={{ color: color.dot }}>
+                    <Pin className="w-3.5 h-3.5 opacity-70" />
+                </div>
+            )}
+
+            {/* Main row: check button + text */}
+            <div className="flex items-center gap-3 pr-5">
+                {/* Big status button */}
+                <button
+                    onClick={cycleStatus}
+                    title={done ? 'Marcar pendiente' : inProg ? 'Marcar completada' : 'Marcar en progreso'}
+                    className={cn(
+                        'shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 shadow-sm active:scale-95',
+                        done  && 'border-emerald-500 bg-emerald-500 text-white shadow-emerald-200',
+                        inProg && !done && 'border-amber-400 bg-amber-50 text-amber-500 hover:border-amber-500',
+                        !done && !inProg && 'border-slate-300 bg-white/70 text-transparent hover:border-eyr-primary hover:text-eyr-primary/50 hover:bg-eyr-primary/5',
+                    )}>
+                    {done   && <Check className="w-5 h-5" strokeWidth={3} />}
+                    {inProg && !done && <Clock className="w-5 h-5" />}
+                    {!done && !inProg && <Check className="w-5 h-5 transition-opacity" />}
                 </button>
-                <span className={cn('flex-1 text-sm font-semibold leading-snug', done && 'line-through opacity-50')} style={{ color: color.text }}>
+
+                <span className={cn('flex-1 text-sm font-semibold leading-snug transition-all', done && 'line-through opacity-40')}
+                    style={{ color: color.text }}>
                     {todo.text}
                 </span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1', priority.cls)}>
+
+            {/* Status label strip */}
+            <div className="flex items-center gap-2 pl-1 flex-wrap">
+                <span className={cn(
+                    'text-[10px] font-bold px-2.5 py-1 rounded-full border',
+                    done   && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    inProg && !done && 'bg-amber-50 text-amber-700 border-amber-200',
+                    !done && !inProg && 'bg-white/60 text-slate-500 border-slate-200',
+                )}>
+                    {done ? 'Completada' : inProg ? 'En progreso' : 'Pendiente'}
+                </span>
+                <span className={cn('text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1', priority.cls)}>
                     <Flag className="w-2.5 h-2.5" />{priority.label}
                 </span>
                 {dl && (
-                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1', dl.cls)}>
+                    <span className={cn('text-[10px] font-semibold px-2 py-1 rounded-full border flex items-center gap-1', dl.cls)}>
                         {overdue && <AlertCircle className="w-2.5 h-2.5" />}
                         <Calendar className="w-2.5 h-2.5" />
                         {dl.text}
                     </span>
                 )}
                 {(todo.notes?.length > 0) && (
-                    <span className="text-[10px] font-medium flex items-center gap-1 bg-white/60 px-2 py-0.5 rounded-full ml-auto" style={{ color: color.text }}>
+                    <span className="text-[10px] font-medium flex items-center gap-1 bg-white/60 px-2 py-1 rounded-full ml-auto" style={{ color: color.text }}>
                         <MessageSquare className="w-2.5 h-2.5" />{todo.notes.length}
                     </span>
                 )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: color.dot }} />
+
+            <div className="absolute bottom-0 left-0 right-0 h-1 rounded-b-3xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: color.dot }} />
         </motion.div>
     );
 }
@@ -440,27 +470,35 @@ function TodoCard({ todo, onClick, onUpdate }) {
 // ── Weekly mini-card ──────────────────────────────────────────────────────────
 function WeekTodoChip({ todo, onClick, onUpdate }) {
     const color  = getColor(todo.color);
-    const status = getStatus(todo.status);
     const done   = todo.status === 'completado';
-    const StatusIcon = status.icon;
+    const inProg = todo.status === 'en_progreso';
 
     const cycleStatus = (e) => {
         e.stopPropagation();
         const order = ['pendiente', 'en_progreso', 'completado'];
-        const next = order[(order.indexOf(todo.status) + 1) % order.length];
-        const msg = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
+        const next  = order[(order.indexOf(todo.status) + 1) % order.length];
+        const msg   = next === 'completado' ? '¡Tarea completada!' : next === 'en_progreso' ? 'Tarea en progreso' : 'Tarea pendiente';
         onUpdate(todo.id, { status: next }, msg);
     };
 
     return (
         <motion.div layout initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
             onClick={onClick} style={{ background: color.bg, borderLeft: `3px solid ${color.dot}` }}
-            className="rounded-xl px-2.5 py-2 text-xs cursor-pointer hover:shadow-md transition-all group relative">
-            <div className="flex items-start gap-1.5">
-                <button onClick={cycleStatus} className="shrink-0 mt-0.5 hover:scale-110 transition-transform">
-                    <StatusIcon className="w-3 h-3" style={{ color: status.color }} />
+            className="rounded-xl px-2.5 py-2 text-xs cursor-pointer hover:shadow-md transition-all group">
+            <div className="flex items-center gap-2">
+                <button onClick={cycleStatus}
+                    title={done ? 'Marcar pendiente' : 'Marcar completada'}
+                    className={cn(
+                        'shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all active:scale-90',
+                        done   && 'bg-emerald-500 border-emerald-500 text-white',
+                        inProg && !done && 'border-amber-400 text-amber-500 bg-amber-50',
+                        !done && !inProg && 'border-slate-300 bg-white/70 text-transparent hover:border-eyr-primary hover:text-eyr-primary/50',
+                    )}>
+                    {done   && <Check className="w-3 h-3" strokeWidth={3} />}
+                    {inProg && !done && <Clock className="w-3 h-3" />}
+                    {!done && !inProg && <Check className="w-3 h-3" />}
                 </button>
-                <span className={cn('font-semibold leading-tight truncate', done && 'line-through opacity-50')} style={{ color: color.text }}>
+                <span className={cn('font-semibold leading-tight truncate', done && 'line-through opacity-40')} style={{ color: color.text }}>
                     {todo.text}
                 </span>
             </div>
