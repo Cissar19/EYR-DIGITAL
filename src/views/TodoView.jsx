@@ -519,6 +519,7 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
     const [descEditing,   setDescEditing]   = useState(false);
     const [noteText,      setNoteText]      = useState('');
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [showDateCal,   setShowDateCal]   = useState(false);
     const titleRef = useRef(null);
 
     useEffect(() => { if (editingTitle) titleRef.current?.focus(); }, [editingTitle]);
@@ -625,9 +626,20 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                         <label className="text-xs font-semibold text-eyr-on-variant block mb-2 flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" /> Fecha límite
                         </label>
-                        <input type="date" value={todo.dueDate || ''} onChange={e => onUpdate(todo.id, { dueDate: e.target.value || null }, 'Fecha actualizada')}
-                            className={cn('w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-eyr-primary bg-white transition-colors',
-                                overdue ? 'border-red-300 text-red-600' : 'border-eyr-outline-variant/30')} />
+                        <button onClick={() => setShowDateCal(true)}
+                            className={cn('w-full px-3 py-2.5 rounded-xl border text-sm text-left flex items-center gap-2 transition-colors hover:border-eyr-primary/40',
+                                overdue ? 'border-red-300 text-red-600 bg-red-50' : 'border-eyr-outline-variant/30 text-eyr-on-surface bg-white')}>
+                            <CalendarDays className="w-4 h-4 shrink-0 text-eyr-on-variant" />
+                            <span className={todo.dueDate ? '' : 'text-eyr-on-variant italic'}>
+                                {todo.dueDate ? new Date(todo.dueDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'long' }) : 'Sin fecha'}
+                            </span>
+                            {todo.dueDate && (
+                                <span onClick={e => { e.stopPropagation(); onUpdate(todo.id, { dueDate: null }, 'Fecha eliminada'); }}
+                                    className="ml-auto text-eyr-on-variant hover:text-red-500 transition-colors">
+                                    <X className="w-3.5 h-3.5" />
+                                </span>
+                            )}
+                        </button>
                         {overdue && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Esta tarea está vencida</p>}
                     </div>
                     {/* Description */}
@@ -701,6 +713,17 @@ function TodoDetailPanel({ todo, onClose, onUpdate, onDelete, addTodoNote, delet
                     </button>
                 </div>
             </motion.div>
+
+            {/* Date calendar modal */}
+            <AnimatePresence>
+                {showDateCal && (
+                    <CalendarModal
+                        value={todo.dueDate || ''}
+                        onChange={val => onUpdate(todo.id, { dueDate: val || null }, val ? 'Fecha actualizada' : 'Fecha eliminada')}
+                        onClose={() => setShowDateCal(false)}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Delete confirmation modal */}
             <AnimatePresence>
