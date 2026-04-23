@@ -33,7 +33,7 @@ const ASIG_FULL = {
     TE: 'Tecnología', OR: 'Orientación',
 };
 
-function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canTeacherEdit, onApprove, onReject }) {
+function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onApprove, onReject }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const pending = ev.pendingChanges;
     const dateLabel = ev.date
@@ -185,19 +185,6 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canTeac
                         </button>
                     </>
                 )}
-                {canTeacherEdit && !canCRUD && !confirmDelete && !pending && (
-                    <button
-                        onClick={onEdit}
-                        className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-eyr-primary hover:bg-eyr-primary-container/20 transition-all"
-                    >
-                        <Pencil className="w-4 h-4" /> Proponer cambios
-                    </button>
-                )}
-                {canTeacherEdit && !canCRUD && pending && (
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 px-2">
-                        <AlertCircle className="w-3.5 h-3.5" /> Cambios en revisión
-                    </span>
-                )}
                 {confirmDelete && (
                     <div className="flex items-center gap-3 flex-1">
                         <span className="text-sm font-semibold text-red-600 flex-1">¿Eliminar esta evaluación?</span>
@@ -257,6 +244,67 @@ function buildMonthGrid(year, month) {
     return weeks;
 }
 
+function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
+    const myEvals = canCRUD
+        ? [...evaluaciones].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        : evaluaciones.filter(e => e.createdBy?.id === user.uid).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    return (
+        <ModalContainer onClose={onClose} maxWidth="max-w-xl">
+            <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
+                <div>
+                    <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface tracking-tight">Editar fechas</h2>
+                    <p className="text-sm text-eyr-on-variant mt-0.5">
+                        {canCRUD ? 'Todas las evaluaciones programadas' : 'Tus evaluaciones programadas'}
+                    </p>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 text-eyr-on-variant hover:text-red-500 transition-all">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            <div className="px-8 py-4 overflow-y-auto space-y-2">
+                {myEvals.length === 0 && (
+                    <p className="text-sm text-eyr-on-variant text-center py-8">No hay evaluaciones programadas.</p>
+                )}
+                {myEvals.map(ev => {
+                    const dateLabel = ev.date
+                        ? new Date(ev.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
+                        : '—';
+                    return (
+                        <div key={ev.id} className="flex items-center gap-3 p-3 rounded-2xl bg-eyr-surface-low hover:bg-eyr-surface-high transition-colors">
+                            <div className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-extrabold ${ASIG_COLORS[ev.asignatura] || 'bg-slate-100 text-slate-600'}`}>
+                                {ev.curso}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-eyr-on-surface truncate">{ev.name}</p>
+                                <p className="text-xs text-eyr-on-variant capitalize">{dateLabel} · {ASIG_FULL[ev.asignatura] || ev.asignatura}</p>
+                            </div>
+                            {ev.pendingChanges && (
+                                <span title="Cambios pendientes">
+                                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                                </span>
+                            )}
+                            <button
+                                onClick={() => { onEdit(ev); onClose(); }}
+                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-eyr-primary hover:bg-eyr-primary-container/20 transition-all"
+                            >
+                                <Pencil className="w-3.5 h-3.5" /> Editar
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="p-6 bg-eyr-surface-mid shrink-0">
+                <button onClick={onClose} className="w-full px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all">
+                    Cerrar
+                </button>
+            </div>
+        </ModalContainer>
+    );
+}
+
 export default function CalendarioEvaluaciones() {
     const { user } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
@@ -264,6 +312,7 @@ export default function CalendarioEvaluaciones() {
     const canCRUD = canEdit(user) || user?.role === 'utp_head';
     const [selectedDate, setSelectedDate] = useState(null);
     const [showFijar, setShowFijar] = useState(false);
+    const [showEditarFechas, setShowEditarFechas] = useState(false);
     const [selectedEval, setSelectedEval] = useState(null);
     const [editEval, setEditEval] = useState(null);
 
@@ -323,12 +372,20 @@ export default function CalendarioEvaluaciones() {
                 </div>
 
                 {canCreateEval && (
-                    <button
-                        onClick={() => setShowFijar(true)}
-                        className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold shrink-0"
-                    >
-                        <Pin className="w-4 h-4" /> Fijar una prueba
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={() => setShowEditarFechas(true)}
+                            className="flex items-center gap-2 bg-white border border-eyr-primary text-eyr-primary px-5 py-3 rounded-xl hover:bg-eyr-primary-container/20 transition-all shadow-sm text-sm font-semibold"
+                        >
+                            <Pencil className="w-4 h-4" /> Editar fechas
+                        </button>
+                        <button
+                            onClick={() => setShowFijar(true)}
+                            className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold"
+                        >
+                            <Pin className="w-4 h-4" /> Fijar una prueba
+                        </button>
+                    </div>
                 )}
 
                 {/* Month selector */}
@@ -495,7 +552,6 @@ export default function CalendarioEvaluaciones() {
                         eval={selectedEval}
                         onClose={() => setSelectedEval(null)}
                         canCRUD={canCRUD}
-                        canTeacherEdit={user?.role === 'teacher' && selectedEval.createdBy?.id === user.uid}
                         onEdit={() => { setEditEval(selectedEval); setSelectedEval(null); }}
                         onDelete={async () => {
                             await deleteEvaluacion(selectedEval.id);
@@ -509,6 +565,18 @@ export default function CalendarioEvaluaciones() {
                             await rejectPendingChanges(selectedEval.id);
                             setSelectedEval(null);
                         }}
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showEditarFechas && (
+                    <EditarFechasModal
+                        evaluaciones={evaluaciones}
+                        user={user}
+                        canCRUD={canCRUD}
+                        onEdit={(ev) => setEditEval(ev)}
+                        onClose={() => setShowEditarFechas(false)}
                     />
                 )}
             </AnimatePresence>

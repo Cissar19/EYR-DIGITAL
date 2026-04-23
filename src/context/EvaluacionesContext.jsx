@@ -227,6 +227,7 @@ export const EvaluacionesProvider = ({ children }) => {
         try {
             const updates = { pendingChanges: null };
             if (pending.name !== undefined) updates.name = pending.name;
+            if (pending.date !== undefined) updates.date = pending.date;
             if (pending.oa !== undefined) updates.oa = pending.oa;
             if (pending.oaCodes !== undefined) updates.oaCodes = pending.oaCodes;
             if (pending.slots !== undefined) updates.slots = pending.slots;

@@ -70,6 +70,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const [selectedSlots, setSelectedSlots] = useState(initialData?.slots || []);
     const [name, setName] = useState(initialData?.name || '');
     const [selectedOas, setSelectedOas] = useState(initialData?.oaCodes || []);
+    const [editDate, setEditDate] = useState(initialData?.date || defaultDate || new Date().toISOString().slice(0, 10));
 
     const oaList = useMemo(() => {
         if (!curso || !asignatura) return [];
@@ -80,7 +81,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const toggleOa = (code) =>
         setSelectedOas(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
 
-    const date = defaultDate || new Date().toISOString().slice(0, 10);
+    const date = isEditing ? editDate : (defaultDate || new Date().toISOString().slice(0, 10));
 
     // Asignaturas disponibles para el curso seleccionado
     const asignaturasForCurso = useMemo(() => {
@@ -142,6 +143,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
             if (isEditing) {
                 const changes = {
                     name: name.trim(),
+                    date: editDate,
                     oa: selectedOas.join(', '),
                     oaCodes: selectedOas,
                     slots: selectedSlots.length > 0 ? selectedSlots : null,
@@ -308,6 +310,19 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                                 );
                             })}
                         </div>
+                    </div>
+                )}
+
+                {/* Fecha — solo en edición */}
+                {isEditing && (
+                    <div className="space-y-1.5">
+                        <label className="block text-sm font-bold text-eyr-on-variant ml-1">Fecha</label>
+                        <input
+                            type="date"
+                            value={editDate}
+                            onChange={e => setEditDate(e.target.value)}
+                            className={inputCls}
+                        />
                     </div>
                 )}
 
