@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { X, Zap, Loader2 } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { X, Zap, Loader2, ChevronDown } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
 import { ASIGNATURAS, CURSOS, CURSO_TO_LEVEL, OA_DATA } from '../data/objetivosAprendizaje';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -24,6 +25,14 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const { addEvaluacion, evaluaciones } = useEvaluaciones();
     const { getSchedule } = useSchedule();
     const [saving, setSaving] = useState(false);
+    const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
+    const cursoDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => { if (cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target)) setCursoDropdownOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const isTeacher = user?.role === 'teacher';
 
@@ -157,15 +166,44 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                 {/* Curso */}
                 <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-eyr-on-variant ml-1">Curso *</label>
-                    <select
-                        value={curso}
-                        onChange={e => handleCursoChange(e.target.value)}
-                        className={inputCls}
-                        autoFocus
-                    >
-                        <option value="">Seleccionar...</option>
-                        {availableCursos.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <div className="relative" ref={cursoDropdownRef}>
+                        <button
+                            type="button"
+                            onClick={() => setCursoDropdownOpen(o => !o)}
+                            className={`${inputCls} flex items-center justify-between text-left`}
+                        >
+                            <span className={curso ? 'text-eyr-on-surface' : 'text-eyr-on-variant/50'}>
+                                {curso || 'Seleccionar curso...'}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-eyr-on-variant shrink-0 transition-transform duration-200 ${cursoDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                            {cursoDropdownOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute top-full mt-1 left-0 right-0 bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden z-50 max-h-64 overflow-y-auto"
+                                >
+                                    {availableCursos.map(c => (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            onClick={() => { handleCursoChange(c); setCursoDropdownOpen(false); }}
+                                            className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${
+                                                curso === c
+                                                    ? 'bg-eyr-primary text-white'
+                                                    : 'text-eyr-on-surface hover:bg-eyr-surface-high'
+                                            }`}
+                                        >
+                                            {c}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Asignatura — automática o seleccionable */}
