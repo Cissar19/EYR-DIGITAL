@@ -247,7 +247,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
       allow update: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
-      allow delete: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isManagement();
     }
 
     // ============================================
