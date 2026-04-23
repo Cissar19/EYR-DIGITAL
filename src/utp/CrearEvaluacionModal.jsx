@@ -40,6 +40,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
 
     const [curso, setCurso] = useState('');
     const [asignatura, setAsignatura] = useState('');
+    const [selectedSlot, setSelectedSlot] = useState(null);
     const [name, setName] = useState('');
     const [selectedOas, setSelectedOas] = useState([]);
 
@@ -67,6 +68,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const handleCursoChange = (newCurso) => {
         setCurso(newCurso);
         setSelectedOas([]);
+        setSelectedSlot(null);
         const options = (() => {
             if (!teacherBlocks || teacherBlocks.length === 0 || !newCurso) return ASIGNATURAS;
             const codes = [...new Set(
@@ -77,18 +79,26 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         setAsignatura(options.length === 1 ? options[0].code : '');
     };
 
+    const handleAsignaturaChange = (code) => {
+        setAsignatura(code);
+        setSelectedSlot(null);
+        setSelectedOas([]);
+    };
+
     const availableSlots = useMemo(() => {
         if (!isTeacher || !teacherBlocks || !curso || !asignatura) return null;
-        const relevant = teacherBlocks.filter(b => b.course === curso && SUBJECT_TO_ASIG[b.subject] === asignatura);
-        if (relevant.length === 0) return null;
         const DIAS_ORDER = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-        const byDay = {};
-        relevant.forEach(b => {
-            if (!byDay[b.day]) byDay[b.day] = [];
+        const relevant = teacherBlocks
+            .filter(b => b.course === curso && SUBJECT_TO_ASIG[b.subject] === asignatura)
+            .sort((a, b) => {
+                const dayDiff = DIAS_ORDER.indexOf(a.day) - DIAS_ORDER.indexOf(b.day);
+                return dayDiff !== 0 ? dayDiff : a.startTime.localeCompare(b.startTime);
+            });
+        if (relevant.length === 0) return null;
+        return relevant.map(b => {
             const block = SCHEDULE_BLOCKS.find(sb => sb.start === b.startTime);
-            byDay[b.day].push(block?.label || b.startTime);
+            return { day: b.day, label: block?.label || b.startTime, startTime: b.startTime };
         });
-        return DIAS_ORDER.filter(d => byDay[d]).map(d => ({ day: d, hours: byDay[d] }));
     }, [isTeacher, teacherBlocks, curso, asignatura]);
 
     const hasConflict = useMemo(() => {
@@ -107,6 +117,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                 curso,
                 asignatura,
                 date,
+                slot: selectedSlot || null,
                 oa: selectedOas.join(', '),
                 oaCodes: selectedOas,
                 driveLink: '',
@@ -171,7 +182,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                                     <button
                                         key={a.code}
                                         type="button"
-                                        onClick={() => setAsignatura(a.code)}
+                                        onClick={() => handleAsignaturaChange(a.code)}
                                         className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
                                             asignatura === a.code
                                                 ? 'border-eyr-primary bg-eyr-primary-container/30 text-eyr-primary'
@@ -186,17 +197,39 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                     </div>
                 )}
 
-                {/* Horarios disponibles */}
+                {/* Horarios disponibles — seleccionables */}
                 {availableSlots && (
                     <div className="space-y-1.5">
-                        <label className="block text-sm font-bold text-eyr-on-variant ml-1">Días con este ramo</label>
+                        <label className="block text-sm font-bold text-eyr-on-variant ml-1">
+                            Horario de la evaluación
+                            {selectedSlot && (
+                                <span className="ml-2 text-xs font-semibold text-eyr-primary">
+                                    {selectedSlot.day} · {selectedSlot.label}
+                                </span>
+                            )}
+                        </label>
                         <div className="flex flex-wrap gap-2">
-                            {availableSlots.map(({ day, hours }) => (
-                                <div key={day} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-eyr-primary-container/20 border border-eyr-primary/20">
-                                    <span className="text-xs font-extrabold text-eyr-primary">{day.slice(0, 3).toUpperCase()}</span>
-                                    <span className="text-xs text-eyr-on-variant font-medium">{hours.join(' · ')}</span>
-                                </div>
-                            ))}
+                            {availableSlots.map(({ day, label, startTime }) => {
+                                const isSelected = selectedSlot?.day === day && selectedSlot?.startTime === startTime;
+                                return (
+                                    <button
+                                        key={`${day}-${startTime}`}
+                                        type="button"
+                                        onClick={() => setSelectedSlot(isSelected ? null : { day, label, startTime })}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                                            isSelected
+                                                ? 'border-eyr-primary bg-eyr-primary-container/30 text-eyr-primary'
+                                                : 'border-eyr-outline-variant/20 bg-eyr-surface-low text-eyr-on-variant hover:border-eyr-primary/40'
+                                        }`}
+                                    >
+                                        <span className={`font-extrabold ${isSelected ? 'text-eyr-primary' : 'text-eyr-on-surface'}`}>
+                                            {day.slice(0, 3).toUpperCase()}
+                                        </span>
+                                        <span className="opacity-40">·</span>
+                                        <span>{label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
