@@ -334,12 +334,11 @@ export default function CalendarioEvaluaciones() {
                                                 key={e.id}
                                                 type="button"
                                                 onClick={(ev) => { ev.stopPropagation(); setSelectedEval(e); }}
-                                                className={`text-[11px] font-semibold px-2 py-1 rounded-lg truncate text-left hover:brightness-90 transition-all ${ASIG_COLORS[e.asignatura] || 'bg-slate-100 text-slate-600'}`}
+                                                className={`w-full text-left px-3 py-2.5 rounded-xl hover:brightness-90 active:scale-95 transition-all ${ASIG_COLORS[e.asignatura] || 'bg-slate-100 text-slate-600'}`}
                                                 title={`${e.curso} · ${e.name}`}
                                             >
-                                                <span className="font-bold">{e.curso}</span>
-                                                <span className="mx-1 opacity-50">·</span>
-                                                {ASIG_SHORT[e.asignatura] || e.asignatura}
+                                                <div className="text-xs font-extrabold leading-none">{e.curso}</div>
+                                                <div className="text-[11px] font-semibold opacity-80 mt-1 truncate">{ASIG_SHORT[e.asignatura] || e.asignatura}</div>
                                             </button>
                                         ))}
                                         {clickable && (
