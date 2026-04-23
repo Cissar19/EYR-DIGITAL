@@ -193,35 +193,29 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                         </span>
                         <ChevronDown className={`w-4 h-4 text-eyr-on-variant shrink-0 transition-transform duration-200 ${cursoDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-                    <AnimatePresence>
-                        {cursoDropdownOpen && createPortal(
-                            <motion.div
-                                ref={cursoDropdownRef}
-                                initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                transition={{ duration: 0.15 }}
-                                style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
-                                className="bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden max-h-64 overflow-y-auto"
-                            >
-                                {availableCursos.map(c => (
-                                    <button
-                                        key={c}
-                                        type="button"
-                                        onClick={() => { handleCursoChange(c); setCursoDropdownOpen(false); }}
-                                        className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${
-                                            curso === c
-                                                ? 'bg-eyr-primary text-white'
-                                                : 'text-eyr-on-surface hover:bg-eyr-surface-high'
-                                        }`}
-                                    >
-                                        {c}
-                                    </button>
-                                ))}
-                            </motion.div>,
-                            document.body
-                        )}
-                    </AnimatePresence>
+                    {cursoDropdownOpen && createPortal(
+                        <div
+                            ref={cursoDropdownRef}
+                            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
+                            className="bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden max-h-64 overflow-y-auto"
+                        >
+                            {availableCursos.map(c => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => { handleCursoChange(c); setCursoDropdownOpen(false); }}
+                                    className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${
+                                        curso === c
+                                            ? 'bg-eyr-primary text-white'
+                                            : 'text-eyr-on-surface hover:bg-eyr-surface-high'
+                                    }`}
+                                >
+                                    {c}
+                                </button>
+                            ))}
+                        </div>,
+                        document.body
+                    )}
                 </div>
 
                 {/* Asignatura — automática o seleccionable */}
