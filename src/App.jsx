@@ -34,6 +34,7 @@ import JustificativesView from './views/JustificativesView';
 import EntrevistasView from './views/EntrevistasView';
 import UTPView from './utp/UTPView';
 import EditorFormato from './utp/EditorFormato';
+import CalendarioEvaluaciones from './utp/CalendarioEvaluaciones';
 import ControlSanoView from './views/ControlSanoView';
 import FichaClap from './views/FichaClap';
 import AtencionDiariaView from './views/AtencionDiariaView';
@@ -243,6 +244,7 @@ export default function App() {
           <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
           <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
           <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
+          <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
           <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
           <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
           <Route path="/enfermeria/ficha-clap" element={<PermissionGate moduleKey="ficha_clap"><FichaClap /></PermissionGate>} />

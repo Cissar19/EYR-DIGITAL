@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare, CalendarDays
 } from 'lucide-react';
 
 /**
@@ -31,7 +31,7 @@ export const MODULE_REGISTRY = [
     },
     {
         key: 'tasks',
-        name: 'Tareas',
+        name: 'Tareas del Equipo',
         icon: ListChecks,
         path: '/tasks',
         category: 'common',
@@ -169,6 +169,15 @@ export const MODULE_REGISTRY = [
         category: 'role_specific',
         group: 'utp',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head'],
+    },
+    {
+        key: 'utp_calendario',
+        name: 'Calendario Evaluaciones',
+        icon: CalendarDays,
+        path: '/utp/calendario',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
     },
     {
         key: 'pie',

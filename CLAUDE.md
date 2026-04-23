@@ -14,6 +14,8 @@ npm run build        # Production build to /dist
 npm run lint         # ESLint check
 npm run preview      # Preview production build
 npm run seed         # Seed Firestore with initial users (requires .env)
+npm run test:parser  # Test the evaluación PDF parser (no .env needed)
+npm run backup       # Backup Firestore collections to JSON (requires .env)
 firebase deploy --only firestore:rules  # Deploy security rules
 ```
 
@@ -27,11 +29,11 @@ Deployment is automatic via Vercel on push to main.
 
 `src/main.jsx` wraps the app in `AuthProvider` → `DataProviders`. The `DataProviders` component gates all Firestore context providers behind authentication — they only mount after the user is logged in. This prevents silent Firestore permission failures on cold start. When adding a new context provider, it must be added inside `DataProviders` in `main.jsx`.
 
-### Context-Based State (14 providers)
+### Context-Based State (21 providers)
 
 Each domain has a context in `src/context/` that subscribes to a Firestore collection via `onSnapshot()` and exposes CRUD methods. Pattern: subscribe on mount, unsubscribe on cleanup, expose data + actions via a custom hook.
 
-Key contexts: `AuthContext` (auth + users list + role helpers), `PermissionsContext` (module access), `AdministrativeDaysContext` (day requests + metrics/balances).
+Key contexts: `AuthContext` (auth + users list + role helpers), `PermissionsContext` (module access), `AdministrativeDaysContext` (day requests + metrics/balances), `EvaluacionesContext` + `QuestionBankContext` (UTP evaluation system), `RetosContext` + `WorkshopsContext` (challenges/sessions), `TasksContext` + `TodoContext` (team tasks vs personal tasks).
 
 ### 3-Layer Permission System
 
@@ -55,7 +57,7 @@ Defined in `AuthContext.jsx`. Key helper functions:
 - `isManagement(user)` — super_admin, admin, director, utp_head, inspector
 - `isAdmin(user)` — super_admin or admin
 
-Roles: `super_admin` > `admin` > `director` > `utp_head` > `inspector` > `convivencia` > `teacher` > `staff` > `printer`
+Roles: `super_admin` > `admin` > `director` > `utp_head` > `inspector` > `convivencia_head` > `convivencia` > `teacher` > `staff` > `printer` > `pie`
 
 ### Routing
 
@@ -71,16 +73,26 @@ Roles: `super_admin` > `admin` > `director` > `utp_head` > `inspector` > `conviv
 
 ## Key Directories
 
-- `src/components/` — React components (some large: AdminUsers, ConvivenciaReservation, DashboardHome)
-- `src/views/` — Full-page views for admin features (AttendanceMonitorView, StatsView, InventoryView are 50KB+)
-- `src/context/` — All 14 context providers
-- `src/lib/` — Utilities: firebase config, firestoreService, validation, permissionResolver, pdfExport, attendanceParser, csvParser, businessDays
+- `src/components/` — React components (some large: AdminUsers, ConvivenciaReservation, DashboardHome); `src/components/convivencia/` has IncidentsView and StudentsManager
+- `src/views/` — Full-page views for admin features (AttendanceMonitorView, StatsView, InventoryView are 50KB+); `src/views/workshop-tools/` has ActaReunion, PizarraCompromisos, TablaResponsabilidades
+- `src/utp/` — UTP evaluation module: UTPView, EditorFormato, CoberturaOA, FormatoPrueba and supporting panels (own subdirectory, not under views/)
+- `src/context/` — All 21 context providers
+- `src/lib/` — Utilities: firebase config, firestoreService, validation, permissionResolver, pdfExport, attendanceParser, csvParser, businessDays, mlEngine (ML helpers), storageService (Firebase Storage), notificationService, docxExport, evaluacionParser
 - `src/data/` — moduleRegistry.js (navigation/permissions config), defaultSchedules.js
 - `scripts/` — Node.js seed/diagnostic scripts, `scripts/appscript/` for Google Apps Script email handler
 
 ## Environment Variables
 
 Copy `.env.example` to `.env`. Required: Firebase config (`VITE_FIREBASE_*`), Apps Script URL/secret (`VITE_APPS_SCRIPT_*`), seed password (`SEED_DEFAULT_PASSWORD`).
+
+## Notable Libraries
+
+- `recharts` — charts and data visualization
+- `@xyflow/react` — flow diagrams (used in workshop tools)
+- `jspdf` + `jspdf-autotable` — PDF export
+- `docx` + `docxtemplater` + `pizzip` — Word document export
+- `pdfjs-dist` — PDF text extraction (evaluación parser)
+- `react-easy-crop` — image cropping
 
 ## Conventions
 
@@ -91,3 +103,4 @@ Copy `.env.example` to `.env`. Required: Firebase config (`VITE_FIREBASE_*`), Ap
 - Icons from `lucide-react`
 - CSS utility classes via Tailwind; custom theme colors in `tailwind.config.js`
 - Animations via `framer-motion`
+- `cn()` from `src/lib/utils.js` (clsx + tailwind-merge) for conditional class merging
