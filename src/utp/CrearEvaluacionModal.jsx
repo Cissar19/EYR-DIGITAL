@@ -22,8 +22,9 @@ const SUBJECT_TO_ASIG = {
 
 const getAsigName = (code) => ASIGNATURAS.find(a => a.code === code)?.name || code;
 
-export default function CrearEvaluacionModal({ onClose, onCreated, user, defaultDate }) {
-    const { addEvaluacion, evaluaciones } = useEvaluaciones();
+export default function CrearEvaluacionModal({ onClose, onCreated, user, defaultDate, evalId, initialData }) {
+    const { addEvaluacion, updateEvaluacion, evaluaciones } = useEvaluaciones();
+    const isEditing = !!evalId;
     const { getSchedule } = useSchedule();
     const [saving, setSaving] = useState(false);
     const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
@@ -63,11 +64,11 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         return [...new Set(teacherBlocks.map(b => b.course))].sort((a, b) => CURSOS.indexOf(a) - CURSOS.indexOf(b));
     }, [teacherBlocks]);
 
-    const [curso, setCurso] = useState('');
-    const [asignatura, setAsignatura] = useState('');
-    const [selectedSlots, setSelectedSlots] = useState([]);
-    const [name, setName] = useState('');
-    const [selectedOas, setSelectedOas] = useState([]);
+    const [curso, setCurso] = useState(initialData?.curso || '');
+    const [asignatura, setAsignatura] = useState(initialData?.asignatura || '');
+    const [selectedSlots, setSelectedSlots] = useState(initialData?.slots || []);
+    const [name, setName] = useState(initialData?.name || '');
+    const [selectedOas, setSelectedOas] = useState(initialData?.oaCodes || []);
 
     const oaList = useMemo(() => {
         if (!curso || !asignatura) return [];
@@ -127,9 +128,9 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     }, [isTeacher, teacherBlocks, curso, asignatura]);
 
     const hasConflict = useMemo(() => {
-        if (!curso || !date) return false;
+        if (!curso || !date || isEditing) return false;
         return evaluaciones.some(e => e.date === date && e.curso === curso);
-    }, [evaluaciones, curso, date]);
+    }, [evaluaciones, curso, date, isEditing]);
 
     const formValid = curso && asignatura && name.trim() && !hasConflict;
 
@@ -137,21 +138,33 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         if (!formValid) return;
         setSaving(true);
         try {
-            const evalId = await addEvaluacion({
-                name: name.trim(),
-                curso,
-                asignatura,
-                date,
-                slots: selectedSlots.length > 0 ? selectedSlots : null,
-                oa: selectedOas.join(', '),
-                oaCodes: selectedOas,
-                driveLink: '',
-                createdBy: { id: user.uid, name: user.name },
-                questions: [],
-            });
-            if (!evalId) return;
-            onCreated?.(evalId, true);
-            onClose();
+            if (isEditing) {
+                const ok = await updateEvaluacion(evalId, {
+                    name: name.trim(),
+                    oa: selectedOas.join(', '),
+                    oaCodes: selectedOas,
+                    slots: selectedSlots.length > 0 ? selectedSlots : null,
+                });
+                if (!ok) return;
+                onCreated?.(evalId, false);
+                onClose();
+            } else {
+                const newId = await addEvaluacion({
+                    name: name.trim(),
+                    curso,
+                    asignatura,
+                    date,
+                    slots: selectedSlots.length > 0 ? selectedSlots : null,
+                    oa: selectedOas.join(', '),
+                    oaCodes: selectedOas,
+                    driveLink: '',
+                    createdBy: { id: user.uid, name: user.name },
+                    questions: [],
+                });
+                if (!newId) return;
+                onCreated?.(newId, true);
+                onClose();
+            }
         } finally {
             setSaving(false);
         }
@@ -164,7 +177,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
             {/* Header */}
             <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
                 <div>
-                    <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface tracking-tight">Nueva Evaluación</h2>
+                    <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface tracking-tight">{isEditing ? 'Editar Evaluación' : 'Nueva Evaluación'}</h2>
                     {defaultDate && (
                         <p className="text-sm text-eyr-primary font-semibold mt-0.5">
                             {new Date(defaultDate + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -370,8 +383,8 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                     className="px-8 py-3 rounded-2xl font-extrabold bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white shadow-lg shadow-eyr-primary/30 hover:shadow-eyr-primary/50 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
                 >
                     {saving
-                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
-                        : <>Crear Evaluación <Zap className="w-4 h-4" /></>
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> {isEditing ? 'Guardando…' : 'Creando…'}</>
+                        : isEditing ? <>Guardar cambios <Zap className="w-4 h-4" /></> : <>Crear Evaluación <Zap className="w-4 h-4" /></>
                     }
                 </button>
             </div>

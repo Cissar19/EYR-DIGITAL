@@ -74,9 +74,9 @@ export const EvaluacionesProvider = ({ children }) => {
             if (data.exigencia !== undefined) {
                 updates.exigencia = data.exigencia;
             }
-            if (data.oa !== undefined) {
-                updates.oa = data.oa;
-            }
+            if (data.oa !== undefined) updates.oa = data.oa;
+            if (data.oaCodes !== undefined) updates.oaCodes = data.oaCodes;
+            if (data.slots !== undefined) updates.slots = data.slots;
 
             await updateDocument(COLLECTION, id, updates);
             toast.success('Evaluacion actualizada');

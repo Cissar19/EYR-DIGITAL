@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X, Clock, BookOpen, User } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X, Clock, BookOpen, User, Pencil, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
@@ -33,7 +33,8 @@ const ASIG_FULL = {
     TE: 'Tecnología', OR: 'Orientación',
 };
 
-function EvalDetailModal({ eval: ev, onClose }) {
+function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD }) {
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const dateLabel = ev.date
         ? new Date(ev.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '—';
@@ -110,13 +111,42 @@ function EvalDetailModal({ eval: ev, onClose }) {
                 )}
             </div>
 
-            <div className="p-6 bg-eyr-surface-mid shrink-0">
-                <button
-                    onClick={onClose}
-                    className="w-full px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all"
-                >
-                    Cerrar
-                </button>
+            <div className="p-6 bg-eyr-surface-mid shrink-0 flex items-center gap-3">
+                {canCRUD && !confirmDelete && (
+                    <>
+                        <button
+                            onClick={() => setConfirmDelete(true)}
+                            className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-all"
+                        >
+                            <Trash2 className="w-4 h-4" /> Eliminar
+                        </button>
+                        <button
+                            onClick={onEdit}
+                            className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-eyr-primary hover:bg-eyr-primary-container/20 transition-all"
+                        >
+                            <Pencil className="w-4 h-4" /> Editar
+                        </button>
+                    </>
+                )}
+                {confirmDelete && (
+                    <div className="flex items-center gap-3 flex-1">
+                        <span className="text-sm font-semibold text-red-600 flex-1">¿Eliminar esta evaluación?</span>
+                        <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 rounded-xl text-sm font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all">
+                            Cancelar
+                        </button>
+                        <button onClick={onDelete} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-all">
+                            Sí, eliminar
+                        </button>
+                    </div>
+                )}
+                {!confirmDelete && (
+                    <button
+                        onClick={onClose}
+                        className="ml-auto px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all"
+                    >
+                        Cerrar
+                    </button>
+                )}
             </div>
         </ModalContainer>
     );
@@ -159,11 +189,13 @@ function buildMonthGrid(year, month) {
 
 export default function CalendarioEvaluaciones() {
     const { user } = useAuth();
-    const { evaluaciones } = useEvaluaciones();
+    const { evaluaciones, deleteEvaluacion } = useEvaluaciones();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
+    const canCRUD = canEdit(user) || user?.role === 'utp_head';
     const [selectedDate, setSelectedDate] = useState(null);
     const [showFijar, setShowFijar] = useState(false);
     const [selectedEval, setSelectedEval] = useState(null);
+    const [editEval, setEditEval] = useState(null);
 
     const today = useMemo(() => new Date(), []);
     const todayStr = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -386,7 +418,28 @@ export default function CalendarioEvaluaciones() {
 
             <AnimatePresence>
                 {selectedEval && (
-                    <EvalDetailModal eval={selectedEval} onClose={() => setSelectedEval(null)} />
+                    <EvalDetailModal
+                        eval={selectedEval}
+                        onClose={() => setSelectedEval(null)}
+                        canCRUD={canCRUD}
+                        onEdit={() => { setEditEval(selectedEval); setSelectedEval(null); }}
+                        onDelete={async () => {
+                            await deleteEvaluacion(selectedEval.id);
+                            setSelectedEval(null);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {editEval && (
+                    <CrearEvaluacionModal
+                        onClose={() => setEditEval(null)}
+                        onCreated={() => setEditEval(null)}
+                        user={user}
+                        evalId={editEval.id}
+                        initialData={editEval}
+                    />
                 )}
             </AnimatePresence>
         </div>
