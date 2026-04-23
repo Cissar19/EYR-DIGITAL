@@ -3,7 +3,7 @@ import { X, Zap, Loader2 } from 'lucide-react';
 import ModalContainer from '../components/ModalContainer';
 import { ASIGNATURAS, CURSOS, CURSO_TO_LEVEL, OA_DATA } from '../data/objetivosAprendizaje';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
-import { useSchedule } from '../context/ScheduleContext';
+import { useSchedule, SCHEDULE_BLOCKS } from '../context/ScheduleContext';
 
 const SUBJECT_TO_ASIG = {
     'Lenguaje': 'LE', 'Leng. y Lit.': 'LE', 'T. Lenguaje': 'LE', 'Taller Len': 'LE',
@@ -76,6 +76,20 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         })();
         setAsignatura(options.length === 1 ? options[0].code : '');
     };
+
+    const availableSlots = useMemo(() => {
+        if (!isTeacher || !teacherBlocks || !curso || !asignatura) return null;
+        const relevant = teacherBlocks.filter(b => b.course === curso && SUBJECT_TO_ASIG[b.subject] === asignatura);
+        if (relevant.length === 0) return null;
+        const DIAS_ORDER = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+        const byDay = {};
+        relevant.forEach(b => {
+            if (!byDay[b.day]) byDay[b.day] = [];
+            const block = SCHEDULE_BLOCKS.find(sb => sb.start === b.startTime);
+            byDay[b.day].push(block?.label || b.startTime);
+        });
+        return DIAS_ORDER.filter(d => byDay[d]).map(d => ({ day: d, hours: byDay[d] }));
+    }, [isTeacher, teacherBlocks, curso, asignatura]);
 
     const hasConflict = useMemo(() => {
         if (!curso || !date) return false;
@@ -169,6 +183,21 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Horarios disponibles */}
+                {availableSlots && (
+                    <div className="space-y-1.5">
+                        <label className="block text-sm font-bold text-eyr-on-variant ml-1">Días con este ramo</label>
+                        <div className="flex flex-wrap gap-2">
+                            {availableSlots.map(({ day, hours }) => (
+                                <div key={day} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-eyr-primary-container/20 border border-eyr-primary/20">
+                                    <span className="text-xs font-extrabold text-eyr-primary">{day.slice(0, 3).toUpperCase()}</span>
+                                    <span className="text-xs text-eyr-on-variant font-medium">{hours.join(' · ')}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
