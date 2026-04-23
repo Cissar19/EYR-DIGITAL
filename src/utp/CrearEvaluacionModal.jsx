@@ -97,7 +97,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         if (relevant.length === 0) return null;
         return relevant.map(b => {
             const block = SCHEDULE_BLOCKS.find(sb => sb.start === b.startTime);
-            return { day: b.day, label: block?.label || b.startTime, startTime: b.startTime };
+            return { day: b.day, label: block?.label || b.startTime, startTime: b.startTime, endTime: block?.end || '' };
         });
     }, [isTeacher, teacherBlocks, curso, asignatura]);
 
@@ -209,7 +209,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                             )}
                         </label>
                         <div className="flex flex-wrap gap-2">
-                            {availableSlots.map(({ day, label, startTime }) => {
+                            {availableSlots.map(({ day, label, startTime, endTime }) => {
                                 const key = `${day}-${startTime}`;
                                 const isSelected = selectedSlots.some(s => s.day === day && s.startTime === startTime);
                                 return (
@@ -219,19 +219,24 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                                         onClick={() => setSelectedSlots(prev =>
                                             isSelected
                                                 ? prev.filter(s => !(s.day === day && s.startTime === startTime))
-                                                : [...prev, { day, label, startTime }]
+                                                : [...prev, { day, label, startTime, endTime }]
                                         )}
-                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                                        className={`flex flex-col items-start px-3 py-2 rounded-xl text-xs border-2 transition-all ${
                                             isSelected
-                                                ? 'border-eyr-primary bg-eyr-primary-container/30 text-eyr-primary'
-                                                : 'border-eyr-outline-variant/20 bg-eyr-surface-low text-eyr-on-variant hover:border-eyr-primary/40'
+                                                ? 'border-eyr-primary bg-eyr-primary-container/30'
+                                                : 'border-eyr-outline-variant/20 bg-eyr-surface-low hover:border-eyr-primary/40'
                                         }`}
                                     >
-                                        <span className={`font-extrabold ${isSelected ? 'text-eyr-primary' : 'text-eyr-on-surface'}`}>
-                                            {day.slice(0, 3).toUpperCase()}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-extrabold ${isSelected ? 'text-eyr-primary' : 'text-eyr-on-surface'}`}>
+                                                {day.slice(0, 3).toUpperCase()}
+                                            </span>
+                                            <span className="opacity-30">·</span>
+                                            <span className={`font-bold ${isSelected ? 'text-eyr-primary' : 'text-eyr-on-variant'}`}>{label}</span>
+                                        </div>
+                                        <span className={`text-[11px] font-medium mt-0.5 ${isSelected ? 'text-eyr-primary/70' : 'text-eyr-on-variant/60'}`}>
+                                            {startTime}{endTime ? `–${endTime}` : ''}
                                         </span>
-                                        <span className="opacity-40">·</span>
-                                        <span>{label}</span>
                                     </button>
                                 );
                             })}
