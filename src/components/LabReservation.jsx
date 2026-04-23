@@ -522,14 +522,14 @@ export default function LabReservation() {
                                 <div className="pt-2 pb-1 flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
                                     <button
                                         onClick={() => setIsModalOpen(false)}
-                                        className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                        className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={handleConfirmReservation}
                                         disabled={!course || !activityType || (activityType === 'Otro' && !customActivity.trim())}
-                                        className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
                                         <Check className="w-5 h-5" /> Confirmar Reserva
                                     </button>

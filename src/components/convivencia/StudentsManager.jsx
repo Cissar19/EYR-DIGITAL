@@ -478,7 +478,7 @@ export default function StudentsManager({ onClose }) {
                             <button
                                 onClick={handleSave}
                                 disabled={saving || !form.rut || !form.firstName || !form.paternalLastName}
-                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 <Check className="w-4 h-4" />
                                 {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Agregar Alumno'}
@@ -486,7 +486,7 @@ export default function StudentsManager({ onClose }) {
                             {editingId && (
                                 <button
                                     onClick={() => { setEditingId(null); setForm(emptyForm); setTab('list'); }}
-                                    className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors text-sm"
+                                    className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors text-sm"
                                 >
                                     Cancelar
                                 </button>

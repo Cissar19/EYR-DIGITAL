@@ -983,7 +983,7 @@ export default function AdminUsers() {
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
-                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -1055,7 +1055,7 @@ export default function AdminUsers() {
                             <button
                                 type="button"
                                 onClick={() => setIsEditAttributesOpen(false)}
-                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -1097,7 +1097,7 @@ export default function AdminUsers() {
                         <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
                             <button
                                 onClick={() => setIsResetModalOpen(false)}
-                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -1133,7 +1133,7 @@ export default function AdminUsers() {
                         <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
                             <button
                                 onClick={() => setIsDeleteModalOpen(false)}
-                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -1308,7 +1308,7 @@ export default function AdminUsers() {
                             <button
                                 onClick={() => { setResetTargetUser(null); setNewPasswordValue(''); setShowNewPassword(false); }}
                                 disabled={isResettingPassword}
-                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors disabled:opacity-50"
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors disabled:opacity-50"
                             >
                                 Cancelar
                             </button>

@@ -226,7 +226,7 @@ export default function FormatoPrueba() {
             <div className="border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                     <File className="w-4 h-4 text-slate-500" />
-                    <h2 className="text-sm font-semibold text-slate-700">Plantilla del documento</h2>
+                    <h2 className="text-base font-semibold text-slate-700">Plantilla del documento</h2>
                     {plantillaActiva && (
                         <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                             <CheckCircle2 className="w-3 h-3" />
@@ -424,7 +424,7 @@ export default function FormatoPrueba() {
                     className="w-full flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 hover:bg-slate-100 transition-colors"
                 >
                     <FileText className="w-4 h-4 text-slate-500" />
-                    <h2 className="text-sm font-semibold text-slate-700 flex-1 text-left">
+                    <h2 className="text-base font-semibold text-slate-700 flex-1 text-left">
                         Configuración del formato estándar
                     </h2>
                     {plantillaActiva && (
@@ -451,7 +451,7 @@ export default function FormatoPrueba() {
 
                         {/* Instrucciones generales */}
                         <div className="space-y-2">
-                            <h3 className="text-sm font-semibold text-slate-700">Instrucciones generales</h3>
+                            <h3 className="text-base font-semibold text-slate-700">Instrucciones generales</h3>
                             <p className="text-xs text-slate-500">
                                 Aparecen al inicio de la prueba, antes de las preguntas.
                             </p>
@@ -465,7 +465,7 @@ export default function FormatoPrueba() {
 
                         {/* Por tipo */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-slate-700">Secciones por tipo de pregunta</h3>
+                            <h3 className="text-base font-semibold text-slate-700">Secciones por tipo de pregunta</h3>
                             <div className="space-y-3">
                                 {TIPOS.map((tipo) => {
                                     const { key, label, Icon, color } = tipo;

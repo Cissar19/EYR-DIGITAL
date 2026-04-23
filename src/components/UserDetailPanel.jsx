@@ -259,7 +259,7 @@ export default function UserDetailPanel({ user, onClose, variant = 'default' }) 
                 <div className="flex-1 overflow-y-auto p-6">
                     {isMedical ? (
                         <>
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
                                 Historial de Licencias Médicas
                             </h3>
 
@@ -344,7 +344,7 @@ export default function UserDetailPanel({ user, onClose, variant = 'default' }) 
                         </>
                     ) : (
                         <>
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
                                 Historial de Solicitudes
                             </h3>
 

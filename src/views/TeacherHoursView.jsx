@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clock, Search, Users, ChevronDown, Calendar, Sun, Moon, ArrowRight, User, Filter, Plus, Pencil, Trash2, X, Save, Check } from 'lucide-react';
 import { subscribeToCollection, setDocument, removeDocument, createDocument } from '../lib/firestoreService';
@@ -64,6 +65,13 @@ function EditModal({ teacher, onClose, onSave, onDelete }) {
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, []);
+
     const handleSlot = (dayKey, field, value) => {
         setSchedule(prev => ({
             ...prev,
@@ -89,7 +97,7 @@ function EditModal({ teacher, onClose, onSave, onDelete }) {
         setSaving(false);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -222,7 +230,7 @@ function EditModal({ teacher, onClose, onSave, onDelete }) {
                 </div>
             </motion.div>
         </div>
-    );
+    , document.body);
 }
 
 // ── Main View ───────────────────────────────────────────────────────────────
@@ -590,7 +598,7 @@ export default function TeacherHoursView() {
                                             {teacher.name?.charAt(0)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-slate-800 text-sm truncate">{teacher.name}</h3>
+                                            <h3 className="font-bold text-slate-800 text-base truncate">{teacher.name}</h3>
                                             <div className="flex items-center gap-2 text-[10px] text-slate-400">
                                                 {teacher.idReloj && <span className="font-mono">ID: {teacher.idReloj}</span>}
                                                 <span className="font-bold text-indigo-500">{formatHoursMinutes(weeklyMin)}/sem</span>

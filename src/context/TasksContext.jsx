@@ -26,15 +26,17 @@ export const TasksProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
-    const addTask = React.useCallback(async ({ title, description, assignedTo, assignedToName, priority, dueDate }) => {
+    const addTask = React.useCallback(async ({ title, description, assignees, priority, dueDate }) => {
         validateRequiredString(title, 'título', 200);
-        if (assignedTo) validateUserId(assignedTo);
+        const safeAssignees = (assignees || []).map(a => {
+            validateUserId(a.id);
+            return { id: a.id, name: sanitizeName(a.name) };
+        });
 
         const newTask = {
             title: sanitizeText(title),
             description: description ? sanitizeText(description) : '',
-            assignedTo: assignedTo || null,
-            assignedToName: assignedToName ? sanitizeName(assignedToName) : null,
+            assignees: safeAssignees,
             createdBy: user.uid,
             createdByName: sanitizeName(user.displayName || user.email),
             status: 'pending',
@@ -92,7 +94,7 @@ export const TasksProvider = ({ children }) => {
             id: crypto.randomUUID(),
             text: sanitizeText(text),
             authorId: user.uid,
-            authorName: sanitizeName(user.displayName || user.email),
+            authorName: sanitizeName(user.name || user.displayName || user.email),
             createdAt: new Date().toISOString(),
         };
 
@@ -108,12 +110,39 @@ export const TasksProvider = ({ children }) => {
     const deleteNote = React.useCallback(async (taskId, noteId) => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
-        const updatedNotes = (task.notes || []).filter(n => n.id !== noteId);
+        const updatedNotes = (task.notes || []).map(n =>
+            n.id !== noteId ? n : {
+                ...n,
+                deleted: true,
+                deletedById: user.uid,
+                deletedByName: sanitizeName(user.name || user.displayName || user.email),
+                deletedAt: new Date().toISOString(),
+            }
+        );
         try {
             await updateDocument('tasks', taskId, { notes: updatedNotes });
         } catch (error) {
             console.error('Error eliminando nota:', error);
             toast.error('Error al eliminar nota');
+        }
+    }, [tasks, user]);
+
+    const editNote = React.useCallback(async (taskId, noteId, newText) => {
+        validateRequiredString(newText, 'nota', 1000);
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const note = (task.notes || []).find(n => n.id === noteId);
+        if (!note || note.deleted) return;
+        const ageMs = Date.now() - new Date(note.createdAt).getTime();
+        if (ageMs > 5 * 60 * 1000) { toast.error('Solo puedes editar dentro de los primeros 5 minutos'); return; }
+        const updatedNotes = (task.notes || []).map(n =>
+            n.id !== noteId ? n : { ...n, text: sanitizeText(newText), editedAt: new Date().toISOString() }
+        );
+        try {
+            await updateDocument('tasks', taskId, { notes: updatedNotes });
+        } catch (error) {
+            console.error('Error editando nota:', error);
+            toast.error('Error al editar nota');
         }
     }, [tasks]);
 
@@ -151,9 +180,10 @@ export const TasksProvider = ({ children }) => {
         deleteTask,
         addNote,
         deleteNote,
+        editNote,
         addCollaborator,
         removeCollaborator,
-    }), [tasks, addTask, updateTaskStatus, updateTask, deleteTask, addNote, deleteNote, addCollaborator, removeCollaborator]);
+    }), [tasks, addTask, updateTaskStatus, updateTask, deleteTask, addNote, deleteNote, editNote, addCollaborator, removeCollaborator]);
 
     return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 };

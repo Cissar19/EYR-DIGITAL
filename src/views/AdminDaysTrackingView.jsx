@@ -622,7 +622,7 @@ export default function AdminDaysTrackingView() {
                                             {getInitials(user.name)}
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-semibold text-slate-900 truncate">
+                                            <h3 className="text-base font-semibold text-slate-900 truncate">
                                                 {user.name}
                                             </h3>
                                             <p className="text-xs text-slate-500">
@@ -1180,14 +1180,14 @@ export default function AdminDaysTrackingView() {
                     <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
                         <button
                             onClick={handleCloseAssignModal}
-                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all"
+                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleAssign}
                             className={cn(
-                                "bg-gradient-to-r text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all",
+                                "bg-gradient-to-r text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all",
                                 formData.mode === 'return' ? "from-emerald-500 to-green-600" : formData.mode === 'hour' ? "from-amber-500 to-orange-600" : formData.mode === 'discount' ? "from-red-500 to-rose-600" : "from-eyr-primary to-[#742fe5]"
                             )}
                         >

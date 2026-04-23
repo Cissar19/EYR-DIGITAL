@@ -302,7 +302,7 @@ export default function MedicalLeavesView() {
                                         {leave.userName?.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2)}
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="text-sm font-semibold text-slate-900 truncate">
+                                        <h3 className="text-base font-semibold text-slate-900 truncate">
                                             {leave.userName}
                                         </h3>
                                     </div>
@@ -533,13 +533,13 @@ export default function MedicalLeavesView() {
                     <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
                         <button
                             onClick={handleCloseModal}
-                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all"
+                            className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl transition-all hover:shadow-2xl hover:scale-105"
+                            className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl transition-all hover:shadow-2xl hover:scale-105"
                         >
                             Registrar Licencia
                         </button>

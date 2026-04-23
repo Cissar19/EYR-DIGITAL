@@ -125,7 +125,7 @@ export default function IncidentsView() {
                         <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
                             <BarChart3 className="w-4 h-4 text-red-600" />
                         </div>
-                        <h3 className="text-sm font-bold text-slate-800">Resumen Incidencias</h3>
+                        <h3 className="text-base font-bold text-slate-800">Resumen Incidencias</h3>
                         <span className="text-xs text-slate-400 font-medium">{incidents.length} total</span>
                     </div>
                     <motion.div animate={{ rotate: dashboardCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
@@ -667,14 +667,14 @@ function CreateIncidentModal({ onClose, students, users, onCreate }) {
             <div className="px-6 py-4 border-t border-eyr-outline-variant/30 bg-eyr-surface-mid shrink-0 flex items-center justify-between gap-3">
                 <button
                     onClick={onClose}
-                    className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                    className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                 >
                     Cancelar
                 </button>
                 <button
                     onClick={handleSubmit}
                     disabled={!canSubmit || saving}
-                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     {saving ? 'Guardando...' : <><Check className="w-5 h-5" /> Registrar Incidencia</>}
                 </button>

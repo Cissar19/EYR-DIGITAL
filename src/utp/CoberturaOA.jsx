@@ -113,7 +113,7 @@ export default function CoberturaOA({ onBack }) {
                 const ejOAs = availableOAs.filter(oa => oa.eje === eje);
                 return (
                     <div key={eje} className="space-y-2">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">{eje}</h3>
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-1">{eje}</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                             {ejOAs.map(oa => {
                                 const evaluated = coveredOAs.has(oa.code);

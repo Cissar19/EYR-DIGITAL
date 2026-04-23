@@ -189,7 +189,7 @@ export default function RetosAdminView() {
                     {/* Footer */}
                     <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
                         <button onClick={() => setShowModal(false)}
-                            className="text-slate-500 hover:bg-slate-100 rounded-2xl px-6 py-3 font-bold transition-all text-sm">
+                            className="text-slate-500 hover:bg-slate-100 rounded-full px-8 py-4 text-base font-bold transition-all text-sm">
                             Cancelar
                         </button>
                         <button onClick={handleSave} disabled={saving}
@@ -212,7 +212,7 @@ export default function RetosAdminView() {
                     </div>
                     <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
                         <button onClick={() => setConfirmDelete(null)}
-                            className="text-slate-500 hover:bg-slate-100 rounded-2xl px-6 py-3 font-bold transition-all text-sm">
+                            className="text-slate-500 hover:bg-slate-100 rounded-full px-8 py-4 text-base font-bold transition-all text-sm">
                             Cancelar
                         </button>
                         <button onClick={() => handleDelete(confirmDelete)}

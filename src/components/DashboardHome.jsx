@@ -447,7 +447,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
             {showConsolidado && (
                 <div className="mt-4 pt-4 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
                             Consolidado semanal
                             {weekConsolidado.length > 0 && (
                                 <span className="ml-2 text-slate-500 normal-case tracking-normal font-semibold">
@@ -538,7 +538,7 @@ const WeeklyAbsencesWidget = ({ onSelectUser, onSelectMedicalUser, onDayChange }
                         const selectedDateLabel = `${dayNames[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`;
                         return (
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-bold text-slate-700">
+                                <h3 className="text-base font-bold text-slate-700">
                                     Ausencias — {selectedDateLabel}
                                 </h3>
                                 {selectedAbsences.length > 0 && (
@@ -1365,41 +1365,6 @@ const AdminDashboardView = () => {
                 </div>
             </BentoCard>
 
-            {/* 4. Inventario (Quick Status) - HIDDEN TEMPORARILY
-            <BentoCard
-                delay={0.3}
-                onClick={() => navigate('/inventory')}
-                className="bg-white group"
-            >
-                <div className="flex flex-col h-full justify-between">
-                    <div>
-                        <div className="p-3 bg-purple-50 rounded-2xl text-purple-600 w-fit mb-4 group-hover:rotate-12 transition-transform duration-300">
-                            <Box className="w-8 h-8" />
-                        </div>
-
-                        <div className="flex items-baseline gap-2">
-                            <span className={cn(
-                                "text-4xl font-black tracking-tighter",
-                                lowStockCount > 0 ? "text-red-500" : "text-slate-800"
-                            )}>
-                                {lowStockCount > 0 ? `${lowStockCount} Críticos` : "36 Ítems"}
-                            </span>
-                        </div>
-                        {lowStockCount === 0 && (
-                            <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 inline-block mt-1">
-                                Stock Saludable
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="mt-4">
-                        <h3 className="font-bold text-slate-700 text-lg">Inventario</h3>
-                        <p className="text-slate-500 text-sm">Estado general de recursos.</p>
-                    </div>
-                </div>
-            </BentoCard>
-            */}
-
             {/* 5. Días Administrativos (Shortcuts) */}
             <BentoCard
                 delay={0.4}
@@ -1526,7 +1491,6 @@ export default function DashboardHome() {
     ];
     const isAdmin = user?.role === 'director' || user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'utp_head' || user?.role === 'inspector';
 
-    // Printer Role View
     if (user?.role === 'printer') {
         return (
             <div className="max-w-7xl mx-auto space-y-8 relative pb-10">

@@ -278,7 +278,7 @@ function AddTodoForm({ onAdd }) {
 
     if (!open) return (
         <button onClick={() => setOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-eyr-primary text-white font-bold text-sm hover:opacity-90 transition-all shadow-sm">
+            className="flex items-center gap-2 px-8 py-4 rounded-full bg-eyr-primary text-white font-bold text-base hover:opacity-90 transition-all shadow-sm">
             <Plus className="w-4 h-4" /> Nueva tarea
         </button>
     );
@@ -365,9 +365,9 @@ function AddTodoForm({ onAdd }) {
 
             <div className="flex gap-2">
                 <button onClick={() => { setOpen(false); setDueDate(''); }}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold text-eyr-on-variant hover:bg-eyr-surface-low transition-colors border border-eyr-outline-variant/20">Cancelar</button>
+                    className="px-6 py-3 rounded-full text-base font-bold text-eyr-on-variant hover:bg-eyr-surface-low transition-colors border border-eyr-outline-variant/20">Cancelar</button>
                 <button onClick={submit} disabled={!text.trim()}
-                    className="flex items-center gap-1.5 px-6 py-2 rounded-xl bg-eyr-primary text-white text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-all">
+                    className="flex items-center gap-1.5 px-7 py-3 rounded-full bg-eyr-primary text-white text-base font-bold disabled:opacity-40 hover:opacity-90 transition-all">
                     <Check className="w-3.5 h-3.5" /> Agregar
                 </button>
             </div>

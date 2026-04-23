@@ -146,7 +146,7 @@ export default function TicketsView() {
                             {/* By Category - Pie */}
                             {categoryData.length > 0 && (
                                 <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Categoria</h3>
+                                    <h3 className="text-base font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Categoria</h3>
                                     <ResponsiveContainer width="100%" height={220}>
                                         <PieChart>
                                             <Pie
@@ -183,7 +183,7 @@ export default function TicketsView() {
                             {/* By Status - Bar */}
                             {statusData.length > 0 && (
                                 <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Estado</h3>
+                                    <h3 className="text-base font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Estado</h3>
                                     <ResponsiveContainer width="100%" height={220}>
                                         <BarChart data={statusData} barSize={32}>
                                             <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -202,7 +202,7 @@ export default function TicketsView() {
                             {/* By Priority - Bar */}
                             {priorityData.length > 0 && (
                                 <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Prioridad</h3>
+                                    <h3 className="text-base font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Prioridad</h3>
                                     <ResponsiveContainer width="100%" height={220}>
                                         <BarChart data={priorityData} barSize={32}>
                                             <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />

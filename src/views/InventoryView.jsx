@@ -703,8 +703,8 @@ export default function InventoryView() {
 
                         {/* Footer */}
                         <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
-                            <button type="button" onClick={() => setIsItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
-                            <button type="submit" form="item-form" onClick={handleSubmitItem} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                            <button type="button" onClick={() => setIsItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
+                            <button type="submit" form="item-form" onClick={handleSubmitItem} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
                                 {editingItem ? 'Guardar Cambios' : 'Crear Artículo'}
                             </button>
                         </div>
@@ -784,8 +784,8 @@ export default function InventoryView() {
 
                         {/* Footer */}
                         <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
-                            <button type="button" onClick={() => { setIsFolderModalOpen(false); setIsEditFolderModalOpen(false); }} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
-                            <button type="submit" onClick={editingFolder ? handleUpdateFolder : handleCreateFolder} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                            <button type="button" onClick={() => { setIsFolderModalOpen(false); setIsEditFolderModalOpen(false); }} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
+                            <button type="submit" onClick={editingFolder ? handleUpdateFolder : handleCreateFolder} className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
                                 {editingFolder ? 'Guardar Cambios' : 'Crear Carpeta'}
                             </button>
                         </div>
@@ -819,8 +819,8 @@ export default function InventoryView() {
                             </div>
                         </div>
                         <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
-                            <button onClick={() => setIsDeleteFolderModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
-                            <button onClick={confirmDeleteFolder} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Sí, Eliminar</button>
+                            <button onClick={() => setIsDeleteFolderModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
+                            <button onClick={confirmDeleteFolder} className="bg-red-600 text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:bg-red-700 transition-all">Sí, Eliminar</button>
                         </div>
                     </ModalContainer>
                 )}
@@ -844,8 +844,8 @@ export default function InventoryView() {
                             </div>
                         </div>
                         <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
-                            <button onClick={() => setIsDeleteItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
-                            <button onClick={confirmDeleteItem} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Eliminar Artículo</button>
+                            <button onClick={() => setIsDeleteItemModalOpen(false)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
+                            <button onClick={confirmDeleteItem} className="bg-red-600 text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:bg-red-700 transition-all">Eliminar Artículo</button>
                         </div>
                     </ModalContainer>
                 )}

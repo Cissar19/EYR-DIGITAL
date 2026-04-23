@@ -536,7 +536,7 @@ export default function AttendanceMonitorView() {
             {/* History of saved reports — shown in idle state */}
             {viewState === 'idle' && (
                 <div className="space-y-3">
-                    <h2 className="text-sm font-bold text-slate-600 flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-600 flex items-center gap-2">
                         <History className="w-4 h-4 text-slate-400" />
                         Reportes Guardados
                         {savedReports.length > 0 && (
@@ -654,7 +654,7 @@ export default function AttendanceMonitorView() {
                             const visible = showAllRanking ? ranked : ranked.slice(0, 9);
                             return (
                                 <div>
-                                    <h2 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-slate-600 mb-3 flex items-center gap-2">
                                         <AlertTriangle className="w-4 h-4 text-amber-500" />
                                         Ranking de Atrasos
                                         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
@@ -740,7 +740,7 @@ export default function AttendanceMonitorView() {
                             if (conDescuento.length === 0) return null;
                             return (
                                 <div>
-                                    <h2 className="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-slate-600 mb-3 flex items-center gap-2">
                                         <Scissors className="w-4 h-4 text-red-500" />
                                         Descuento
                                         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">

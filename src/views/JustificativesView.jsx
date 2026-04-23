@@ -5,6 +5,7 @@ import ModalContainer from '../components/ModalContainer';
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useJustificatives } from '../context/JustificativesContext';
 import { useStudents } from '../context/StudentsContext';
+import { cn } from '../lib/utils';
 
 const CURSOS = [
     'Pre-Kinder', 'Kinder',
@@ -133,43 +134,60 @@ export default function JustificativesView() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="p-6 max-w-6xl mx-auto space-y-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-                        <FileCheck className="w-6 h-6 text-indigo-600" />
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-eyr-primary-container/40 rounded-xl">
+                        <FileCheck className="w-6 h-6 text-eyr-primary" />
                     </div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Justificativos</h1>
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-eyr-on-surface font-headline">Justificativos</h1>
+                        <p className="text-sm text-eyr-on-variant">Registro de inasistencias justificadas</p>
+                    </div>
                 </div>
             </div>
 
             {/* Dashboard KPIs */}
-            <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm overflow-hidden">
-                <button onClick={() => setDashboardOpen(v => !v)} className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
-                    <span className="font-semibold text-slate-700 text-sm">Resumen del Mes</span>
-                    {dashboardOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            <div className="bg-white rounded-3xl border border-eyr-outline-variant/10 shadow-sm overflow-hidden">
+                <button onClick={() => setDashboardOpen(v => !v)} className="w-full flex items-center justify-between px-6 py-4 hover:bg-eyr-surface-low transition-colors">
+                    <span className="font-semibold text-eyr-on-surface text-sm">Resumen del Mes</span>
+                    <ChevronDown className={cn('w-4 h-4 text-eyr-on-variant transition-transform duration-200', dashboardOpen && 'rotate-180')} />
                 </button>
                 <AnimatePresence>
                     {dashboardOpen && (
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="px-6 pb-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                                <div className="bg-indigo-50 rounded-xl p-3 text-center">
-                                    <p className="text-2xl font-bold text-indigo-700">{monthStats.total}</p>
-                                    <p className="text-[11px] text-indigo-500 font-medium">Total</p>
-                                </div>
-                                {TYPES.map(t => (
-                                    <div key={t.value} className={`${t.color} rounded-xl p-3 text-center`}>
-                                        <p className="text-2xl font-bold">{monthStats.byType[t.value]}</p>
-                                        <p className="text-[11px] font-medium">{t.label}</p>
+                            <div className="px-6 pb-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between h-28">
+                                    <span className="text-xs font-bold text-indigo-600 bg-white/60 px-2 py-0.5 rounded-full w-fit uppercase tracking-wider">Total</span>
+                                    <div>
+                                        <p className="text-3xl font-extrabold text-indigo-900">{monthStats.total}</p>
+                                        <p className="text-indigo-700 font-semibold text-sm">Justificativos</p>
                                     </div>
-                                ))}
-                                <div className="bg-emerald-50 rounded-xl p-3">
-                                    <p className="text-[11px] text-emerald-600 font-medium mb-1">Top Cursos</p>
-                                    {monthStats.topCursos.length === 0 && <p className="text-xs text-slate-400">Sin datos</p>}
-                                    {monthStats.topCursos.map(([curso, count]) => (
-                                        <p key={curso} className="text-xs text-emerald-700 truncate">{curso}: <span className="font-bold">{count}</span></p>
-                                    ))}
+                                </div>
+                                <div className="bg-[#fee2e2] p-5 rounded-3xl flex flex-col justify-between h-28">
+                                    <span className="text-xs font-bold text-red-600 bg-white/60 px-2 py-0.5 rounded-full w-fit uppercase tracking-wider">Médico</span>
+                                    <div>
+                                        <p className="text-3xl font-extrabold text-red-900">{monthStats.byType.medico || 0}</p>
+                                        <p className="text-red-700 font-semibold text-sm">Certificados</p>
+                                    </div>
+                                </div>
+                                <div className="bg-[#f1f5f9] p-5 rounded-3xl flex flex-col justify-between h-28">
+                                    <span className="text-xs font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-full w-fit uppercase tracking-wider">Otro</span>
+                                    <div>
+                                        <p className="text-3xl font-extrabold text-slate-700">{monthStats.byType.otro || 0}</p>
+                                        <p className="text-slate-600 font-semibold text-sm">Motivo otro</p>
+                                    </div>
+                                </div>
+                                <div className="bg-[#d1fae5] p-5 rounded-3xl flex flex-col justify-between h-28">
+                                    <span className="text-xs font-bold text-emerald-600 bg-white/60 px-2 py-0.5 rounded-full w-fit uppercase tracking-wider">Top cursos</span>
+                                    <div>
+                                        {monthStats.topCursos.length === 0
+                                            ? <p className="text-sm text-emerald-600">Sin datos</p>
+                                            : monthStats.topCursos.map(([curso, count]) => (
+                                                <p key={curso} className="text-xs text-emerald-800 truncate font-medium">{curso}: <span className="font-bold">{count}</span></p>
+                                            ))}
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -178,103 +196,85 @@ export default function JustificativesView() {
             </div>
 
             {/* Search & Filter */}
-            <div className="bg-white rounded-3xl border border-slate-100/5 shadow-sm p-4">
-                <div className="flex items-center gap-2">
-                    {/* Search input */}
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar alumno por nombre o RUT..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
-                        />
-                    </div>
-
-                    {/* Filter dropdown trigger */}
-                    <div ref={filtersRef} className="relative">
-                        <button
-                            onClick={() => setFiltersOpen(v => !v)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${filterCurso
-                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            <SlidersHorizontal className="w-4 h-4" />
-                            <span className="hidden sm:inline">Filtros</span>
-                            {filterCurso && (
-                                <span className="w-5 h-5 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
-                            )}
-                        </button>
-
-                        {/* Dropdown panel */}
-                        <AnimatePresence>
-                            {filtersOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 z-30 overflow-hidden"
-                                >
-                                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-slate-700">Filtros</span>
-                                        {filterCurso && (
-                                            <button
-                                                onClick={() => { setFilterCurso(''); }}
-                                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                                            >
-                                                Limpiar
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="p-4 space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-slate-500 mb-2">Curso</label>
-                                            <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
-                                                {CURSOS.map(c => (
-                                                    <button
-                                                        key={c}
-                                                        onClick={() => { setFilterCurso(filterCurso === c ? '' : c); }}
-                                                        className={`px-3 py-2 rounded-lg text-xs font-medium text-left transition-all ${filterCurso === c
-                                                            ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300'
-                                                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                                                        }`}
-                                                    >
-                                                        {c}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-eyr-on-variant" />
+                    <input
+                        type="text"
+                        placeholder="Buscar alumno por nombre o RUT..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 focus:outline-none text-sm"
+                    />
                 </div>
-
-                {/* Active filters + count */}
-                <div className="flex items-center gap-2 mt-2">
-                    <p className="text-xs text-slate-400">{filteredStudents.length} alumno{filteredStudents.length !== 1 ? 's' : ''}</p>
-                    {filterCurso && (
-                        <button
-                            onClick={() => setFilterCurso('')}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[11px] font-medium hover:bg-indigo-200 transition-colors"
-                        >
-                            {filterCurso}
-                            <X className="w-3 h-3" />
-                        </button>
-                    )}
+                <div ref={filtersRef} className="relative">
+                    <button
+                        onClick={() => setFiltersOpen(v => !v)}
+                        className={cn(
+                            'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all',
+                            filterCurso
+                                ? 'border-eyr-primary/30 bg-eyr-primary-container/20 text-eyr-primary'
+                                : 'bg-white text-eyr-on-variant border-eyr-outline-variant/30 hover:bg-eyr-surface-low'
+                        )}
+                    >
+                        <SlidersHorizontal className="w-4 h-4" />
+                        Filtros
+                        {filterCurso && (
+                            <span className="w-5 h-5 bg-eyr-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
+                        )}
+                    </button>
+                    <AnimatePresence>
+                        {filtersOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-0 top-full mt-2 w-72 bg-white border border-eyr-outline-variant/20 rounded-2xl shadow-xl z-30 overflow-hidden"
+                            >
+                                <div className="px-4 py-3 border-b border-eyr-outline-variant/10 flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-eyr-on-surface">Filtros</span>
+                                    {filterCurso && (
+                                        <button onClick={() => setFilterCurso('')} className="text-xs text-eyr-primary hover:opacity-70 font-medium">Limpiar</button>
+                                    )}
+                                </div>
+                                <div className="p-4">
+                                    <label className="block text-xs font-medium text-eyr-on-variant mb-2">Curso</label>
+                                    <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
+                                        {CURSOS.map(c => (
+                                            <button
+                                                key={c}
+                                                onClick={() => setFilterCurso(filterCurso === c ? '' : c)}
+                                                className={cn(
+                                                    'px-3 py-2 rounded-lg text-xs font-medium text-left transition-all',
+                                                    filterCurso === c
+                                                        ? 'bg-eyr-primary-container/20 text-eyr-primary ring-1 ring-eyr-primary/30'
+                                                        : 'bg-eyr-surface-low text-eyr-on-variant hover:bg-eyr-surface-high'
+                                                )}
+                                            >{c}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
+            {filterCurso && (
+                <div className="flex items-center gap-2">
+                    <p className="text-xs text-eyr-on-variant">{filteredStudents.length} alumno{filteredStudents.length !== 1 ? 's' : ''}</p>
+                    <button onClick={() => setFilterCurso('')} className="inline-flex items-center gap-1 px-2 py-0.5 bg-eyr-primary-container/20 text-eyr-primary rounded-full text-[11px] font-medium hover:bg-eyr-primary-container/30 transition-colors">
+                        {filterCurso}<X className="w-3 h-3" />
+                    </button>
+                </div>
+            )}
 
             {/* Student list */}
             <div className="space-y-2">
                 {paginatedStudents.length === 0 && (
-                    <div className="bg-white rounded-3xl border border-slate-100/5 p-12 text-center shadow-sm">
-                        <User className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500 font-medium">No se encontraron alumnos</p>
+                    <div className="bg-white rounded-3xl border border-eyr-outline-variant/10 p-12 text-center shadow-sm">
+                        <User className="w-10 h-10 text-eyr-on-variant/30 mx-auto mb-3" />
+                        <p className="text-eyr-on-variant font-medium">No se encontraron alumnos</p>
                     </div>
                 )}
                 {paginatedStudents.map(student => {
@@ -282,85 +282,75 @@ export default function JustificativesView() {
                     const isExpanded = expandedStudent === student.id;
 
                     return (
-                        <div key={student.id} className="bg-white rounded-3xl border border-slate-100/5 shadow-sm overflow-hidden transition-all hover:border-indigo-200">
-                            {/* Student row */}
+                        <div key={student.id} className="bg-white rounded-3xl border border-eyr-outline-variant/10 shadow-sm overflow-hidden transition-all hover:border-eyr-primary/20">
                             <div className="flex items-center gap-3 p-4">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700 shrink-0">
+                                <div className="w-10 h-10 rounded-xl bg-eyr-primary-container/40 flex items-center justify-center text-sm font-bold text-eyr-primary shrink-0">
                                     {student.fullName?.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-semibold text-slate-800 text-sm">{student.fullName}</span>
+                                        <span className="font-semibold text-eyr-on-surface text-sm">{student.fullName}</span>
                                         {student.curso && (
-                                            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{student.curso}</span>
+                                            <span className="text-[10px] bg-eyr-primary-container/30 text-eyr-primary px-2 py-0.5 rounded-full font-medium">{student.curso}</span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-slate-400 font-mono mt-0.5">{student.rut}</p>
+                                    <p className="text-xs text-eyr-on-variant font-mono mt-0.5">{student.rut}</p>
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {/* Justificative count badge */}
                                     {studentJusts.length > 0 && (
                                         <button
                                             onClick={() => setExpandedStudent(isExpanded ? null : student.id)}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors',
+                                                isExpanded ? 'bg-eyr-primary-container/20 text-eyr-primary' : 'bg-eyr-surface-high text-eyr-on-variant hover:bg-eyr-surface-high'
+                                            )}
                                         >
                                             <History className="w-3.5 h-3.5" />
                                             {studentJusts.length}
-                                            <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                            <ChevronDown className={cn('w-3 h-3 transition-transform', isExpanded && 'rotate-180')} />
                                         </button>
                                     )}
-
-                                    {/* Register button */}
                                     {userCanEdit && (
                                         <button
                                             onClick={() => openCreateFor(student)}
-                                            className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors text-xs font-medium"
+                                            className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-2.5 rounded-full hover:opacity-90 transition-all text-sm font-bold"
                                         >
-                                            <Plus className="w-3.5 h-3.5" />
+                                            <Plus className="w-4 h-4" />
                                             <span className="hidden sm:inline">Registrar</span>
                                         </button>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Expanded: student's justificatives */}
                             <AnimatePresence>
                                 {isExpanded && studentJusts.length > 0 && (
-                                    <motion.div
-                                        initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 space-y-2">
+                                    <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                                        <div className="border-t border-eyr-outline-variant/10 bg-eyr-surface-low/50 px-4 py-3 space-y-2">
                                             {studentJusts.map(item => {
                                                 const typeConf = getTypeConfig(item.type);
                                                 return (
-                                                    <div key={item.id} className="flex items-start gap-3 bg-white rounded-xl p-3 border border-slate-100">
+                                                    <div key={item.id} className="flex items-start gap-3 bg-white rounded-2xl p-3 border border-eyr-outline-variant/20">
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeConf.color}`}>{typeConf.label}</span>
-                                                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                                <span className="text-xs text-eyr-on-variant flex items-center gap-1">
                                                                     <Calendar className="w-3 h-3" />{formatDate(item.date)}
                                                                 </span>
                                                             </div>
-                                                            {item.diagnosis && (
-                                                                <p className="text-sm text-slate-700 mt-1 font-medium">Dx: {item.diagnosis}</p>
-                                                            )}
-                                                            {item.attachmentNote && (
-                                                                <p className="text-[11px] text-slate-400 mt-1">Adjunto: {item.attachmentNote}</p>
-                                                            )}
+                                                            {item.diagnosis && <p className="text-sm text-eyr-on-surface mt-1 font-medium">Dx: {item.diagnosis}</p>}
+                                                            {item.attachmentNote && <p className="text-[11px] text-eyr-on-variant mt-1">Adjunto: {item.attachmentNote}</p>}
                                                             {item.registeredBy?.name && (
-                                                                <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                                                <p className="text-[11px] text-eyr-on-variant mt-1 flex items-center gap-1">
                                                                     <User className="w-3 h-3" />{item.registeredBy.name}
                                                                 </p>
                                                             )}
                                                         </div>
                                                         {userCanEdit && (
                                                             <div className="flex items-center gap-1 shrink-0">
-                                                                <button onClick={() => openEdit(item)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                                <button onClick={() => openEdit(item)} className="p-1.5 text-eyr-on-variant hover:text-eyr-primary hover:bg-eyr-primary-container/20 rounded-lg transition-colors">
                                                                     <Pencil className="w-3.5 h-3.5" />
                                                                 </button>
-                                                                <button onClick={() => setDeleteConfirm(item.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                                <button onClick={() => setDeleteConfirm(item.id)} className="p-1.5 text-eyr-on-variant hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                                     <Trash2 className="w-3.5 h-3.5" />
                                                                 </button>
                                                             </div>
@@ -377,21 +367,15 @@ export default function JustificativesView() {
                 })}
                 {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 pt-2">
-                        <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={safePage <= 1}
-                            className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
+                            className="px-6 py-3 text-base font-bold rounded-full border border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             Anterior
                         </button>
-                        <span className="text-sm text-slate-500 px-3">
-                            Pagina <span className="font-semibold text-slate-700">{safePage}</span> de <span className="font-semibold text-slate-700">{totalPages}</span>
+                        <span className="text-sm text-eyr-on-variant px-3">
+                            Página <span className="font-semibold text-eyr-on-surface">{safePage}</span> de <span className="font-semibold text-eyr-on-surface">{totalPages}</span>
                         </span>
-                        <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={safePage >= totalPages}
-                            className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+                            className="px-6 py-3 text-base font-bold rounded-full border border-eyr-outline-variant/30 text-eyr-on-variant hover:bg-eyr-surface-low transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             Siguiente
                         </button>
                     </div>
@@ -428,8 +412,8 @@ export default function JustificativesView() {
                         <p className="text-sm text-eyr-on-variant mb-5">Esta accion no se puede deshacer.</p>
                     </div>
                     <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0">
-                        <button onClick={() => setDeleteConfirm(null)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
-                        <button onClick={() => handleDelete(deleteConfirm)} className="bg-red-600 text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:bg-red-700 transition-all">Eliminar</button>
+                        <button onClick={() => setDeleteConfirm(null)} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
+                        <button onClick={() => handleDelete(deleteConfirm)} className="bg-red-600 text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:bg-red-700 transition-all">Eliminar</button>
                     </div>
                 </ModalContainer>
             )}
@@ -502,21 +486,21 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
         <div className="w-full flex flex-col">
             <div className="flex items-center justify-between px-8 pt-7 pb-5 shrink-0">
                 <h3 className="font-headline font-extrabold text-eyr-on-surface text-xl">{editing ? 'Editar Justificativo' : 'Nuevo Justificativo'}</h3>
-                <button onClick={onClose} className="p-1 text-eyr-on-variant hover:bg-slate-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+                <button onClick={onClose} className="p-1 text-eyr-on-variant hover:bg-eyr-surface-high rounded-xl transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="px-8 pb-4 space-y-3.5 overflow-y-auto flex-1">
                 {/* Student (locked) */}
                 {lockedStudent && (
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Alumno</label>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shrink-0">
+                        <label className="block text-xs font-medium text-eyr-on-variant mb-1">Alumno</label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-eyr-surface-low border border-eyr-outline-variant/20 rounded-xl">
+                            <div className="w-7 h-7 rounded-lg bg-eyr-primary-container/40 flex items-center justify-center text-[11px] font-bold text-eyr-primary shrink-0">
                                 {lockedStudent.fullName?.charAt(0)}
                             </div>
-                            <span className="font-medium text-sm text-slate-800 truncate">{lockedStudent.fullName}</span>
+                            <span className="font-medium text-sm text-eyr-on-surface truncate">{lockedStudent.fullName}</span>
                             {lockedStudent.curso && (
-                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full shrink-0">{lockedStudent.curso}</span>
+                                <span className="text-[10px] bg-eyr-primary-container/30 text-eyr-primary px-1.5 py-0.5 rounded-full shrink-0">{lockedStudent.curso}</span>
                             )}
                         </div>
                     </div>
@@ -524,7 +508,7 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
 
                 {/* Date - mini calendar with range */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                    <label className="block text-xs font-medium text-eyr-on-variant mb-1">
                         {editing ? 'Fecha *' : 'Fecha(s) *'}
                     </label>
                     <MiniCalendar
@@ -534,7 +518,7 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                         singleMode={!!editing}
                     />
                     {!editing && rangeCount > 1 && (
-                        <p className="text-xs text-indigo-600 font-medium mt-2 flex items-center gap-1.5">
+                        <p className="text-xs text-eyr-primary font-medium mt-2 flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
                             {rangeCount} dias seleccionados: {formatDate(dateFrom)} — {formatDate(dateTo)}
                         </p>
@@ -543,7 +527,7 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
 
                 {/* Type pills */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Tipo *</label>
+                    <label className="block text-xs font-medium text-eyr-on-variant mb-1">Tipo *</label>
                     <div className="flex flex-wrap gap-2">
                         {TYPES.map(t => (
                             <button
@@ -552,7 +536,7 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                                 onClick={() => setType(t.value)}
                                 className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${type === t.value
                                     ? `${t.color} ring-2 ring-offset-1 ring-current`
-                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                    : 'bg-eyr-surface-high text-eyr-on-variant hover:bg-eyr-surface-high'
                                 }`}
                             >
                                 {t.label}
@@ -564,36 +548,36 @@ function JustificativeForm({ editing, preselectedStudent, students, user, onSave
                 {/* Diagnosis (only for medico) */}
                 {type === 'medico' && (
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Diagnostico medico *</label>
+                        <label className="block text-xs font-medium text-eyr-on-variant mb-1">Diagnostico medico *</label>
                         <input
                             type="text"
                             value={diagnosis}
                             onChange={e => setDiagnosis(e.target.value)}
                             placeholder="Ej: Amigdalitis aguda, control dental, etc."
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+                            className="w-full px-3 py-2 border border-eyr-outline-variant/30 rounded-xl text-sm focus:ring-4 focus:ring-eyr-primary/10 focus:border-eyr-primary focus:outline-none"
                         />
                     </div>
                 )}
 
                 {/* Attachment note */}
                 <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Nota de documento adjunto</label>
+                    <label className="block text-xs font-medium text-eyr-on-variant mb-1">Nota de documento adjunto</label>
                     <input
                         type="text"
                         value={attachmentNote}
                         onChange={e => setAttachmentNote(e.target.value)}
                         placeholder="Ej: Certificado medico entregado en inspectoria"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none"
+                        className="w-full px-3 py-2.5 border border-eyr-outline-variant/30 rounded-xl text-sm focus:ring-4 focus:ring-eyr-primary/10 focus:border-eyr-primary focus:outline-none"
                     />
                 </div>
             </div>
 
             <div className="bg-eyr-surface-mid flex items-center justify-between p-6 shrink-0 mt-4">
-                <button onClick={onClose} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-all">Cancelar</button>
+                <button onClick={onClose} className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-all">Cancelar</button>
                 <button
                     onClick={handleSubmit}
                     disabled={!isValid || saving}
-                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                     {saving ? 'Guardando...' : editing ? 'Actualizar' : rangeCount > 1 ? `Registrar ${rangeCount} dias` : 'Registrar'}
                 </button>

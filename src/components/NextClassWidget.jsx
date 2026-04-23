@@ -31,7 +31,7 @@ export default function NextClassWidget() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-1 relative overflow-hidden group hover:shadow-md transition-shadow">
             <div className="p-5 relative z-10">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Estado Actual</h3>
+                    <h3 className="font-semibold text-slate-700 text-base uppercase tracking-wider">Estado Actual</h3>
                     <Link to="/schedule" className="p-2 hover:bg-slate-50 rounded-full transition-colors">
                         <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                     </Link>

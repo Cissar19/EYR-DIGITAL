@@ -256,7 +256,7 @@ export default function ConvivenciaReservation() {
                     <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
                         <BarChart3 className="w-4 h-4 text-amber-600" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-800">Resumen Semanal</h3>
+                    <h3 className="text-base font-bold text-slate-800">Resumen Semanal</h3>
                     <span className="text-xs text-slate-400 font-medium">{weekRangeLabel}</span>
                 </div>
                 <motion.div animate={{ rotate: dashboardCollapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
@@ -1257,14 +1257,14 @@ export default function ConvivenciaReservation() {
                                         <div className="flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
                                             <button
                                                 onClick={() => setIsModalOpen(false)}
-                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                                             >
                                                 Cancelar
                                             </button>
                                             <button
                                                 onClick={handleConfirmBlock}
                                                 disabled={!blockReason.trim()}
-                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                             >
                                                 <Ban className="w-5 h-5" /> Confirmar Bloqueo
                                             </button>
@@ -1323,14 +1323,14 @@ export default function ConvivenciaReservation() {
                                         <div className="flex items-center justify-between gap-3 bg-eyr-surface-mid px-6 py-4 -mx-6 -mb-6 border-t border-eyr-outline-variant/30">
                                             <button
                                                 onClick={() => setIsModalOpen(false)}
-                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-2xl px-6 py-3 font-bold transition-colors"
+                                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors"
                                             >
                                                 Cancelar
                                             </button>
                                             <button
                                                 onClick={handleConfirmReservation}
                                                 disabled={!selectedTeacher || !motivo.trim()}
-                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-2xl font-extrabold px-8 py-3 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                className="bg-gradient-to-r from-eyr-primary to-[#742fe5] text-white rounded-full font-extrabold px-12 py-4 text-base shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                             >
                                                 <Check className="w-5 h-5" /> Confirmar Reserva
                                             </button>

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 
 /**
  * Shell reutilizable para todos los modales del sistema.
@@ -12,6 +13,15 @@ import { motion } from 'framer-motion';
  *   noGradient   — omite la barra superior de gradiente (para dialogs simples)
  */
 export default function ModalContainer({ onClose, children, maxWidth = 'max-w-2xl', noGradient = false }) {
+    useEffect(() => {
+        // Scroll al inicio para que el modal aparezca centrado en pantalla
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Bloquear scroll del fondo mientras el modal está abierto
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, []);
+
     return createPortal(
         <div
             className="fixed inset-0 z-50 bg-eyr-on-surface/40 backdrop-blur-sm flex items-center justify-center p-4"

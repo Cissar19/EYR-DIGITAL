@@ -27,9 +27,12 @@ export const WorkshopsProvider = ({ children }) => {
         const doc = {
             title: sanitizeText(title),
             createdBy: user.uid,
-            createdByName: user.displayName || user.email,
+            createdByName: user.name || user.displayName || user.email,
             nodes: [],
             edges: [],
+            acta: { fecha: '', participantes: [], temas: [] },
+            compromisos: [],
+            responsabilidades: { tareas: [], personas: [], celdas: {} },
         };
         try {
             const created = await createDocument('workshops', doc);
@@ -55,6 +58,33 @@ export const WorkshopsProvider = ({ children }) => {
         }
     }, []);
 
+    const saveActa = React.useCallback(async (workshopId, acta) => {
+        try {
+            await updateDocument('workshops', workshopId, { acta, updatedAt: new Date() });
+        } catch (e) {
+            console.error('Error guardando acta:', e);
+            toast.error('Error al guardar acta');
+        }
+    }, []);
+
+    const saveCompromisos = React.useCallback(async (workshopId, compromisos) => {
+        try {
+            await updateDocument('workshops', workshopId, { compromisos, updatedAt: new Date() });
+        } catch (e) {
+            console.error('Error guardando compromisos:', e);
+            toast.error('Error al guardar compromisos');
+        }
+    }, []);
+
+    const saveResponsabilidades = React.useCallback(async (workshopId, responsabilidades) => {
+        try {
+            await updateDocument('workshops', workshopId, { responsabilidades, updatedAt: new Date() });
+        } catch (e) {
+            console.error('Error guardando responsabilidades:', e);
+            toast.error('Error al guardar tabla');
+        }
+    }, []);
+
     const renameWorkshop = React.useCallback(async (workshopId, title) => {
         validateRequiredString(title, 'título', 100);
         try {
@@ -75,7 +105,8 @@ export const WorkshopsProvider = ({ children }) => {
 
     const value = React.useMemo(() => ({
         workshops, createWorkshop, saveWorkshop, renameWorkshop, deleteWorkshop,
-    }), [workshops, createWorkshop, saveWorkshop, renameWorkshop, deleteWorkshop]);
+        saveActa, saveCompromisos, saveResponsabilidades,
+    }), [workshops, createWorkshop, saveWorkshop, renameWorkshop, deleteWorkshop, saveActa, saveCompromisos, saveResponsabilidades]);
 
     return <WorkshopsContext.Provider value={value}>{children}</WorkshopsContext.Provider>;
 };
