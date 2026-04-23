@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X, Clock, BookOpen, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
+import ModalContainer from '../components/ModalContainer';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -25,6 +26,101 @@ const ASIG_SHORT = {
     MA: 'Mate', LE: 'Leng', CN: 'C.N.', HI: 'Hist', IN: 'Ing',
     EF: 'Ed.F', AV: 'Arte', MU: 'Mús', TE: 'Tec', OR: 'Orien',
 };
+
+const ASIG_FULL = {
+    MA: 'Matemática', LE: 'Lenguaje', CN: 'Ciencias Naturales', HI: 'Historia',
+    IN: 'Inglés', EF: 'Ed. Física', AV: 'Artes Visuales', MU: 'Música',
+    TE: 'Tecnología', OR: 'Orientación',
+};
+
+function EvalDetailModal({ eval: ev, onClose }) {
+    const dateLabel = ev.date
+        ? new Date(ev.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        : '—';
+
+    return (
+        <ModalContainer onClose={onClose} maxWidth="max-w-lg">
+            {/* Header */}
+            <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
+                <div className="flex-1 pr-4">
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-2 ${ASIG_COLORS[ev.asignatura] || 'bg-slate-100 text-slate-600'}`}>
+                        {ASIG_FULL[ev.asignatura] || ev.asignatura}
+                    </div>
+                    <h2 className="text-xl font-headline font-extrabold text-eyr-on-surface tracking-tight leading-tight">{ev.name}</h2>
+                    <p className="text-sm text-eyr-primary font-semibold mt-1 capitalize">{dateLabel}</p>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 text-eyr-on-variant hover:text-red-500 transition-all shrink-0">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-8 py-4 overflow-y-auto space-y-4">
+                {/* Curso */}
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-eyr-surface-low">
+                    <BookOpen className="w-4 h-4 text-eyr-primary shrink-0" />
+                    <div>
+                        <p className="text-xs font-bold text-eyr-on-variant">Curso</p>
+                        <p className="text-sm font-semibold text-eyr-on-surface">{ev.curso}</p>
+                    </div>
+                </div>
+
+                {/* Horario */}
+                {ev.slots && ev.slots.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-eyr-surface-low space-y-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Clock className="w-4 h-4 text-eyr-primary shrink-0" />
+                            <p className="text-xs font-bold text-eyr-on-variant">Horario</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {ev.slots.map((s, i) => (
+                                <div key={i} className="flex flex-col px-3 py-2 rounded-xl bg-white border border-eyr-outline-variant/20">
+                                    <span className="text-xs font-extrabold text-eyr-primary">{s.day}</span>
+                                    <span className="text-xs font-semibold text-eyr-on-surface">{s.label}</span>
+                                    {s.startTime && <span className="text-[11px] text-eyr-on-variant/60">{s.startTime}{s.endTime ? `–${s.endTime}` : ''}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* OA */}
+                {ev.oaCodes && ev.oaCodes.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-eyr-surface-low space-y-2">
+                        <p className="text-xs font-bold text-eyr-on-variant">OA a evaluar</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {ev.oaCodes.map(code => (
+                                <span key={code} className="px-2.5 py-1 rounded-lg bg-eyr-primary/10 text-eyr-primary text-xs font-bold">
+                                    {code.split('-').pop()}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Creado por */}
+                {ev.createdBy?.name && (
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-eyr-surface-low">
+                        <User className="w-4 h-4 text-eyr-on-variant shrink-0" />
+                        <div>
+                            <p className="text-xs font-bold text-eyr-on-variant">Creado por</p>
+                            <p className="text-sm font-semibold text-eyr-on-surface">{ev.createdBy.name}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="p-6 bg-eyr-surface-mid shrink-0">
+                <button
+                    onClick={onClose}
+                    className="w-full px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all"
+                >
+                    Cerrar
+                </button>
+            </div>
+        </ModalContainer>
+    );
+}
 
 // Build Mon-Fri week grid for a given year+month (0-indexed)
 function buildMonthGrid(year, month) {
@@ -67,6 +163,7 @@ export default function CalendarioEvaluaciones() {
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const [selectedDate, setSelectedDate] = useState(null);
     const [showFijar, setShowFijar] = useState(false);
+    const [selectedEval, setSelectedEval] = useState(null);
 
     const today = useMemo(() => new Date(), []);
     const todayStr = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -233,15 +330,17 @@ export default function CalendarioEvaluaciones() {
                                     {/* Evaluaciones */}
                                     <div className="flex flex-col gap-1 flex-1">
                                         {evals.map(e => (
-                                            <div
+                                            <button
                                                 key={e.id}
-                                                className={`text-[11px] font-semibold px-2 py-1 rounded-lg truncate ${ASIG_COLORS[e.asignatura] || 'bg-slate-100 text-slate-600'}`}
+                                                type="button"
+                                                onClick={(ev) => { ev.stopPropagation(); setSelectedEval(e); }}
+                                                className={`text-[11px] font-semibold px-2 py-1 rounded-lg truncate text-left hover:brightness-90 transition-all ${ASIG_COLORS[e.asignatura] || 'bg-slate-100 text-slate-600'}`}
                                                 title={`${e.curso} · ${e.name}`}
                                             >
                                                 <span className="font-bold">{e.curso}</span>
                                                 <span className="mx-1 opacity-50">·</span>
                                                 {ASIG_SHORT[e.asignatura] || e.asignatura}
-                                            </div>
+                                            </button>
                                         ))}
                                         {clickable && (
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-eyr-primary/60 text-xs">
@@ -274,6 +373,12 @@ export default function CalendarioEvaluaciones() {
                         onCreated={() => setShowFijar(false)}
                         user={user}
                     />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {selectedEval && (
+                    <EvalDetailModal eval={selectedEval} onClose={() => setSelectedEval(null)} />
                 )}
             </AnimatePresence>
         </div>
