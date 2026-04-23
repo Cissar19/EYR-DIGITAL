@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Zap, Loader2, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ModalContainer from '../components/ModalContainer';
@@ -26,10 +27,25 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const { getSchedule } = useSchedule();
     const [saving, setSaving] = useState(false);
     const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+    const cursoButtonRef = useRef(null);
     const cursoDropdownRef = useRef(null);
 
+    const openCursoDropdown = () => {
+        if (cursoButtonRef.current) {
+            const rect = cursoButtonRef.current.getBoundingClientRect();
+            setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+        }
+        setCursoDropdownOpen(true);
+    };
+
     useEffect(() => {
-        const handler = (e) => { if (cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target)) setCursoDropdownOpen(false); };
+        const handler = (e) => {
+            if (
+                cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target) &&
+                cursoButtonRef.current && !cursoButtonRef.current.contains(e.target)
+            ) setCursoDropdownOpen(false);
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
@@ -166,44 +182,46 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                 {/* Curso */}
                 <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-eyr-on-variant ml-1">Curso *</label>
-                    <div className="relative" ref={cursoDropdownRef}>
-                        <button
-                            type="button"
-                            onClick={() => setCursoDropdownOpen(o => !o)}
-                            className={`${inputCls} flex items-center justify-between text-left`}
-                        >
-                            <span className={curso ? 'text-eyr-on-surface' : 'text-eyr-on-variant/50'}>
-                                {curso || 'Seleccionar curso...'}
-                            </span>
-                            <ChevronDown className={`w-4 h-4 text-eyr-on-variant shrink-0 transition-transform duration-200 ${cursoDropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                            {cursoDropdownOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute top-full mt-1 left-0 right-0 bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden z-50 max-h-64 overflow-y-auto"
-                                >
-                                    {availableCursos.map(c => (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => { handleCursoChange(c); setCursoDropdownOpen(false); }}
-                                            className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${
-                                                curso === c
-                                                    ? 'bg-eyr-primary text-white'
-                                                    : 'text-eyr-on-surface hover:bg-eyr-surface-high'
-                                            }`}
-                                        >
-                                            {c}
-                                        </button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                    <button
+                        ref={cursoButtonRef}
+                        type="button"
+                        onClick={() => cursoDropdownOpen ? setCursoDropdownOpen(false) : openCursoDropdown()}
+                        className={`${inputCls} flex items-center justify-between text-left`}
+                    >
+                        <span className={curso ? 'text-eyr-on-surface' : 'text-eyr-on-variant/50'}>
+                            {curso || 'Seleccionar curso...'}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-eyr-on-variant shrink-0 transition-transform duration-200 ${cursoDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                        {cursoDropdownOpen && createPortal(
+                            <motion.div
+                                ref={cursoDropdownRef}
+                                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                transition={{ duration: 0.15 }}
+                                style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
+                                className="bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden max-h-64 overflow-y-auto"
+                            >
+                                {availableCursos.map(c => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => { handleCursoChange(c); setCursoDropdownOpen(false); }}
+                                        className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${
+                                            curso === c
+                                                ? 'bg-eyr-primary text-white'
+                                                : 'text-eyr-on-surface hover:bg-eyr-surface-high'
+                                        }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </motion.div>,
+                            document.body
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Asignatura — automática o seleccionable */}
