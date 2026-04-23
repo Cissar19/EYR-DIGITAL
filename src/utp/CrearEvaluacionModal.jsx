@@ -23,8 +23,9 @@ const SUBJECT_TO_ASIG = {
 const getAsigName = (code) => ASIGNATURAS.find(a => a.code === code)?.name || code;
 
 export default function CrearEvaluacionModal({ onClose, onCreated, user, defaultDate, evalId, initialData }) {
-    const { addEvaluacion, updateEvaluacion, evaluaciones } = useEvaluaciones();
+    const { addEvaluacion, updateEvaluacion, submitTeacherEdit, evaluaciones } = useEvaluaciones();
     const isEditing = !!evalId;
+    const isTeacherEdit = isEditing && user?.role === 'teacher';
     const { getSchedule } = useSchedule();
     const [saving, setSaving] = useState(false);
     const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
@@ -139,12 +140,15 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         setSaving(true);
         try {
             if (isEditing) {
-                const ok = await updateEvaluacion(evalId, {
+                const changes = {
                     name: name.trim(),
                     oa: selectedOas.join(', '),
                     oaCodes: selectedOas,
                     slots: selectedSlots.length > 0 ? selectedSlots : null,
-                });
+                };
+                const ok = isTeacherEdit
+                    ? await submitTeacherEdit(evalId, changes, { id: user.uid, name: user.name })
+                    : await updateEvaluacion(evalId, changes);
                 if (!ok) return;
                 onCreated?.(evalId, false);
                 onClose();
@@ -370,6 +374,9 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
 
             {/* Footer */}
             <div className="p-6 bg-eyr-surface-mid flex items-center justify-end gap-3 shrink-0">
+                {isTeacherEdit && (
+                    <p className="text-xs text-eyr-on-variant mr-auto">Los cambios quedarán en revisión hasta ser aprobados.</p>
+                )}
                 <button
                     onClick={onClose}
                     disabled={saving}

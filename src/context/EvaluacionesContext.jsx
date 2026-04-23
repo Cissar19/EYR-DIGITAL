@@ -205,6 +205,53 @@ export const EvaluacionesProvider = ({ children }) => {
         }
     }, []);
 
+    const submitTeacherEdit = useCallback(async (id, changes, submitter) => {
+        try {
+            await updateDocument(COLLECTION, id, {
+                pendingChanges: {
+                    ...changes,
+                    submittedBy: submitter,
+                    submittedAt: new Date().toISOString(),
+                },
+            });
+            toast.success('Cambios enviados para aprobación');
+            return true;
+        } catch (error) {
+            console.error('Error enviando cambios:', error);
+            toast.error('Error al enviar cambios');
+            return false;
+        }
+    }, []);
+
+    const approvePendingChanges = useCallback(async (id, pending) => {
+        try {
+            const updates = { pendingChanges: null };
+            if (pending.name !== undefined) updates.name = pending.name;
+            if (pending.oa !== undefined) updates.oa = pending.oa;
+            if (pending.oaCodes !== undefined) updates.oaCodes = pending.oaCodes;
+            if (pending.slots !== undefined) updates.slots = pending.slots;
+            await updateDocument(COLLECTION, id, updates);
+            toast.success('Cambios aprobados');
+            return true;
+        } catch (error) {
+            console.error('Error aprobando cambios:', error);
+            toast.error('Error al aprobar cambios');
+            return false;
+        }
+    }, []);
+
+    const rejectPendingChanges = useCallback(async (id) => {
+        try {
+            await updateDocument(COLLECTION, id, { pendingChanges: null });
+            toast.success('Cambios rechazados');
+            return true;
+        } catch (error) {
+            console.error('Error rechazando cambios:', error);
+            toast.error('Error al rechazar cambios');
+            return false;
+        }
+    }, []);
+
     const value = React.useMemo(() => ({
         evaluaciones,
         loading,
@@ -217,7 +264,10 @@ export const EvaluacionesProvider = ({ children }) => {
         rejectEvaluacion,
         resubmitEvaluacion,
         addComment,
-    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, duplicateEvaluacion, saveResults, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion, addComment]);
+        submitTeacherEdit,
+        approvePendingChanges,
+        rejectPendingChanges,
+    }), [evaluaciones, loading, addEvaluacion, updateEvaluacion, deleteEvaluacion, duplicateEvaluacion, saveResults, approveEvaluacion, rejectEvaluacion, resubmitEvaluacion, addComment, submitTeacherEdit, approvePendingChanges, rejectPendingChanges]);
 
     return (
         <EvaluacionesContext.Provider value={value}>
