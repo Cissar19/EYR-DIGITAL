@@ -338,7 +338,7 @@ export default function CalendarioEvaluaciones() {
                                                 title={`${e.curso} · ${e.name}`}
                                             >
                                                 <div className="text-xs font-extrabold leading-none">{e.curso}</div>
-                                                <div className="text-[11px] font-semibold opacity-80 mt-1 truncate">{ASIG_SHORT[e.asignatura] || e.asignatura}</div>
+                                                <div className="text-[11px] font-semibold opacity-80 mt-1 truncate">{ASIG_FULL[e.asignatura] || e.asignatura}</div>
                                             </button>
                                         ))}
                                         {clickable && (
