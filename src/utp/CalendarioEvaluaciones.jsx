@@ -10,16 +10,16 @@ const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const ASIG_COLORS = {
-    MA: 'bg-blue-500 text-white',
-    LE: 'bg-violet-500 text-white',
-    CN: 'bg-emerald-500 text-white',
+    MA: 'bg-blue-600 text-white',
+    LE: 'bg-violet-600 text-white',
+    CN: 'bg-emerald-600 text-white',
     HI: 'bg-amber-500 text-white',
-    IN: 'bg-cyan-500 text-white',
+    IN: 'bg-sky-500 text-white',
     EF: 'bg-orange-500 text-white',
-    AV: 'bg-pink-500 text-white',
-    MU: 'bg-rose-500 text-white',
-    TE: 'bg-slate-500 text-white',
-    OR: 'bg-teal-500 text-white',
+    AV: 'bg-fuchsia-600 text-white',
+    MU: 'bg-rose-600 text-white',
+    TE: 'bg-slate-600 text-white',
+    OR: 'bg-teal-600 text-white',
 };
 
 const ASIG_SHORT = {
@@ -350,6 +350,15 @@ export default function CalendarioEvaluaciones() {
                                 </div>
                             );
                         })}
+                    </div>
+                ))}
+            </div>
+
+            {/* Leyenda de colores */}
+            <div className="flex flex-wrap gap-2">
+                {Object.entries(ASIG_FULL).map(([code, name]) => (
+                    <div key={code} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${ASIG_COLORS[code] || 'bg-slate-100 text-slate-600'}`}>
+                        {name}
                     </div>
                 ))}
             </div>
