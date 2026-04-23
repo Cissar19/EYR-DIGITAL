@@ -40,7 +40,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
 
     const [curso, setCurso] = useState('');
     const [asignatura, setAsignatura] = useState('');
-    const [selectedSlot, setSelectedSlot] = useState(null);
+    const [selectedSlots, setSelectedSlots] = useState([]);
     const [name, setName] = useState('');
     const [selectedOas, setSelectedOas] = useState([]);
 
@@ -68,7 +68,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     const handleCursoChange = (newCurso) => {
         setCurso(newCurso);
         setSelectedOas([]);
-        setSelectedSlot(null);
+        setSelectedSlots([]);
         const options = (() => {
             if (!teacherBlocks || teacherBlocks.length === 0 || !newCurso) return ASIGNATURAS;
             const codes = [...new Set(
@@ -81,7 +81,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
 
     const handleAsignaturaChange = (code) => {
         setAsignatura(code);
-        setSelectedSlot(null);
+        setSelectedSlots([]);
         setSelectedOas([]);
     };
 
@@ -117,7 +117,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                 curso,
                 asignatura,
                 date,
-                slot: selectedSlot || null,
+                slots: selectedSlots.length > 0 ? selectedSlots : null,
                 oa: selectedOas.join(', '),
                 oaCodes: selectedOas,
                 driveLink: '',
@@ -197,25 +197,30 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                     </div>
                 )}
 
-                {/* Horarios disponibles — seleccionables */}
+                {/* Horarios disponibles — multi-seleccionables */}
                 {availableSlots && (
                     <div className="space-y-1.5">
                         <label className="block text-sm font-bold text-eyr-on-variant ml-1">
                             Horario de la evaluación
-                            {selectedSlot && (
+                            {selectedSlots.length > 0 && (
                                 <span className="ml-2 text-xs font-semibold text-eyr-primary">
-                                    {selectedSlot.day} · {selectedSlot.label}
+                                    ({selectedSlots.length} bloque{selectedSlots.length > 1 ? 's' : ''} seleccionado{selectedSlots.length > 1 ? 's' : ''})
                                 </span>
                             )}
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {availableSlots.map(({ day, label, startTime }) => {
-                                const isSelected = selectedSlot?.day === day && selectedSlot?.startTime === startTime;
+                                const key = `${day}-${startTime}`;
+                                const isSelected = selectedSlots.some(s => s.day === day && s.startTime === startTime);
                                 return (
                                     <button
-                                        key={`${day}-${startTime}`}
+                                        key={key}
                                         type="button"
-                                        onClick={() => setSelectedSlot(isSelected ? null : { day, label, startTime })}
+                                        onClick={() => setSelectedSlots(prev =>
+                                            isSelected
+                                                ? prev.filter(s => !(s.day === day && s.startTime === startTime))
+                                                : [...prev, { day, label, startTime }]
+                                        )}
                                         className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
                                             isSelected
                                                 ? 'border-eyr-primary bg-eyr-primary-container/30 text-eyr-primary'
