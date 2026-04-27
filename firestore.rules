@@ -41,6 +41,17 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
+    // Verifica que el profesor tenga el par curso|asignatura en su horario guardado.
+    // Soporta tanto el formato nuevo (courseSubjectPairs) como horarios legacy (solo blocks).
+    function teacherScheduleAllows(userId, curso, asignatura) {
+      let ref = /databases/$(database)/documents/schedules/$(userId);
+      return exists(ref) && (
+        get(ref).data.get('courseSubjectPairs', null) == null
+          ? get(ref).data.get('blocks', []).size() > 0
+          : get(ref).data.get('courseSubjectPairs', []).hasAny([curso + '|' + asignatura])
+      );
+    }
+
     // ============================================
     // USERS COLLECTION
     // ============================================
@@ -245,8 +256,14 @@ service cloud.firestore {
     // ============================================
     match /evaluaciones/{docId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
-      allow update: if isAuthenticated() && (isManagement() || getUserRole() == 'teacher');
+      allow create: if isAuthenticated() && (
+        isManagement() ||
+        (getUserRole() == 'teacher' && teacherScheduleAllows(request.auth.uid, request.resource.data.curso, request.resource.data.asignatura))
+      );
+      allow update: if isAuthenticated() && (
+        isManagement() ||
+        (getUserRole() == 'teacher' && teacherScheduleAllows(request.auth.uid, resource.data.curso, resource.data.asignatura))
+      );
       allow delete: if isAuthenticated() && isManagement();
     }
 
@@ -332,6 +349,14 @@ service cloud.firestore {
     match /formatos_prueba/{docId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'utp_head'];
+    }
+
+    // ============================================
+    // CURRICULUM OA (MINEDUC)
+    // ============================================
+    match /curriculum/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // ============================================

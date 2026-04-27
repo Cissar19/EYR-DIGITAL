@@ -3,6 +3,29 @@ import { toast } from 'sonner';
 import { DEFAULT_SCHEDULES } from '../data/defaultSchedules';
 import { subscribeToCollection, setDocument, removeDocument } from '../lib/firestoreService';
 
+// Mapeo nombre de asignatura → código. Sincronizado con CrearEvaluacionModal.
+export const SUBJECT_TO_ASIG = {
+    'Lenguaje': 'LE', 'Leng. y Lit.': 'LE', 'T. Lenguaje': 'LE', 'Taller Len': 'LE',
+    'Matemática': 'MA', 'T. Matemática': 'MA',
+    'Historia': 'HI', 'H. G. y Cs. S.': 'HI', 'For. Ciud.': 'HI',
+    'Ciencias': 'CN', 'C. Nat': 'CN', 'T. Ciencias': 'CN',
+    'Inglés': 'IN',
+    'Artes': 'AV',
+    'Música': 'MU', 'Música/Arte': 'MU',
+    'Ed. Física': 'EF',
+    'Tecnología': 'TE',
+    'Orientación': 'OR', 'Religión': 'OR', 'Religión / FC': 'OR',
+};
+
+// Genera el array desnormalizado ["5° Básico|MA", ...] usado en las reglas de Firestore.
+function computeCourseSubjectPairs(blocks) {
+    return [...new Set(
+        (blocks || [])
+            .filter(b => SUBJECT_TO_ASIG[b.subject])
+            .map(b => `${b.course}|${SUBJECT_TO_ASIG[b.subject]}`)
+    )];
+}
+
 const ScheduleContext = createContext();
 
 // ============================================
@@ -119,7 +142,8 @@ export const ScheduleProvider = ({ children }) => {
         try {
             await setDocument('schedules', userId, {
                 userId: userId,
-                blocks: scheduleData
+                blocks: scheduleData,
+                courseSubjectPairs: computeCourseSubjectPairs(scheduleData),
             });
             toast.success(`Horario guardado exitosamente`, {
                 description: `Se actualizó el horario de ${userName}`
@@ -158,7 +182,8 @@ export const ScheduleProvider = ({ children }) => {
         try {
             await setDocument('schedules', toUserId, {
                 userId: toUserId,
-                blocks: copiedSchedule
+                blocks: copiedSchedule,
+                courseSubjectPairs: computeCourseSubjectPairs(copiedSchedule),
             });
             toast.success('Horario copiado exitosamente', {
                 description: `Se copió el horario a ${toUserName}`
@@ -201,7 +226,8 @@ export const ScheduleProvider = ({ children }) => {
             try {
                 await setDocument('schedules', userId, {
                     userId: userId,
-                    blocks: [...defaultSchedule]
+                    blocks: [...defaultSchedule],
+                    courseSubjectPairs: computeCourseSubjectPairs(defaultSchedule),
                 });
             } catch (err) {
                 console.error("Error saving default schedule to Firestore", err);

@@ -18,6 +18,14 @@ export default {
           600: '#4f46e5',
           700: '#4338ca',
         },
+        // Paleta institucional — colores del logo EYR (azul marino, dorado)
+        inst: {
+          navy:          '#1e2d7a',
+          'navy-mid':    '#2a3d99',
+          'navy-light':  '#e0e7fa',
+          gold:          '#c49400',
+          'gold-light':  '#fff5cc',
+        },
         // Paleta EYR — Material Design 3 (del diseño Stitch)
         eyr: {
           primary:           '#4e45e4',

@@ -1,0 +1,1870 @@
+{
+  "year": 2025,
+  "school": "Escuela EYR",
+  "schemaVersion": 2,
+  "modelNotes": {
+    "unitTracking": "Fuente de verdad. u1-u4 con OAs por unidad.",
+    "legacyOaStatus": "Estado heredado del Excel (no por unidad). UTP debe migrar a unitTracking.",
+    "migrationStatus": "pending | partial | complete",
+    "totalBasales": "NO se guarda — se deriva de curriculum/{year}/oas/{grade}/{subject}"
+  },
+  "grades": {
+    "1B": {
+      "name": "Primero Básico",
+      "gradeNumber": 1,
+      "subjects": [
+        {
+          "teacher": "Juan Figueroa Huinca",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA11": true,
+            "OA08": true,
+            "OA09": true,
+            "OA10": true,
+            "OA13": true,
+            "OA18": false,
+            "OA23": true,
+            "OA21": true,
+            "OA25": true
+          },
+          "unitTracking": {
+            "u1": {
+              "OA01": false,
+              "OA03": true,
+              "OA04": false,
+              "OA05": true,
+              "OA11": true,
+              "OA08": true,
+              "OA13": true,
+              "OA18": false,
+              "OA21": false
+            },
+            "u2": {
+              "OA04": false,
+              "OA05": true,
+              "OA11": false,
+              "OA08": false,
+              "OA10": false,
+              "OA13": false,
+              "OA18": false,
+              "OA23": false,
+              "OA21": false
+            },
+            "u3": {
+              "OA04": false,
+              "OA05": false,
+              "OA11": false,
+              "OA08": false,
+              "OA09": false,
+              "OA10": false,
+              "OA13": false,
+              "OA23": false,
+              "OA21": false
+            },
+            "u4": {
+              "OA05": false,
+              "OA11": false,
+              "OA08": false,
+              "OA09": false,
+              "OA10": false,
+              "OA13": false,
+              "OA21": false,
+              "OA25": false
+            }
+          },
+          "migrationStatus": "complete",
+          "evaluaciones": {
+            "sem1": 6.0,
+            "sem2": 6.0
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Juan Figueroa Huinca",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA06": true,
+            "OA08": true,
+            "OA09": true,
+            "OA11": true,
+            "OA13": true,
+            "OA14": true,
+            "OA18": true,
+            "OA19": true,
+            "OA20": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 4.0,
+            "sem2": 6.0
+          },
+          "excelTotalBasales": 11.0
+        },
+        {
+          "teacher": "Juan Figueroa Huinca",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA06": true,
+            "OA08": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 2.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Juan Figueroa Huinca",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA10": true,
+            "OA12": true,
+            "OA14": true,
+            "OA15": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 9.0
+        },
+        {
+          "teacher": "Francisco Pérez Delgado",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA07": true,
+            "OA06": true,
+            "OA11": true,
+            "OA09": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Juan Figueroa Huinca",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA06": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 2.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        }
+      ]
+    },
+    "2B": {
+      "name": "Segundo Básico",
+      "gradeNumber": 2,
+      "subjects": [
+        {
+          "teacher": "Marisol Molina Vera",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA08": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA10": true,
+            "OA12": true,
+            "OA16": true,
+            "OA17": true,
+            "OA23": true,
+            "OA27": true,
+            "OA25": true,
+            "OA29": true
+          },
+          "unitTracking": {
+            "u1": {
+              "OA01": false,
+              "OA02": true,
+              "OA08": true,
+              "OA05": false,
+              "OA06": true,
+              "OA07": true,
+              "OA10": false,
+              "OA12": false,
+              "OA16": false,
+              "OA17": false,
+              "OA23": false,
+              "OA27": false,
+              "OA25": false,
+              "OA29": false
+            },
+            "u2": {
+              "OA01": false,
+              "OA02": false,
+              "OA08": false,
+              "OA05": false,
+              "OA06": false,
+              "OA07": false,
+              "OA10": false,
+              "OA12": false,
+              "OA16": false,
+              "OA17": false,
+              "OA23": false,
+              "OA27": false,
+              "OA25": false,
+              "OA29": false
+            },
+            "u3": {
+              "OA01": false,
+              "OA02": false,
+              "OA08": false,
+              "OA05": false,
+              "OA06": false,
+              "OA07": false,
+              "OA10": false,
+              "OA12": false,
+              "OA16": false,
+              "OA17": false,
+              "OA23": false,
+              "OA27": false,
+              "OA25": false,
+              "OA29": false
+            },
+            "u4": {
+              "OA01": false,
+              "OA02": false,
+              "OA08": false,
+              "OA05": false,
+              "OA06": false,
+              "OA07": false,
+              "OA10": false,
+              "OA12": false,
+              "OA16": false,
+              "OA17": false,
+              "OA23": false,
+              "OA27": false,
+              "OA25": false,
+              "OA29": false
+            }
+          },
+          "migrationStatus": "complete",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 14.0
+        },
+        {
+          "teacher": "Marisol Molina Vera",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA03": true,
+            "OA05": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true,
+            "OA12": true,
+            "OA13": true,
+            "OA15": true,
+            "OA16": true,
+            "OA19": true,
+            "OA20": true,
+            "OA22": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 4.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Marisol Molina Vera",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA05": true,
+            "OA07": true,
+            "OA08": true,
+            "OA09": true,
+            "OA11": true,
+            "OA12": true,
+            "OA14": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 8.0
+        },
+        {
+          "teacher": "Marisol Molina Vera",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA03": true,
+            "OA04": true,
+            "OA07": true,
+            "OA08": true,
+            "OA14": true,
+            "OA15": true,
+            "OA16": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 9.0
+        },
+        {
+          "teacher": "Francisco Pérez Delgado",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": false,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Marisol Molina Vera",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 5.0
+        }
+      ]
+    },
+    "3B": {
+      "name": "Tercero Básico",
+      "gradeNumber": 3,
+      "subjects": [
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA07": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA09": true,
+            "OA12": true,
+            "OA17": true,
+            "OA18": true,
+            "OA24": false,
+            "OA28": true,
+            "OA26": true,
+            "OA30": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 8.0
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Manuel Astudillo Figueroa",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA03": true,
+            "OA05": true,
+            "OA06": true,
+            "OA08": true,
+            "OA09": true,
+            "OA10": false,
+            "OA11": false,
+            "OA12": true,
+            "OA15": true,
+            "OA21": true,
+            "OA22": false,
+            "OA25": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": 7.0
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA09": true,
+            "OA10": true,
+            "OA11": true,
+            "OA12": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 2.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 8.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA03": false,
+            "OA04": false,
+            "OA05": true,
+            "OA07": true,
+            "OA08": true,
+            "OA11": false,
+            "OA14": false,
+            "OA15": false,
+            "OA16": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 2.0,
+            "sem2": 7.0
+          },
+          "excelTotalBasales": 9.0
+        },
+        {
+          "teacher": "",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 5.0
+        }
+      ]
+    },
+    "4B": {
+      "name": "Cuarto Básico",
+      "gradeNumber": 4,
+      "subjects": [
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA09": false,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA11": true,
+            "OA16": true,
+            "OA17": true,
+            "OA23": false,
+            "OA27": false,
+            "OA25": true,
+            "OA29": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": "Pendiente"
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Manuel Astudillo Figueroa",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA03": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": false,
+            "OA08": true,
+            "OA09": true,
+            "OA13": true,
+            "OA14": true,
+            "OA17": false,
+            "OA18": false,
+            "OA19": false,
+            "OA22": true,
+            "OA23": false,
+            "OA24": false,
+            "OA25": true,
+            "OA27": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": 7.0
+          },
+          "excelTotalBasales": 18.0
+        },
+        {
+          "teacher": "Jacqueline Durán Burgos",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA03": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA10": true,
+            "OA12": true,
+            "OA15": true,
+            "OA16": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": null
+          },
+          "excelTotalBasales": 10.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA04": false,
+            "OA05": true,
+            "OA08": true,
+            "OA09": true,
+            "OA10": true,
+            "OA11": false,
+            "OA12": false,
+            "OA17": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 5.0
+          },
+          "excelTotalBasales": 8.0
+        },
+        {
+          "teacher": "",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": false,
+            "OA05": true,
+            "OA06": false,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 5.0
+        }
+      ]
+    },
+    "5B": {
+      "name": "Quinto Básico",
+      "gradeNumber": 5,
+      "subjects": [
+        {
+          "teacher": "Constanza Vargas Retamal",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA011": true,
+            "OA014": true,
+            "OA015": true,
+            "OA017": true,
+            "OA018": true,
+            "OA24": true,
+            "OA28": true,
+            "OA26": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 7.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 15.0
+        },
+        {
+          "teacher": "Manuel Astudillo Figueroa",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA06": true,
+            "OA07": true,
+            "OA10": true,
+            "OA11": true,
+            "OA13": true,
+            "OA14": true,
+            "OA15": true,
+            "OA17": true,
+            "OA18": true,
+            "OA19": true,
+            "OA21": true,
+            "OA22": true,
+            "OA23": true,
+            "OA24": false,
+            "OA26": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": 6.0
+          },
+          "excelTotalBasales": 18.0
+        },
+        {
+          "teacher": "Jacqueline Durán Burgos",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA05": true,
+            "OA06": true,
+            "OA10": true,
+            "OA11": true,
+            "OA12": true,
+            "OA14": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": null
+          },
+          "excelTotalBasales": 8.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA02": false,
+            "OA03": true,
+            "OA04": true,
+            "OA06": false,
+            "OA07": false,
+            "OA09": true,
+            "OA10": true,
+            "OA12": true,
+            "OA13": false,
+            "OA14": false,
+            "OA18": false,
+            "OA22": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 6.0
+          },
+          "excelTotalBasales": 12.0
+        },
+        {
+          "teacher": "Francisco Pérez Delgado",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": false,
+            "OA07": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 5.0
+        }
+      ]
+    },
+    "6B": {
+      "name": "Sexto Básico",
+      "gradeNumber": 6,
+      "subjects": [
+        {
+          "teacher": "Constanza Vargas Retamal",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA011": true,
+            "OA014": true,
+            "OA015": true,
+            "OA017": true,
+            "OA018": true,
+            "OA24": true,
+            "OA29": true,
+            "OA27": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 6.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 15.0
+        },
+        {
+          "teacher": "Manuel Astudillo Figueroa",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA07": true,
+            "OA08": false,
+            "OA11": true,
+            "OA13": true,
+            "OA16": true,
+            "OA18": false,
+            "OA19": true,
+            "OA23": true,
+            "OA24": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": 7.0
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Jacqueline Durán Burgos",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA04": true,
+            "OA06": true,
+            "OA08": true,
+            "OA10": true,
+            "OA11": true,
+            "OA13": true,
+            "OA16": true,
+            "OA18": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": null
+          },
+          "excelTotalBasales": 10.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA01": false,
+            "OA02": false,
+            "OA03": true,
+            "OA05": false,
+            "OA07": false,
+            "OA08": false,
+            "OA09": false,
+            "OA11": false,
+            "OA12": false,
+            "OA15": false,
+            "OA16": false,
+            "OA17": false,
+            "OA18": false,
+            "OA23": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 9.0
+          },
+          "excelTotalBasales": 14.0
+        },
+        {
+          "teacher": "Francisco Pérez Delgado",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA06": true,
+            "OA07": true,
+            "OA09": true,
+            "OA11": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 6.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Leslye Valencia Ramos",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA05": true,
+            "OA06": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 2.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 5.0
+        }
+      ]
+    },
+    "7B": {
+      "name": "Séptimo Básico",
+      "gradeNumber": 7,
+      "subjects": [
+        {
+          "teacher": "Constanza Vargas Retamal",
+          "subject": "lengua_y_literatura",
+          "subjectLabel": "Lengua y literatura",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA07": true,
+            "OA08": true,
+            "OA09": true,
+            "OA12": true,
+            "OA14": true,
+            "OA15": true,
+            "OA17": true,
+            "OA20": false,
+            "OA21": true,
+            "OA24": true,
+            "OA25": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 5.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Eduardo Baeza Gónzalez",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA06": true,
+            "OA08": true,
+            "OA11": true,
+            "OA12": true,
+            "OA14": true,
+            "OA16": true,
+            "OA18": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": 5.0
+          },
+          "excelTotalBasales": 10.0
+        },
+        {
+          "teacher": "Jacqueline Durán Burgos",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA03": true,
+            "OA05": true,
+            "OA07": true,
+            "OA09": true,
+            "OA12": true,
+            "OA13": true,
+            "OA14": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": null
+          },
+          "excelTotalBasales": 9.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA03": true,
+            "OA06": false,
+            "OA07": false,
+            "OA09": false,
+            "OA12": true,
+            "OA13": false,
+            "OA16": false,
+            "OA21": true,
+            "OA22": true,
+            "OA18": false,
+            "OA19": false,
+            "OA20": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 8.0
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 4.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 4.0
+        },
+        {
+          "teacher": "",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA04": true,
+            "OA06": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 4.0
+        },
+        {
+          "teacher": "",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA06": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        }
+      ]
+    },
+    "8B": {
+      "name": "Octavo Básico",
+      "gradeNumber": 8,
+      "subjects": [
+        {
+          "teacher": "Constanza Vargas Retamal",
+          "subject": "lenguaje",
+          "subjectLabel": "Lenguaje y comúnicación",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA04": true,
+            "OA08": true,
+            "OA09": true,
+            "OA10": true,
+            "OA13": true,
+            "OA15": true,
+            "OA16": true,
+            "OA18": true,
+            "OA21": true,
+            "OA22": true,
+            "OA25": true,
+            "OA26": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 6.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 13.0
+        },
+        {
+          "teacher": "Eduardo Baeza Gónzalez",
+          "subject": "matematica",
+          "subjectLabel": "Matemática",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA03": true,
+            "OA04": true,
+            "OA08": true,
+            "OA10": true,
+            "OA12": true,
+            "OA13": true,
+            "OA15": true,
+            "OA16": true,
+            "OA17": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": 5.0
+          },
+          "excelTotalBasales": 11.0
+        },
+        {
+          "teacher": "Jacqueline Durán Burgos",
+          "subject": "ciencias",
+          "subjectLabel": "Ciencias",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA05": true,
+            "OA07": true,
+            "OA10": true,
+            "OA11": true,
+            "OA12": true,
+            "OA14": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": null,
+            "sem2": null
+          },
+          "excelTotalBasales": 8.0
+        },
+        {
+          "teacher": "Alvaro Jara Barrientos",
+          "subject": "historia",
+          "subjectLabel": "Historia",
+          "legacyOaStatus": {
+            "OA02": false,
+            "OA03": true,
+            "OA04": true,
+            "OA07": false,
+            "OA11": false,
+            "OA12": true,
+            "OA14": false,
+            "OA16": false,
+            "OA20": false,
+            "OA21": false,
+            "OA22": false,
+            "OA18": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 4.0,
+            "sem2": 7.0
+          },
+          "excelTotalBasales": 12.0
+        },
+        {
+          "teacher": "Francisco Pérez Delgado",
+          "subject": "educacion_fisica",
+          "subjectLabel": "Educación Fisica y Salud",
+          "legacyOaStatus": {
+            "OA03": true,
+            "OA01": true,
+            "OA04": true,
+            "OA05": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 4.0,
+            "sem2": null
+          },
+          "excelTotalBasales": 4.0
+        },
+        {
+          "teacher": "Daniela Alvarado Vera",
+          "subject": "musica",
+          "subjectLabel": "Música",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA03": true,
+            "OA07": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        },
+        {
+          "teacher": "Sofía Martínez Ormeño",
+          "subject": "artes",
+          "subjectLabel": "Artes",
+          "legacyOaStatus": {
+            "OA01": true,
+            "OA02": true,
+            "OA04": true,
+            "OA06": true
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 3.0,
+            "sem2": 4.0
+          },
+          "excelTotalBasales": 4.0
+        },
+        {
+          "teacher": "Pamela Olivero Figueroa",
+          "subject": "tecnologia",
+          "subjectLabel": "Tecnología",
+          "legacyOaStatus": {
+            "OA02": true,
+            "OA04": true,
+            "OA06": false
+          },
+          "unitTracking": {
+            "u1": {},
+            "u2": {},
+            "u3": {},
+            "u4": {}
+          },
+          "migrationStatus": "pending",
+          "evaluaciones": {
+            "sem1": 1.0,
+            "sem2": 3.0
+          },
+          "excelTotalBasales": 3.0
+        }
+      ]
+    }
+  }
+}

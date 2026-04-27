@@ -26,6 +26,9 @@ scripts/print-agent/.printed_ids.json
 # Archive scripts (local only)
 scripts/archive/
 
+# Curriculum data generado por scrape_mineduc.py (puede ser grande)
+scripts/data/
+
 # Backups locales (no subir a git)
 backups/
 

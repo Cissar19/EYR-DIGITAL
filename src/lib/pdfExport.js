@@ -319,7 +319,7 @@ export function exportAttendancePDF({ dateRange, summary, records, fileName }) {
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 8);
+        doc.text(`Generado ${timestamp} — EYR Digital`, marginL, pageH - 8);
         doc.text(`Página ${i} de ${totalPages}`, pageW - marginR, pageH - 8, { align: 'right' });
     }
 
@@ -426,7 +426,7 @@ export async function exportControlSanoPDF({ student, registros }) {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...S500);
-    doc.text('Escuela Huechuraba · Enfermería', textX, y + 20);
+    doc.text('Lasana 6664, Huechuraba · Enfermería', textX, y + 20);
 
     // Right: document type
     doc.setFontSize(18);
@@ -689,7 +689,7 @@ export async function exportControlSanoPDF({ student, registros }) {
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...S300);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, mL, ph - 6);
+        doc.text(`Generado ${timestamp} — EYR Digital`, mL, ph - 6);
         doc.text(`Página ${i} de ${totalPages}`, pageW - mR, ph - 6, { align: 'right' });
     }
 
@@ -937,7 +937,7 @@ export function exportAbsencesPDF({ dateLabel, dateStr, groupedAbsences, replace
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 10);
+        doc.text(`Generado ${timestamp} — EYR Digital`, marginL, pageH - 10);
         doc.text(`Página ${i} de ${totalPages}`, pageW - marginR, pageH - 10, { align: 'right' });
     }
 
@@ -1082,7 +1082,7 @@ export async function exportWeeklyAbsencesPDF({ weekLabel, weekDays, weekConsoli
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...S500);
-    doc.text('Escuela Huechuraba · Inspectoría', textX, y + 20);
+    doc.text('Lasana 6664, Huechuraba · Inspectoría', textX, y + 20);
 
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
@@ -1405,7 +1405,7 @@ export async function exportWeeklyAbsencesPDF({ weekLabel, weekDays, weekConsoli
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...S300);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, mL, ph - 8);
+        doc.text(`Generado ${timestamp} — EYR Digital`, mL, ph - 8);
         doc.text(`Página ${i} de ${totalPages}`, pageW - mR, ph - 8, { align: 'right' });
     }
 
@@ -1582,7 +1582,7 @@ export function exportEntrevistaActaPDF({ entrevista }) {
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 10);
+    doc.text(`Generado ${timestamp} — EYR Digital`, marginL, pageH - 10);
     if (entrevista.registeredBy?.name) {
         doc.text(`Registrado por: ${entrevista.registeredBy.name}`, pageW - marginR, pageH - 10, { align: 'right' });
     }
@@ -1740,7 +1740,7 @@ export function exportEntrevistasResumenPDF({ entrevistas, stats, filters }) {
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184);
-        doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pH - 8);
+        doc.text(`Generado ${timestamp} — EYR Digital`, marginL, pH - 8);
         doc.text(`Página ${i} de ${totalPages}`, pageW - marginR, pH - 8, { align: 'right' });
     }
 
@@ -1874,7 +1874,7 @@ export function exportAdminDaysHistoryPDF(requests, filters = {}) {
             doc.setTextColor(148, 163, 184);
             for (let i = 1; i <= totalPages; i++) {
                 doc.setPage(i);
-                doc.text(`Generado ${timestamp} — EYR Huechuraba`, marginL, pageH - 8);
+                doc.text(`Generado ${timestamp} — EYR Digital`, marginL, pageH - 8);
                 doc.text(`Pagina ${i} de ${totalPages}`, pageW - marginR, pageH - 8, { align: 'right' });
             }
         },
@@ -1882,4 +1882,396 @@ export function exportAdminDaysHistoryPDF(requests, filters = {}) {
 
     const safeDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     doc.save(`Historial_DiasAdmin_${safeDate}.pdf`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALENDARIO DE EVALUACIONES — UTP
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ASIG_FULL_PDF = {
+    MA: 'Matemática', LE: 'Lenguaje', CN: 'Ciencias Naturales', HI: 'Historia',
+    IN: 'Inglés', EF: 'Ed. Física', AV: 'Artes Visuales', MU: 'Música',
+    TE: 'Tecnología', OR: 'Orientación',
+};
+
+const ASIG_COLORS_PDF = {
+    MA: [37, 99, 235],   // blue-600
+    LE: [124, 58, 237],  // violet-600
+    CN: [5, 150, 105],   // emerald-600
+    HI: [180, 83, 9],    // amber-700
+    IN: [2, 132, 199],   // sky-600
+    EF: [234, 88, 12],   // orange-600
+    AV: [162, 28, 175],  // fuchsia-700
+    MU: [190, 18, 60],   // rose-700
+    TE: [71, 85, 105],   // slate-600
+    OR: [13, 148, 136],  // teal-600
+};
+
+const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+/**
+ * Exports the evaluation calendar as a week-by-week PDF (Mon–Fri, one month).
+ * Layout: 2 weeks per page, each week with its own "Semana N" label strip.
+ * Pills show: subject/course, eval name, professor, and block/time.
+ */
+export async function exportCalendarioPDF({ evaluaciones, selectedCurso, mesLabel, year, month }) {
+    const logoDataUrl = await loadImageAsDataUrl(logoEyrUrl);
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();   // 297
+    const pageH  = doc.internal.pageSize.getHeight(); // 210
+    const mL = 10, mR = 10, mT = 8, mBot = 8;
+    const cW = pageW - mL - mR; // 277
+
+    // ── Paleta institucional EYR ──────────────────
+    // Colores del logo: azul marino, dorado, rojo oscuro
+    const NAVY       = [22,  38,  90];   // azul marino del escudo
+    const NAVY_DIM   = [60,  80, 140];   // azul marino medio (acento)
+    const NAVY_LIGHT = [220, 228, 248];  // azul marino claro (fondo hoy)
+    const GOLD       = [196, 148,   0];  // dorado de la llama/franja
+    const GOLD_LIGHT = [255, 243, 195];  // dorado claro (no usado, reserva)
+    const S900 = [15, 23, 42];
+    const S700 = [51, 65, 85];
+    const S500 = [100, 116, 139];
+    const S300 = [148, 163, 184];
+    const S200 = [203, 213, 225];
+    const S100 = [241, 245, 249];
+    const WHITE     = [255, 255, 255];
+    const WHITE_DIM = [210, 218, 240];
+
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const todayStr = now.toISOString().slice(0, 10);
+
+    const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    // ── Build Mon–Fri month grid ──────────────────
+    const buildGrid = (yr, mo) => {
+        const firstDay = new Date(yr, mo, 1);
+        const lastDay  = new Date(yr, mo + 1, 0);
+        const start    = new Date(firstDay);
+        const startDow = start.getDay();
+        start.setDate(start.getDate() - (startDow === 0 ? 6 : startDow - 1));
+        const end    = new Date(lastDay);
+        const endDow = end.getDay();
+        if      (endDow === 0) end.setDate(end.getDate() - 2);
+        else if (endDow === 6) end.setDate(end.getDate() - 1);
+        else if (endDow < 5)  end.setDate(end.getDate() + (5 - endDow));
+        const weeks  = [];
+        const cursor = new Date(start);
+        while (cursor <= end) {
+            const week = [];
+            for (let d = 0; d < 5; d++) {
+                const day = new Date(cursor);
+                day.setDate(cursor.getDate() + d);
+                week.push({
+                    dateStr: day.toISOString().slice(0, 10),
+                    inMonth: day.getMonth() === mo && day.getFullYear() === yr,
+                    dayNum:  day.getDate(),
+                });
+            }
+            weeks.push(week);
+            cursor.setDate(cursor.getDate() + 7);
+        }
+        return weeks;
+    };
+
+    // ── Index evaluaciones by date ────────────────
+    const evalsByDate = {};
+    evaluaciones.forEach(e => {
+        if (!e.date) return;
+        if (!evalsByDate[e.date]) evalsByDate[e.date] = [];
+        evalsByDate[e.date].push(e);
+    });
+
+    const DIAS_HEADER = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    const weeks  = buildGrid(year, month);
+    const nWeeks = weeks.length;
+    const colW   = cW / 5;
+
+    // ── Pagination: 2 weeks per page ─────────────
+    const pages = [];
+    for (let i = 0; i < nWeeks; i += 2) pages.push(weeks.slice(i, i + 2));
+
+    // ── Layout constants ─────────────────────────
+    const HEADER_H     = 32;
+    const RUN_HEADER_H = 18;
+    const DAY_ROW_H    = 6;   // column names, once per page
+    const WEEK_LABEL_H = 9;   // "SEMANA N · fecha" strip per week
+    const FOOTER_H     = 7;
+    const PILL_H       = 16;  // tall pill for 4 lines of detail
+    const PILL_GAP     = 1.5;
+    const PILL_TOP     = 9;   // offset from cell top to first pill
+    const pillW        = colW - 3;
+
+    // DATA_H per week: space below week label, within a page
+    // P1 avail = 210 - 8 - 32 - 6 - 7 - 8 = 149mm; 2 weeks → (149 - 2×9) / 2 = 65.5mm
+    // Pn avail = 210 - 8 - 18 - 6 - 7 - 8 = 163mm; 2 weeks → (163 - 18) / 2 = 72.5mm; 1 week → min(75, 154)
+    const dataHForPage = (avail, numW) => Math.min(75, (avail - numW * WEEK_LABEL_H) / numW);
+    const maxPillsFor  = (dH) => Math.floor((dH - PILL_TOP - 1) / (PILL_H + PILL_GAP));
+
+    // ── Week label text ───────────────────────────
+    const weekRangeLabel = (week, n) => {
+        const d1 = new Date(week[0].dateStr + 'T12:00:00');
+        const d5 = new Date(week[4].dateStr + 'T12:00:00');
+        const sameM = d1.getMonth() === d5.getMonth();
+        const range = sameM
+            ? `${d1.getDate()} al ${d5.getDate()} de ${MESES_ES[d1.getMonth()]}`
+            : `${d1.getDate()} ${MESES_ES[d1.getMonth()].slice(0,3)}. – ${d5.getDate()} ${MESES_ES[d5.getMonth()].slice(0,3)}.`;
+        return `SEMANA ${n}   ·   ${range}`;
+    };
+
+    // ── Draw helpers ─────────────────────────────
+    const drawDayNameRow = (topY) => {
+        DIAS_HEADER.forEach((dia, i) => {
+            const cx = mL + i * colW;
+            doc.setFillColor(...NAVY_LIGHT);
+            doc.rect(cx, topY, colW, DAY_ROW_H, 'F');
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...NAVY);
+            doc.text(dia.toUpperCase(), cx + colW / 2, topY + 4.3, { align: 'center' });
+        });
+        // outer border
+        doc.setDrawColor(...NAVY);
+        doc.setLineWidth(0.25);
+        doc.rect(mL, topY, cW, DAY_ROW_H);
+    };
+
+    const drawWeekLabel = (topY, labelText) => {
+        doc.setFillColor(...NAVY);
+        doc.rect(mL, topY, cW, WEEK_LABEL_H, 'F');
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...WHITE);
+        doc.text(labelText, mL + 5, topY + 6.2);
+    };
+
+    const drawWeekCells = (week, cellsTop, dataH, maxPills) => {
+        week.forEach(({ dateStr, inMonth, dayNum }, di) => {
+            const cx      = mL + di * colW;
+            const isToday = dateStr === todayStr;
+
+            // Cell fill
+            if (!inMonth)     doc.setFillColor(...S100);
+            else if (isToday) doc.setFillColor(...NAVY_LIGHT);
+            else              doc.setFillColor(...WHITE);
+            doc.rect(cx, cellsTop, colW, dataH, 'F');
+
+            // Cell border
+            doc.setDrawColor(...S200);
+            doc.setLineWidth(0.15);
+            doc.rect(cx, cellsTop, colW, dataH);
+
+            // Day number
+            if (isToday) {
+                doc.setFillColor(...NAVY);
+                doc.roundedRect(cx + 2, cellsTop + 2, 9, 9, 4.5, 4.5, 'F');
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...WHITE);
+                doc.text(String(dayNum), cx + 6.5, cellsTop + 8.3, { align: 'center' });
+            } else {
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...(!inMonth ? S300 : S700));
+                doc.text(String(dayNum), cx + 4, cellsTop + 8.5);
+            }
+
+            // Pills
+            const evals = evalsByDate[dateStr] || [];
+            let evalY   = cellsTop + PILL_TOP;
+
+            evals.slice(0, maxPills).forEach(ev => {
+                const asigColor = ASIG_COLORS_PDF[ev.asignatura] || S700;
+                const darkColor = asigColor.map(c => Math.max(0, c - 60));
+
+                // Pill body
+                doc.setFillColor(...asigColor);
+                doc.roundedRect(cx + 1.5, evalY, pillW, PILL_H, 1.5, 1.5, 'F');
+
+                // Left dark accent
+                doc.setFillColor(...darkColor);
+                doc.roundedRect(cx + 1.5, evalY, 3.5, PILL_H, 1.5, 1.5, 'F');
+                doc.rect(cx + 2.5, evalY, 2.5, PILL_H, 'F');
+
+                const tx  = cx + 6.5;
+                const mxW = pillW - 7;
+
+                // Slot: "Bloque 3 · 08:00–09:00"  (null when not configured)
+                const slot    = ev.slots?.[0];
+                const slotStr = slot
+                    ? [slot.label,
+                       slot.startTime && slot.endTime
+                           ? `${slot.startTime}–${slot.endTime}`
+                           : (slot.startTime || '')]
+                       .filter(Boolean).join(' · ')
+                    : null;
+
+                if (!selectedCurso && ev.curso) {
+                    // ── All-courses ──────────────
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...WHITE);
+                    doc.text(ev.curso, tx, evalY + 4.5);
+
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...WHITE);
+                    doc.text(ASIG_FULL_PDF[ev.asignatura] || ev.asignatura, tx, evalY + 8.5);
+
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(...WHITE_DIM);
+                    if (ev.createdBy?.name)
+                        doc.text(`Prof. ${ev.createdBy.name}`, tx, evalY + 12);
+
+                    doc.setFontSize(6);
+                    doc.setTextColor(...WHITE_DIM);
+                    if (slotStr)
+                        doc.text(slotStr, tx, evalY + 15);
+                } else {
+                    // ── Single course ─────────────
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...WHITE);
+                    doc.text(ASIG_FULL_PDF[ev.asignatura] || ev.asignatura, tx, evalY + 4.5);
+
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...WHITE);
+                    doc.text(doc.splitTextToSize(ev.name || '—', mxW)[0], tx, evalY + 8.5);
+
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(...WHITE_DIM);
+                    if (ev.createdBy?.name)
+                        doc.text(`Prof. ${ev.createdBy.name}`, tx, evalY + 12);
+
+                    doc.setFontSize(6);
+                    doc.setTextColor(...WHITE_DIM);
+                    if (slotStr)
+                        doc.text(slotStr, tx, evalY + 15);
+                }
+
+                evalY += PILL_H + PILL_GAP;
+            });
+
+            // Overflow
+            if (evals.length > maxPills) {
+                doc.setFontSize(6.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...S500);
+                doc.text(`+${evals.length - maxPills} más`, cx + 3.5, evalY + 4.5);
+            }
+        });
+
+        // Outer border for cells row
+        doc.setDrawColor(...NAVY);
+        doc.setLineWidth(0.35);
+        doc.rect(mL, cellsTop, cW, dataH);
+    };
+
+    const drawPage = (pageWeeks, weekStartNum, isFirst) => {
+        const topH  = isFirst ? HEADER_H : RUN_HEADER_H;
+        const avail = pageH - mT - topH - DAY_ROW_H - FOOTER_H - mBot;
+        const dataH = dataHForPage(avail, pageWeeks.length);
+        const mxP   = maxPillsFor(dataH);
+
+        // Day name columns
+        const dayRowY = mT + topH;
+        drawDayNameRow(dayRowY);
+
+        // Each week section
+        let curY = dayRowY + DAY_ROW_H;
+        pageWeeks.forEach((week, wi) => {
+            drawWeekLabel(curY, weekRangeLabel(week, weekStartNum + wi));
+            curY += WEEK_LABEL_H;
+            drawWeekCells(week, curY, dataH, mxP);
+            curY += dataH;
+        });
+    };
+
+    const drawRunningHeader = () => {
+        doc.setFillColor(...NAVY);
+        doc.rect(0, 0, pageW, 3, 'F');
+        doc.addImage(logoDataUrl, 'JPEG', mL, mT + 1, 12, 12);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...NAVY);
+        doc.text('CALENDARIO DE EVALUACIONES', mL + 16, mT + 6);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S500);
+        doc.text('Centro Educacional Ernesto Yañez Rivera · EYR Digital', mL + 16, mT + 11);
+        const sub = [selectedCurso ? `Curso: ${selectedCurso}` : 'Todos los cursos', mesLabel].filter(Boolean).join('   ·   ');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...S700);
+        doc.text(sub, pageW - mR, mT + 8, { align: 'right' });
+        doc.setDrawColor(...GOLD);
+        doc.setLineWidth(0.6);
+        doc.line(mL, mT + 14, pageW - mR, mT + 14);
+    };
+
+    const drawFooter = (n, total) => {
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...S300);
+        doc.text(`Generado ${timestamp} — EYR Digital`, mL, pageH - mBot);
+        doc.text(`Página ${n} de ${total}`, pageW - mR, pageH - mBot, { align: 'right' });
+    };
+
+    // ── PAGE 1: Big header ────────────────────────
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, pageW * 0.6, 3.5, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(pageW * 0.6, 0, pageW * 0.4, 3.5, 'F');
+
+    doc.addImage(logoDataUrl, 'JPEG', mL, mT, 20, 20);
+    const tx0 = mL + 23;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...NAVY);
+    doc.text('Centro Educacional Ernesto Yañez Rivera', tx0, mT + 8);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S500);
+    doc.text('Lasana 6664, Huechuraba · Unidad Técnico Pedagógica', tx0, mT + 14);
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...NAVY);
+    doc.text('CALENDARIO DE EVALUACIONES', pageW - mR, mT + 8, { align: 'right' });
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...NAVY);
+    doc.text(
+        [selectedCurso ? `Curso: ${selectedCurso}` : 'Todos los cursos', mesLabel].filter(Boolean).join('   ·   '),
+        pageW - mR, mT + 16, { align: 'right' }
+    );
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...S300);
+    doc.text(`Emitido: ${timestamp}`, pageW - mR, mT + 23, { align: 'right' });
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.8);
+    doc.line(mL, mT + 27, pageW - mR, mT + 27);
+
+    drawPage(pages[0], 1, true);
+
+    // ── Pages 2+ ─────────────────────────────────
+    for (let p = 1; p < pages.length; p++) {
+        doc.addPage();
+        drawRunningHeader();
+        drawPage(pages[p], p * 2 + 1, false); // week numbers: page 0→1,2; page 1→3,4; etc.
+    }
+
+    // ── Footers ───────────────────────────────────
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawFooter(i, totalPages);
+    }
+
+    const cursoSuffix = selectedCurso ? `_${selectedCurso.replace(/\s+°/g, '').replace(/\s+/g, '')}` : '';
+    doc.save(`CalendarioEvaluaciones${cursoSuffix}_${mesLabel?.replace(/\s/g, '') || 'todos'}.pdf`);
 }

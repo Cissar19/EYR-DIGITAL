@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X, Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X, Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle, FileDown, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { useAuth, canEdit } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
 import ModalContainer from '../components/ModalContainer';
+import { CURSOS } from '../data/objetivosAprendizaje';
+import { exportCalendarioPDF } from '../lib/pdfExport';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -49,7 +51,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
                         {ASIG_FULL[ev.asignatura] || ev.asignatura}
                     </div>
                     <h2 className="text-xl font-headline font-extrabold text-eyr-on-surface tracking-tight leading-tight">{ev.name}</h2>
-                    <p className="text-sm text-eyr-primary font-semibold mt-1 capitalize">{dateLabel}</p>
+                    <p className="text-sm text-inst-navy font-semibold mt-1 capitalize">{dateLabel}</p>
                 </div>
                 <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 text-eyr-on-variant hover:text-red-500 transition-all shrink-0">
                     <X className="w-5 h-5" />
@@ -60,7 +62,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
             <div className="px-8 py-4 overflow-y-auto space-y-4">
                 {/* Curso */}
                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-eyr-surface-low">
-                    <BookOpen className="w-4 h-4 text-eyr-primary shrink-0" />
+                    <BookOpen className="w-4 h-4 text-inst-navy shrink-0" />
                     <div>
                         <p className="text-xs font-bold text-eyr-on-variant">Curso</p>
                         <p className="text-sm font-semibold text-eyr-on-surface">{ev.curso}</p>
@@ -71,13 +73,13 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
                 {ev.slots && ev.slots.length > 0 && (
                     <div className="p-4 rounded-2xl bg-eyr-surface-low space-y-2">
                         <div className="flex items-center gap-2 mb-1">
-                            <Clock className="w-4 h-4 text-eyr-primary shrink-0" />
+                            <Clock className="w-4 h-4 text-inst-navy shrink-0" />
                             <p className="text-xs font-bold text-eyr-on-variant">Horario</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {ev.slots.map((s, i) => (
                                 <div key={i} className="flex flex-col px-3 py-2 rounded-xl bg-white border border-eyr-outline-variant/20">
-                                    <span className="text-xs font-extrabold text-eyr-primary">{s.day}</span>
+                                    <span className="text-xs font-extrabold text-inst-navy">{s.day}</span>
                                     <span className="text-xs font-semibold text-eyr-on-surface">{s.label}</span>
                                     {s.startTime && <span className="text-[11px] text-eyr-on-variant/60">{s.startTime}{s.endTime ? `–${s.endTime}` : ''}</span>}
                                 </div>
@@ -92,7 +94,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
                         <p className="text-xs font-bold text-eyr-on-variant">OA a evaluar</p>
                         <div className="flex flex-wrap gap-1.5">
                             {ev.oaCodes.map(code => (
-                                <span key={code} className="px-2.5 py-1 rounded-lg bg-eyr-primary/10 text-eyr-primary text-xs font-bold">
+                                <span key={code} className="px-2.5 py-1 rounded-lg bg-inst-navy/10 text-inst-navy text-xs font-bold">
                                     {code.split('-').pop()}
                                 </span>
                             ))}
@@ -179,7 +181,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
                         </button>
                         <button
                             onClick={onEdit}
-                            className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-eyr-primary hover:bg-eyr-primary-container/20 transition-all"
+                            className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-inst-navy hover:bg-inst-navy/10 transition-all"
                         >
                             <Pencil className="w-4 h-4" /> Editar
                         </button>
@@ -286,8 +288,8 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
                                 </span>
                             )}
                             <button
-                                onClick={() => { onEdit(ev); onClose(); }}
-                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-eyr-primary hover:bg-eyr-primary-container/20 transition-all"
+                                onClick={() => onEdit(ev)}
+                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-inst-navy hover:bg-inst-navy/10 transition-all"
                             >
                                 <Pencil className="w-3.5 h-3.5" /> Editar
                             </button>
@@ -312,9 +314,9 @@ export default function CalendarioEvaluaciones() {
     const canCRUD = canEdit(user) || user?.role === 'utp_head';
     const [selectedDate, setSelectedDate] = useState(null);
     const [showFijar, setShowFijar] = useState(false);
-    const [showEditarFechas, setShowEditarFechas] = useState(false);
-    const [selectedEval, setSelectedEval] = useState(null);
-    const [editEval, setEditEval] = useState(null);
+    // Unified state for all eval-related modals — only one ModalContainer at a time
+    // null | { type: 'detail', data: ev } | { type: 'list' } | { type: 'edit', data: ev }
+    const [evalModal, setEvalModal] = useState(null);
 
     const today = useMemo(() => new Date(), []);
     const todayStr = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -331,26 +333,49 @@ export default function CalendarioEvaluaciones() {
     }, [currentMonth, currentYear]);
 
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+    const [selectedCurso, setSelectedCurso] = useState(null);
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     const weeks = useMemo(() => buildMonthGrid(currentYear, selectedMonth), [currentYear, selectedMonth]);
 
+    // Evaluaciones relevantes según rol: profesor ve solo las suyas
+    const relevantEvals = useMemo(() => {
+        if (canCRUD) return evaluaciones;
+        return evaluaciones.filter(e => e.createdBy?.id === user?.uid);
+    }, [evaluaciones, canCRUD, user?.uid]);
+
+    const filteredEvals = useMemo(() => (
+        selectedCurso ? relevantEvals.filter(e => e.curso === selectedCurso) : relevantEvals
+    ), [relevantEvals, selectedCurso]);
+
     const evalsByDate = useMemo(() => {
         const map = {};
-        evaluaciones.forEach(e => {
+        filteredEvals.forEach(e => {
             if (!e.date) return;
             if (!map[e.date]) map[e.date] = [];
             map[e.date].push(e);
         });
         return map;
-    }, [evaluaciones]);
+    }, [filteredEvals]);
 
     const canGoPrev = selectedMonth > currentMonth;
     const canGoNext = selectedMonth < 11;
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
+    const cursoDropdownRef = useRef(null);
+
+    // Opciones de curso: null = Todos + lista fija completa
+    const cursoOptions = useMemo(() => [null, ...CURSOS], []);
+    const cursoIdx = cursoOptions.indexOf(selectedCurso);
+    const canPrevCurso = cursoIdx > 0;
+    const canNextCurso = cursoIdx < cursoOptions.length - 1;
 
     useEffect(() => {
-        const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
+        const handler = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
+            if (cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target)) setCursoDropdownOpen(false);
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
@@ -358,98 +383,186 @@ export default function CalendarioEvaluaciones() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-3 flex-1">
-                    <div className="p-2.5 bg-eyr-primary-container/40 rounded-xl shrink-0">
-                        <CalendarDays className="w-6 h-6 text-eyr-primary" />
+            <div className="space-y-3">
+                {/* Fila 1: título + acciones */}
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-inst-navy/20 rounded-xl shrink-0">
+                        <CalendarDays className="w-6 h-6 text-inst-navy" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h1 className="text-2xl font-extrabold tracking-tight text-eyr-on-surface font-headline">Calendario de Evaluaciones</h1>
                         <p className="text-sm text-eyr-on-variant">
                             {canCreateEval ? 'Haz clic en un día para programar una evaluación' : 'Vista general de evaluaciones programadas'}
                         </p>
                     </div>
-                </div>
-
-                {canCreateEval && (
                     <div className="flex items-center gap-2 shrink-0">
                         <button
-                            onClick={() => setShowEditarFechas(true)}
-                            className="flex items-center gap-2 bg-white border border-eyr-primary text-eyr-primary px-5 py-3 rounded-xl hover:bg-eyr-primary-container/20 transition-all shadow-sm text-sm font-semibold"
+                            onClick={async () => {
+                                setExportingPdf(true);
+                                try {
+                                    await exportCalendarioPDF({
+                                        evaluaciones: filteredEvals,
+                                        selectedCurso,
+                                        mesLabel: `${MESES[selectedMonth]} ${currentYear}`,
+                                        year: currentYear,
+                                        month: selectedMonth,
+                                    });
+                                } finally {
+                                    setExportingPdf(false);
+                                }
+                            }}
+                            disabled={exportingPdf}
+                            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-3 rounded-xl hover:bg-slate-50 transition-all shadow-sm text-sm font-semibold disabled:opacity-60"
                         >
-                            <Pencil className="w-4 h-4" /> Editar fechas
+                            {exportingPdf
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <FileDown className="w-4 h-4" />}
+                            PDF
                         </button>
-                        <button
-                            onClick={() => setShowFijar(true)}
-                            className="flex items-center gap-2 bg-eyr-primary text-white px-5 py-3 rounded-xl hover:bg-eyr-primary-dim transition-all shadow-sm text-sm font-semibold"
-                        >
-                            <Pin className="w-4 h-4" /> Fijar una prueba
-                        </button>
-                    </div>
-                )}
-
-                {/* Month selector */}
-                <div className="flex items-center gap-1 shrink-0 bg-eyr-primary rounded-2xl p-1 shadow-md shadow-eyr-primary/30">
-                    <button
-                        onClick={() => canGoPrev && setSelectedMonth(m => m - 1)}
-                        disabled={!canGoPrev}
-                        className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-
-                    {/* Custom dropdown */}
-                    <div className="relative" ref={dropdownRef}>
-                        <button
-                            onClick={() => setDropdownOpen(o => !o)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
-                            style={{ minWidth: '190px' }}
-                        >
-                            <span className="flex-1 text-center text-base font-bold text-white">
-                                {MESES[selectedMonth]} {currentYear}
-                            </span>
-                            <ChevronDown className={`w-4 h-4 text-white/80 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        <AnimatePresence>
-                            {dropdownOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden z-50"
+                        {canCreateEval && (
+                            <>
+                                <button
+                                    onClick={() => setEvalModal({ type: 'list' })}
+                                    className="flex items-center gap-2 bg-white border border-inst-navy text-inst-navy px-5 py-3 rounded-xl hover:bg-inst-navy/10 transition-all shadow-sm text-sm font-semibold"
                                 >
-                                    {availableMonths.map(({ value, label }) => (
-                                        <button
-                                            key={value}
-                                            onClick={() => { setSelectedMonth(value); setDropdownOpen(false); }}
-                                            className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors
-                                                ${value === selectedMonth
-                                                    ? 'bg-eyr-primary text-white'
-                                                    : 'text-eyr-on-surface hover:bg-eyr-surface-high'
-                                                }`}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                    <Pencil className="w-4 h-4" /> Editar fechas
+                                </button>
+                                <button
+                                    onClick={() => setShowFijar(true)}
+                                    className="flex items-center gap-2 bg-inst-gold text-inst-navy px-5 py-3 rounded-xl hover:brightness-95 transition-all shadow-sm text-sm font-bold"
+                                >
+                                    <Pin className="w-4 h-4" /> Fijar una prueba
+                                </button>
+                            </>
+                        )}
                     </div>
+                </div>
 
-                    <button
-                        onClick={() => canGoNext && setSelectedMonth(m => m + 1)}
-                        disabled={!canGoNext}
-                        className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
+                {/* Fila 2: filtros */}
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Curso selector */}
+                    {canCreateEval && (
+                        <div className="flex items-center gap-1 bg-inst-navy rounded-2xl p-1 shadow-md shadow-inst-navy/30">
+                            <button
+                                onClick={() => canPrevCurso && setSelectedCurso(cursoOptions[cursoIdx - 1])}
+                                disabled={!canPrevCurso}
+                                className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+
+                            <div className="relative" ref={cursoDropdownRef}>
+                                <button
+                                    onClick={() => setCursoDropdownOpen(o => !o)}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                                    style={{ minWidth: '130px' }}
+                                >
+                                    <span className="flex-1 text-center text-base font-bold text-white">
+                                        {selectedCurso ?? 'Todos'}
+                                    </span>
+                                    <ChevronDown className={`w-4 h-4 text-white/80 transition-transform duration-200 ${cursoDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                <AnimatePresence>
+                                    {cursoDropdownOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden z-50"
+                                        >
+                                            {cursoOptions.map((c) => (
+                                                <button
+                                                    key={c ?? '__todos__'}
+                                                    onClick={() => { setSelectedCurso(c); setCursoDropdownOpen(false); }}
+                                                    className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors
+                                                        ${c === selectedCurso
+                                                            ? 'bg-inst-navy text-white'
+                                                            : 'text-eyr-on-surface hover:bg-eyr-surface-high'
+                                                        }`}
+                                                >
+                                                    {c ?? 'Todos'}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <button
+                                onClick={() => canNextCurso && setSelectedCurso(cursoOptions[cursoIdx + 1])}
+                                disabled={!canNextCurso}
+                                className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Month selector */}
+                    <div className="flex items-center gap-1 bg-inst-navy rounded-2xl p-1 shadow-md shadow-inst-navy/30">
+                        <button
+                            onClick={() => canGoPrev && setSelectedMonth(m => m - 1)}
+                            disabled={!canGoPrev}
+                            className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+
+                        {/* Custom dropdown */}
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() => setDropdownOpen(o => !o)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+                                style={{ minWidth: '190px' }}
+                            >
+                                <span className="flex-1 text-center text-base font-bold text-white">
+                                    {MESES[selectedMonth]} {currentYear}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-white/80 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            <AnimatePresence>
+                                {dropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-xl border border-eyr-outline-variant/10 overflow-hidden z-50"
+                                    >
+                                        {availableMonths.map(({ value, label }) => (
+                                            <button
+                                                key={value}
+                                                onClick={() => { setSelectedMonth(value); setDropdownOpen(false); }}
+                                                className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors
+                                                    ${value === selectedMonth
+                                                        ? 'bg-inst-navy text-white'
+                                                        : 'text-eyr-on-surface hover:bg-eyr-surface-high'
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <button
+                            onClick={() => canGoNext && setSelectedMonth(m => m + 1)}
+                            disabled={!canGoNext}
+                            className="p-2 rounded-xl text-white/80 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Calendar grid */}
-            <div className="bg-white rounded-3xl border border-eyr-outline-variant/10 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-3xl border border-eyr-outline-variant/10 overflow-hidden shadow-sm relative">
                 {/* Day headers */}
                 <div className="grid grid-cols-5 border-b border-eyr-outline-variant/10">
                     {DIAS.map(d => (
@@ -458,6 +571,23 @@ export default function CalendarioEvaluaciones() {
                         </div>
                     ))}
                 </div>
+
+                {/* Empty state — curso seleccionado sin evaluaciones */}
+                {selectedCurso && filteredEvals.length === 0 && (
+                    <div className="absolute inset-0 top-[46px] flex items-center justify-center backdrop-blur-sm bg-white/40">
+                        <div className="text-center space-y-3">
+                            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+                                <CalendarDays className="w-8 h-8 text-red-500" />
+                            </div>
+                            <p className="text-lg font-bold text-red-500">
+                                No existen evaluaciones agendadas
+                            </p>
+                            <p className="text-base font-semibold text-red-400">
+                                en {selectedCurso}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Weeks */}
                 {weeks.map((week, wi) => (
@@ -475,13 +605,13 @@ export default function CalendarioEvaluaciones() {
                                     key={dateStr}
                                     onClick={() => clickable && setSelectedDate(dateStr)}
                                     className={`min-h-[140px] p-3 border-r last:border-r-0 border-eyr-outline-variant/10 group transition-colors flex flex-col gap-1.5
-                                        ${dimmed ? 'bg-slate-50/60' : isPast ? 'bg-slate-50/30' : isToday ? 'bg-indigo-50/50' : 'bg-white'}
-                                        ${clickable ? 'cursor-pointer hover:bg-eyr-primary-container/10' : ''}
+                                        ${dimmed ? 'bg-slate-50/60' : isPast ? 'bg-slate-50/30' : isToday ? 'bg-inst-navy-light/60' : 'bg-white'}
+                                        ${clickable ? 'cursor-pointer hover:bg-inst-navy/10' : ''}
                                     `}
                                 >
                                     {/* Day number */}
                                     <div className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors
-                                        ${isToday ? 'bg-eyr-primary text-white' : dimmed ? 'text-slate-300' : isPast ? 'text-slate-300' : 'text-eyr-on-surface'}
+                                        ${isToday ? 'bg-inst-navy text-white' : dimmed ? 'text-slate-300' : isPast ? 'text-slate-300' : 'text-eyr-on-surface'}
                                     `}>
                                         {dayNum}
                                     </div>
@@ -492,7 +622,7 @@ export default function CalendarioEvaluaciones() {
                                             <button
                                                 key={e.id}
                                                 type="button"
-                                                onClick={(ev) => { ev.stopPropagation(); setSelectedEval(e); }}
+                                                onClick={(ev) => { ev.stopPropagation(); setEvalModal({ type: 'detail', data: e }); }}
                                                 className={`w-full text-left px-3 py-2.5 rounded-xl hover:brightness-90 active:scale-95 transition-all relative ${ASIG_COLORS[e.asignatura] || 'bg-slate-100 text-slate-600'}`}
                                                 title={`${e.curso} · ${e.name}`}
                                             >
@@ -504,7 +634,7 @@ export default function CalendarioEvaluaciones() {
                                             </button>
                                         ))}
                                         {clickable && (
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-eyr-primary/60 text-xs">
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-inst-navy/60 text-xs">
                                                 <Plus className="w-3 h-3" /> Agregar
                                             </div>
                                         )}
@@ -525,6 +655,7 @@ export default function CalendarioEvaluaciones() {
                 ))}
             </div>
 
+            {/* Create modal — calendar day click */}
             <AnimatePresence>
                 {selectedDate && (
                     <CrearEvaluacionModal
@@ -536,6 +667,7 @@ export default function CalendarioEvaluaciones() {
                 )}
             </AnimatePresence>
 
+            {/* Create modal — "Fijar una prueba" button */}
             <AnimatePresence>
                 {showFijar && (
                     <CrearEvaluacionModal
@@ -546,51 +678,47 @@ export default function CalendarioEvaluaciones() {
                 )}
             </AnimatePresence>
 
-            <AnimatePresence>
-                {selectedEval && (
+            {/* Unified eval modals — mode="wait" ensures only one ModalContainer is mounted at a time */}
+            <AnimatePresence mode="wait">
+                {evalModal?.type === 'detail' ? (
                     <EvalDetailModal
-                        eval={selectedEval}
-                        onClose={() => setSelectedEval(null)}
+                        key="detail"
+                        eval={evalModal.data}
+                        onClose={() => setEvalModal(null)}
                         canCRUD={canCRUD}
-                        onEdit={() => { setEditEval(selectedEval); setSelectedEval(null); }}
+                        onEdit={() => setEvalModal({ type: 'edit', data: evalModal.data })}
                         onDelete={async () => {
-                            await deleteEvaluacion(selectedEval.id);
-                            setSelectedEval(null);
+                            await deleteEvaluacion(evalModal.data.id);
+                            setEvalModal(null);
                         }}
                         onApprove={async () => {
-                            await approvePendingChanges(selectedEval.id, selectedEval.pendingChanges);
-                            setSelectedEval(null);
+                            await approvePendingChanges(evalModal.data.id, evalModal.data.pendingChanges);
+                            setEvalModal(null);
                         }}
                         onReject={async () => {
-                            await rejectPendingChanges(selectedEval.id);
-                            setSelectedEval(null);
+                            await rejectPendingChanges(evalModal.data.id);
+                            setEvalModal(null);
                         }}
                     />
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {showEditarFechas && (
+                ) : evalModal?.type === 'list' ? (
                     <EditarFechasModal
+                        key="list"
                         evaluaciones={evaluaciones}
                         user={user}
                         canCRUD={canCRUD}
-                        onEdit={(ev) => setEditEval(ev)}
-                        onClose={() => setShowEditarFechas(false)}
+                        onEdit={(ev) => setEvalModal({ type: 'edit', data: ev })}
+                        onClose={() => setEvalModal(null)}
                     />
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {editEval && (
+                ) : evalModal?.type === 'edit' ? (
                     <CrearEvaluacionModal
-                        onClose={() => setEditEval(null)}
-                        onCreated={() => setEditEval(null)}
+                        key={`edit-${evalModal.data.id}`}
+                        onClose={() => setEvalModal(null)}
+                        onCreated={() => setEvalModal(null)}
                         user={user}
-                        evalId={editEval.id}
-                        initialData={editEval}
+                        evalId={evalModal.data.id}
+                        initialData={evalModal.data}
                     />
-                )}
+                ) : null}
             </AnimatePresence>
         </div>
     );
