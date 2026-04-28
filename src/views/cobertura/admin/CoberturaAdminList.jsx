@@ -581,9 +581,10 @@ function OADetailDrawer({ block, year, onClose }) {
   };
 
   // Ejes colapsados (set de nombres de eje)
-  const [collapsedEjes, setCollapsedEjes] = useState(new Set());
+  // Vacío = todos colapsados por defecto
+  const [expandedEjes, setExpandedEjes] = useState(new Set());
   const toggleCollapseEje = (eje) =>
-    setCollapsedEjes(prev => {
+    setExpandedEjes(prev => {
       const next = new Set(prev);
       next.has(eje) ? next.delete(eje) : next.add(eje);
       return next;
@@ -721,7 +722,7 @@ function OADetailDrawer({ block, year, onClose }) {
                 const checkedCount = ejeCodes.filter(c => pasadoSet.has(c)).length;
                 const allChecked   = checkedCount === ejeCodes.length;
                 const someChecked  = checkedCount > 0 && !allChecked;
-                const isCollapsed  = collapsedEjes.has(eje);
+                const isCollapsed  = !expandedEjes.has(eje);
                 return (
                   <div key={eje}>
                     {/* Header de eje — clic colapsa/expande */}
