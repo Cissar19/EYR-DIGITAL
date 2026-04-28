@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Pencil, GitMerge, CheckCircle2, Clock, AlertTriangle,
   BookOpen, Hash, FlaskConical, Landmark,
-  Dumbbell, Music, Palette, Cpu, X, ChevronRight, Loader2,
+  Dumbbell, Music, Palette, Cpu, X, ChevronRight, ChevronDown, Loader2,
   ArrowRight, Lock
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -580,6 +580,15 @@ function OADetailDrawer({ block, year, onClose }) {
     schedule(buildPayload(next));
   };
 
+  // Ejes colapsados (set de nombres de eje)
+  const [collapsedEjes, setCollapsedEjes] = useState(new Set());
+  const toggleCollapseEje = (eje) =>
+    setCollapsedEjes(prev => {
+      const next = new Set(prev);
+      next.has(eje) ? next.delete(eje) : next.add(eje);
+      return next;
+    });
+
   // Mapa unidad por código (solo complete)
   const unitMap = useMemo(() => {
     const map = {};
@@ -712,37 +721,46 @@ function OADetailDrawer({ block, year, onClose }) {
                 const checkedCount = ejeCodes.filter(c => pasadoSet.has(c)).length;
                 const allChecked   = checkedCount === ejeCodes.length;
                 const someChecked  = checkedCount > 0 && !allChecked;
+                const isCollapsed  = collapsedEjes.has(eje);
                 return (
                   <div key={eje}>
-                    {/* Header de eje */}
+                    {/* Header de eje — clic colapsa/expande */}
                     <div
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl mb-1.5 select-none',
-                        'bg-white border border-slate-100 shadow-sm',
-                        canEdit && 'cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors'
-                      )}
-                      onClick={canEdit ? () => toggleEje(oaList) : undefined}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl mb-1.5 select-none bg-white border border-slate-100 shadow-sm cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                      onClick={() => toggleCollapseEje(eje)}
                     >
+                      {/* Chevron de colapso */}
+                      <span className="text-slate-300 shrink-0 transition-transform duration-200"
+                        style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+                        <ChevronDown size={14} />
+                      </span>
+
                       <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex-1 truncate">
                         {eje === 'Sin eje' ? 'Objetivos de Aprendizaje' : eje}
                       </p>
                       <span className="text-[10px] text-slate-400 font-semibold shrink-0">
                         {checkedCount}/{ejeCodes.length}
                       </span>
+
+                      {/* Checkbox toggle-all — clic independiente del colapso */}
                       {canEdit && (
-                        <div className={cn(
-                          'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
-                          allChecked  ? 'bg-emerald-500 border-emerald-500 shadow-sm' :
-                          someChecked ? 'border-emerald-400 bg-emerald-50' :
-                                        'border-slate-200 bg-white'
-                        )}>
+                        <div
+                          onClick={e => { e.stopPropagation(); toggleEje(oaList); }}
+                          className={cn(
+                            'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                            allChecked  ? 'bg-emerald-500 border-emerald-500 shadow-sm' :
+                            someChecked ? 'border-emerald-400 bg-emerald-50' :
+                                          'border-slate-200 bg-white hover:border-emerald-300'
+                          )}
+                        >
                           {allChecked  && <CheckCircle2 size={10} className="text-white" />}
                           {someChecked && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
                         </div>
                       )}
                     </div>
 
-                    {/* Tarjeta de OAs */}
+                    {/* Tarjeta de OAs — oculta si colapsado */}
+                    {!isCollapsed && (
                     <div className="rounded-xl overflow-hidden border border-slate-100 bg-white shadow-sm">
                       {oaList.map((oa, idx) => {
                         const normalizedCode = normOaCode(oa.codigo);
@@ -807,6 +825,7 @@ function OADetailDrawer({ block, year, onClose }) {
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 );
               })}
