@@ -204,7 +204,7 @@ export const MODULE_REGISTRY = [
         path: '/enfermeria/control-sano',
         category: 'role_specific',
         group: 'enfermeria',
-        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff', 'pie'],
     },
     {
         key: 'ficha_clap',
@@ -213,7 +213,7 @@ export const MODULE_REGISTRY = [
         path: '/enfermeria/ficha-clap',
         category: 'role_specific',
         group: 'enfermeria',
-        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff', 'pie'],
     },
     {
         key: 'atenciones_diarias',
@@ -222,7 +222,7 @@ export const MODULE_REGISTRY = [
         path: '/enfermeria/atenciones-diarias',
         category: 'role_specific',
         group: 'enfermeria',
-        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff', 'pie'],
     },
     {
         key: 'enfermeria_resumen',
@@ -231,7 +231,7 @@ export const MODULE_REGISTRY = [
         path: '/enfermeria/resumen',
         category: 'role_specific',
         group: 'enfermeria',
-        defaultRoles: ['super_admin', 'admin', 'director', 'inspector'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff', 'pie'],
     },
     {
         key: 'stats',

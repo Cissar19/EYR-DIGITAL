@@ -41,6 +41,10 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() in ['utp_head', 'admin', 'super_admin'];
     }
 
+    function isEnfermeria() {
+      return isAuthenticated() && getUserRole() in ['staff', 'pie', 'admin', 'super_admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
+    }
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
@@ -275,27 +279,27 @@ service cloud.firestore {
     // CONTROL SANO (Enfermería)
     // ============================================
     match /control_sano/{docId} {
-      allow read: if isAuthenticated() && isManagement();
-      allow create, update: if isAuthenticated() && isManagement();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow read: if isEnfermeria();
+      allow create, update: if isEnfermeria();
+      allow delete: if isAdmin();
     }
 
     // ============================================
     // ATENCIONES DIARIAS (Enfermería)
     // ============================================
     match /atenciones_diarias/{docId} {
-      allow read: if isAuthenticated() && isManagement();
-      allow create, update: if isAuthenticated() && isManagement();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow read: if isEnfermeria();
+      allow create, update: if isEnfermeria();
+      allow delete: if isAdmin();
     }
 
     // ============================================
     // FICHA CLAP (Enfermería - 4° a 8° Básico)
     // ============================================
     match /ficha_clap/{docId} {
-      allow read: if isAuthenticated() && isManagement();
-      allow create, update: if isAuthenticated() && isManagement();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow read: if isEnfermeria();
+      allow create, update: if isEnfermeria();
+      allow delete: if isAdmin();
     }
 
     // ============================================
