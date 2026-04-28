@@ -3,6 +3,10 @@
  * ───────────────────
  * Lee los OAs oficiales del MINEDUC para un año + curso + asignatura
  * desde la nueva ruta: curriculum/{year}/oas/{gradeSlug}_{subjectSlug}
+ *
+ * Si el año solicitado no tiene datos (ej. 2026 aún no tiene curriculum
+ * subido), hace fallback automático a year-1. El curriculum de MINEDUC
+ * raramente cambia entre años consecutivos.
  */
 
 import { useState, useEffect } from 'react';
@@ -12,6 +16,17 @@ import { GRADE_TO_SLUG, SUBJECT_TO_CURRICULUM_SLUG } from '../lib/coverageConsta
 
 /** Cache en memoria por sesión (evita re-leer docs que no cambian) */
 const cache = new Map();
+
+function parseSnap(snap) {
+  const data = snap.data();
+  return (data.ejes || []).flatMap(eje =>
+    (eje.objetivos || []).map(oa => ({
+      codigo:      oa.codigo      || '',
+      descripcion: oa.descripcion || '',
+      eje:         eje.nombre     || '',
+    }))
+  );
+}
 
 /**
  * @param {number} year
@@ -36,7 +51,7 @@ export function useCurriculumOas(year, grade, subject) {
       return;
     }
 
-    const docId   = `${gradeSlug}_${subjectSlug}`;
+    const docId    = `${gradeSlug}_${subjectSlug}`;
     const cacheKey = `${year}/${docId}`;
 
     if (cache.has(cacheKey)) {
@@ -45,25 +60,23 @@ export function useCurriculumOas(year, grade, subject) {
       return;
     }
 
-    const ref = doc(db, 'curriculum', String(year), 'oas', docId);
+    const ref     = doc(db, 'curriculum', String(year),      'oas', docId);
+    const refPrev = doc(db, 'curriculum', String(year - 1),  'oas', docId);
 
     getDoc(ref)
       .then(snap => {
-        if (!snap.exists()) {
-          setOas([]);
-          cache.set(cacheKey, []);
+        if (snap.exists()) {
+          const result = parseSnap(snap);
+          cache.set(cacheKey, result);
+          setOas(result);
           return;
         }
-        const data = snap.data();
-        const result = (data.ejes || []).flatMap(eje =>
-          (eje.objetivos || []).map(oa => ({
-            codigo:      oa.codigo      || '',
-            descripcion: oa.descripcion || '',
-            eje:         eje.nombre     || '',
-          }))
-        );
-        cache.set(cacheKey, result);
-        setOas(result);
+        // Fallback al año anterior
+        return getDoc(refPrev).then(snapPrev => {
+          const result = snapPrev.exists() ? parseSnap(snapPrev) : [];
+          cache.set(cacheKey, result); // cachear con la clave del año pedido
+          setOas(result);
+        });
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
