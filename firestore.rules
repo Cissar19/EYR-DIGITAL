@@ -37,6 +37,10 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() in ['printer', 'admin', 'super_admin'];
     }
 
+    function isUTP() {
+      return isAuthenticated() && getUserRole() in ['utp_head', 'admin', 'super_admin'];
+    }
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
@@ -400,6 +404,28 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (
         resource.data.createdBy == request.auth.uid || isAdmin()
       );
+    }
+
+    // ============================================
+    // COBERTURA CURRICULAR
+    // ============================================
+    match /schools/{schoolId}/academicYears/{year} {
+      allow read: if isAuthenticated();
+      allow write: if isUTP();
+    }
+
+    match /schools/{schoolId}/academicYears/{year}/coverage/{docId} {
+      allow read: if isAuthenticated();
+      // No permitir writes si el año está cerrado (active == false)
+      allow create, update, delete: if isUTP() &&
+        get(/databases/$(database)/documents/schools/$(schoolId)/academicYears/$(year)).data.get('active', true) != false;
+    }
+
+    // OAs por año (nueva estructura: curriculum/{year}/oas/{oaId})
+    // La regla /curriculum/{docId} cubre los docs planos heredados (lectura legacy).
+    match /curriculum/{year}/oas/{oaId} {
+      allow read: if isAuthenticated();
+      allow write: if isUTP();
     }
   }
 }

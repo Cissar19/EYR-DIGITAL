@@ -26,6 +26,7 @@ import { RetosProvider } from './context/RetosContext.jsx'
 import { TasksProvider } from './context/TasksContext.jsx'
 import { WorkshopsProvider } from './context/WorkshopsContext.jsx'
 import { TodoProvider } from './context/TodoContext.jsx'
+import { AcademicYearProvider } from './context/AcademicYearContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -38,8 +39,9 @@ const DataProviders = ({ children }) => {
   if (loading || !user) return children;
 
   return (
-    <PermissionsProvider>
-      <AdministrativeDaysProvider>
+    <AcademicYearProvider>
+      <PermissionsProvider>
+        <AdministrativeDaysProvider>
         <LabProvider>
           <PrintProvider>
             <TicketProvider>
@@ -79,6 +81,7 @@ const DataProviders = ({ children }) => {
         </LabProvider>
       </AdministrativeDaysProvider>
     </PermissionsProvider>
+    </AcademicYearProvider>
   );
 };
 

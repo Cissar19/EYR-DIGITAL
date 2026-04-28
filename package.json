@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "seed": "node --env-file=.env scripts/seedUsers.js",
     "test:parser": "node scripts/testEvaluacionParser.js",
-    "backup": "node --env-file=.env scripts/backup.js"
+    "backup": "node --env-file=.env scripts/backup.js",
+    "seed:coverage": "node scripts/seed_coverage_2025.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

@@ -4,7 +4,6 @@ import { Menu } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { usePermissions } from './context/PermissionsContext';
-import { getModuleByPath } from './data/moduleRegistry';
 import { cn } from './lib/utils';
 import logoEyr from './assets/logo_eyr.png';
 
@@ -45,6 +44,13 @@ import RetosSesionView from './views/RetosSesionView';
 import RetoAlumnoView from './views/RetoAlumnoView';
 import TasksView from './views/TasksView';
 import TodoView from './views/TodoView';
+import CoberturaDashboard from './views/cobertura/CoberturaDashboard';
+import CoberturaGradeView from './views/cobertura/CoberturaGradeView';
+import CoberturaSubjectView from './views/cobertura/CoberturaSubjectView';
+import CoberturaTeacherView from './views/cobertura/CoberturaTeacherView';
+import CoberturaAdminList from './views/cobertura/admin/CoberturaAdminList';
+import CoberturaEditor from './views/cobertura/admin/CoberturaEditor';
+import CoberturaMigrar from './views/cobertura/admin/CoberturaMigrar';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -128,7 +134,7 @@ const ProtectedLayout = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex bg-slate-50 min-h-screen font-sans text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
       <Sidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
@@ -136,7 +142,7 @@ const ProtectedLayout = () => {
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
-      {/* Mobile Header */}
+      {/* Mobile Header — fixed */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-40 flex items-center px-4 justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -163,22 +169,33 @@ const ProtectedLayout = () => {
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col transition-all duration-300 relative",
+        "flex-1 min-w-0 flex flex-col transition-all duration-300",
         isSidebarCollapsed ? "md:ml-[72px]" : "md:ml-72"
       )}>
-        <div className="hidden md:block">
+        {/* Desktop topbar */}
+        <div className="hidden md:block shrink-0">
           <Topbar />
         </div>
+        {/* Mobile spacer for fixed header */}
+        <div className="md:hidden h-16 shrink-0" />
 
-        <div className="p-4 md:p-10 pt-20 md:pt-10 min-h-screen">
-          <main className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 slide-in-from-bottom-2">
-            <Outlet />
-          </main>
-        </div>
+        {/* Cada ruta maneja su propio overflow */}
+        <Outlet />
       </div>
     </div>
   );
 };
+
+// Layout con padding para todas las rutas normales (no full-bleed)
+const PaddedLayout = () => (
+  <div className="flex-1 overflow-y-auto">
+    <div className="p-4 md:p-10">
+      <main className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 slide-in-from-bottom-2">
+        <Outlet />
+      </main>
+    </div>
+  </div>
+);
 
 // Admin Days Redirect Wrapper
 const AdministrativeDaysView = () => {
@@ -186,6 +203,23 @@ const AdministrativeDaysView = () => {
   if (!user) return null;
   const adminRoles = ['director', 'admin', 'super_admin', 'utp_head', 'inspector'];
   return adminRoles.includes(user.role) ? <AdminDashboard /> : <TeacherDashboard />;
+};
+
+// UTP guard: only utp_head / admin / super_admin can access admin cobertura routes
+const UtpGuard = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return null;
+  if (!['utp_head', 'admin', 'super_admin'].includes(user.role))
+    return <Navigate to="/cobertura" replace />;
+  return children;
+};
+
+// Vista unificada de cobertura: admin para utp/admin, dashboard de lectura para el resto
+const CoberturaPage = () => {
+  const { user } = useAuth();
+  const canManage = ['super_admin', 'admin', 'utp_head'].includes(user?.role);
+  if (canManage) return <CoberturaAdminList />;
+  return <div className="flex-1 overflow-y-auto"><CoberturaDashboard /></div>;
 };
 
 // Permission gate: checks canAccess for a given moduleKey, redirects to / if denied
@@ -215,43 +249,55 @@ export default function App() {
 
         {/* Private Routes */}
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<HomeRedirect />} />
-          <Route path="/tasks" element={<TasksView />} />
-          <Route path="/todo" element={<TodoView />} />
-          <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
-          <Route path="/administrative-days" element={<AdministrativeDaysView />} />
-          <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />
 
-          {/* Placeholders */}
-          <Route path="/schedule" element={<PlaceholderView title="Mi Horario" />} />
-          <Route path="/inventory" element={<InventoryView />} />
-          <Route path="/prints" element={<PrintsView />} />
-          <Route path="/tickets" element={<PermissionGate moduleKey="tickets"><TicketsView /></PermissionGate>} />
-          <Route path="/equipment" element={<EquipmentRequestView />} />
-          <Route path="/admin/schedules" element={<PermissionGate moduleKey="schedules"><ScheduleAdminView /></PermissionGate>} />
-          <Route path="/admin/days-tracking" element={<PermissionGate moduleKey="days_tracking"><AdminDaysTrackingView /></PermissionGate>} />
-          <Route path="/admin/stats" element={<PermissionGate moduleKey="stats"><StatsView /></PermissionGate>} />
-          <Route path="/admin/medical-leaves" element={<PermissionGate moduleKey="medical_leaves"><MedicalLeavesView /></PermissionGate>} />
-          <Route path="/admin/replacements" element={<PermissionGate moduleKey="replacements"><ReplacementLogsView /></PermissionGate>} />
-          <Route path="/admin/teacher-hours" element={<PermissionGate moduleKey="teacher_hours"><TeacherHoursView /></PermissionGate>} />
-          <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
-          <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
-          <Route path="/corrida-escolar" element={<PermissionGate moduleKey="corrida_escolar"><CorridaEscolarView /></PermissionGate>} />
-          <Route path="/retos" element={<PermissionGate moduleKey="retos_admin"><RetosAdminView /></PermissionGate>} />
-          <Route path="/retos/sesion" element={<PermissionGate moduleKey="no_pierde_clases"><RetosSesionView /></PermissionGate>} />
-          <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
-          <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
-          <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
-          <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
-          <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
-          <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
-          <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
-          <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
-          <Route path="/enfermeria/ficha-clap" element={<PermissionGate moduleKey="ficha_clap"><FichaClap /></PermissionGate>} />
-          <Route path="/enfermeria/atenciones-diarias" element={<PermissionGate moduleKey="atenciones_diarias"><AtencionDiariaView /></PermissionGate>} />
-          <Route path="/enfermeria/resumen" element={<PermissionGate moduleKey="enfermeria_resumen"><EnfermeriaResumenView /></PermissionGate>} />
+          {/* ── Cobertura — full-bleed (sin padding wrapper) ── */}
+          <Route path="/cobertura" element={<PermissionGate moduleKey="cobertura"><CoberturaPage /></PermissionGate>} />
+          <Route path="/cobertura/dashboard" element={<Navigate to="/cobertura" replace />} />
 
-          <Route path="/settings" element={<Settings />} />
+          {/* ── Todas las demás rutas — con padding estándar ── */}
+          <Route element={<PaddedLayout />}>
+            <Route path="/" element={<HomeRedirect />} />
+            <Route path="/tasks" element={<TasksView />} />
+            <Route path="/todo" element={<TodoView />} />
+            <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
+            <Route path="/administrative-days" element={<AdministrativeDaysView />} />
+            <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />
+            <Route path="/schedule" element={<PlaceholderView title="Mi Horario" />} />
+            <Route path="/inventory" element={<InventoryView />} />
+            <Route path="/prints" element={<PrintsView />} />
+            <Route path="/tickets" element={<PermissionGate moduleKey="tickets"><TicketsView /></PermissionGate>} />
+            <Route path="/equipment" element={<EquipmentRequestView />} />
+            <Route path="/admin/schedules" element={<PermissionGate moduleKey="schedules"><ScheduleAdminView /></PermissionGate>} />
+            <Route path="/admin/days-tracking" element={<PermissionGate moduleKey="days_tracking"><AdminDaysTrackingView /></PermissionGate>} />
+            <Route path="/admin/stats" element={<PermissionGate moduleKey="stats"><StatsView /></PermissionGate>} />
+            <Route path="/admin/medical-leaves" element={<PermissionGate moduleKey="medical_leaves"><MedicalLeavesView /></PermissionGate>} />
+            <Route path="/admin/replacements" element={<PermissionGate moduleKey="replacements"><ReplacementLogsView /></PermissionGate>} />
+            <Route path="/admin/teacher-hours" element={<PermissionGate moduleKey="teacher_hours"><TeacherHoursView /></PermissionGate>} />
+            <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
+            <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
+            <Route path="/corrida-escolar" element={<PermissionGate moduleKey="corrida_escolar"><CorridaEscolarView /></PermissionGate>} />
+            <Route path="/retos" element={<PermissionGate moduleKey="retos_admin"><RetosAdminView /></PermissionGate>} />
+            <Route path="/retos/sesion" element={<PermissionGate moduleKey="no_pierde_clases"><RetosSesionView /></PermissionGate>} />
+            <Route path="/admin/permissions" element={<PermissionGate moduleKey="permissions"><PermissionsManager /></PermissionGate>} />
+            <Route path="/inspectoria/justificativos" element={<PermissionGate moduleKey="justificatives"><JustificativesView /></PermissionGate>} />
+            <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
+            <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
+            <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
+            <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
+            <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
+            <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
+            <Route path="/enfermeria/ficha-clap" element={<PermissionGate moduleKey="ficha_clap"><FichaClap /></PermissionGate>} />
+            <Route path="/enfermeria/atenciones-diarias" element={<PermissionGate moduleKey="atenciones_diarias"><AtencionDiariaView /></PermissionGate>} />
+            <Route path="/enfermeria/resumen" element={<PermissionGate moduleKey="enfermeria_resumen"><EnfermeriaResumenView /></PermissionGate>} />
+            <Route path="/cobertura/curso/:grade" element={<CoberturaGradeView />} />
+            <Route path="/cobertura/asignatura/:subject" element={<CoberturaSubjectView />} />
+            <Route path="/cobertura/docente/:teacherId" element={<CoberturaTeacherView />} />
+            <Route path="/cobertura/docente" element={<CoberturaTeacherView />} />
+            <Route path="/admin/cobertura/:coverageId/edit" element={<UtpGuard><CoberturaEditor /></UtpGuard>} />
+            <Route path="/admin/cobertura/migrar/:coverageId" element={<UtpGuard><CoberturaMigrar /></UtpGuard>} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+
         </Route>
 
         {/* Catch-all */}
