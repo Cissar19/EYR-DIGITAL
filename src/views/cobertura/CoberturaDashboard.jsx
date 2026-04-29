@@ -28,6 +28,23 @@ function buildSubjectChart(data) {
     .filter(Boolean);
 }
 
+function buildTeacherChart(data) {
+  const map = {};
+  data.forEach(b => {
+    if (!b.teacherId) return;
+    if (!map[b.teacherId]) map[b.teacherId] = { name: b.teacherName ?? b.teacherId, total: 0, count: 0 };
+    map[b.teacherId].total += blockPct(b);
+    map[b.teacherId].count++;
+  });
+  return Object.values(map)
+    .map(t => {
+      const parts = t.name.trim().split(/\s+/);
+      const label = parts.length >= 2 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+      return { label, fullName: t.name, pct: t.total / t.count };
+    })
+    .sort((a, b) => b.pct - a.pct);
+}
+
 function buildGradeChart(data) {
   return GRADE_ORDER
     .map(g => {
@@ -58,8 +75,9 @@ export default function CoberturaDashboard() {
     return data.reduce((acc, b) => acc + blockPct(b), 0) / data.length;
   }, [data]);
 
-  const bySubjectChart = useMemo(() => buildSubjectChart(data), [data]);
-  const byGradeChart   = useMemo(() => buildGradeChart(data),   [data]);
+  const bySubjectChart  = useMemo(() => buildSubjectChart(data),  [data]);
+  const byGradeChart    = useMemo(() => buildGradeChart(data),    [data]);
+  const byTeacherChart  = useMemo(() => buildTeacherChart(data),  [data]);
 
   const prevBySubjectChart = useMemo(
     () => showCompare && !prevLoading ? buildSubjectChart(prevData) : null,
@@ -67,6 +85,10 @@ export default function CoberturaDashboard() {
   );
   const prevByGradeChart = useMemo(
     () => showCompare && !prevLoading ? buildGradeChart(prevData) : null,
+    [showCompare, prevData, prevLoading]
+  );
+  const prevByTeacherChart = useMemo(
+    () => showCompare && !prevLoading ? buildTeacherChart(prevData) : null,
     [showCompare, prevData, prevLoading]
   );
 
@@ -172,6 +194,26 @@ export default function CoberturaDashboard() {
               />
             </div>
           </div>
+
+          {/* Gráfico por docente */}
+          {byTeacherChart.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={16} className="text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-700">Promedio por docente</h2>
+                {showCompare && (
+                  <ComparisonLegend currentYear={year} prevYear={prevYear} />
+                )}
+              </div>
+              <CoverageBarChart
+                data={byTeacherChart}
+                prevData={prevByTeacherChart}
+                height={220}
+                currentYear={year}
+                prevYear={prevYear}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

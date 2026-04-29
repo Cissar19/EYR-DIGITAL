@@ -1,24 +1,41 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, BarChart2 } from 'lucide-react';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useCoverageByGrade } from '../../hooks/useCoverage';
 import CoverageCard from '../../components/coverage/CoverageCard';
+import CoverageBarChart from '../../components/coverage/CoverageBarChart';
 import YearSelector from '../../components/coverage/YearSelector';
-import { GRADE_LABELS, SUBJECT_ORDER } from '../../lib/coverageConstants';
+import { GRADE_LABELS, SUBJECT_ORDER, SUBJECT_LABELS } from '../../lib/coverageConstants';
 import { getPorcentajeFallback, getPorcentajeLegacy } from '../../lib/coverageMath';
+
+function blockPct(b) {
+  return b.migrationStatus === 'complete'
+    ? getPorcentajeFallback(b.unitTracking, b.excelTotalBasales)
+    : getPorcentajeLegacy(b.legacyOaStatus, b.excelTotalBasales);
+}
 
 export default function CoberturaGradeView() {
   const { grade } = useParams();
   const { year } = useAcademicYear();
   const { data, loading, error } = useCoverageByGrade(year, grade);
 
-  // Ordenar por SUBJECT_ORDER
-  const sorted = [...data].sort(
-    (a, b) => SUBJECT_ORDER.indexOf(a.subject) - SUBJECT_ORDER.indexOf(b.subject)
+  const gradeLabel = GRADE_LABELS[grade] ?? grade;
+
+  const sorted = useMemo(() =>
+    [...data].sort(
+      (a, b) => SUBJECT_ORDER.indexOf(a.subject) - SUBJECT_ORDER.indexOf(b.subject)
+    ),
+    [data]
   );
 
-  const gradeLabel = GRADE_LABELS[grade] ?? grade;
+  const chartData = useMemo(() =>
+    sorted.map(b => ({
+      label: SUBJECT_LABELS[b.subject] ?? b.subject,
+      pct: blockPct(b),
+    })),
+    [sorted]
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6 animate-fade-in-up">
@@ -41,6 +58,17 @@ export default function CoberturaGradeView() {
 
       {/* Resumen rápido */}
       {!loading && data.length > 0 && <GradeSummary blocks={data} />}
+
+      {/* Gráfico por asignatura */}
+      {!loading && chartData.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart2 size={16} className="text-slate-400" />
+            <h2 className="text-sm font-semibold text-slate-700">% cobertura por asignatura</h2>
+          </div>
+          <CoverageBarChart data={chartData} height={200} />
+        </div>
+      )}
 
       {/* Grid de cards */}
       {loading ? (

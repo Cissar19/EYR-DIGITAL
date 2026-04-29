@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, User } from 'lucide-react';
+import { ChevronLeft, User, BarChart2 } from 'lucide-react';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useAuth } from '../../context/AuthContext';
 import { useCoverageByTeacher } from '../../hooks/useCoverage';
 import CoverageCard from '../../components/coverage/CoverageCard';
+import CoverageBarChart from '../../components/coverage/CoverageBarChart';
 import YearSelector from '../../components/coverage/YearSelector';
-import { GRADE_ORDER, SUBJECT_ORDER, GRADE_LABELS } from '../../lib/coverageConstants';
+import { GRADE_ORDER, SUBJECT_ORDER, GRADE_LABELS, SUBJECT_LABELS } from '../../lib/coverageConstants';
+import { getPorcentajeFallback, getPorcentajeLegacy } from '../../lib/coverageMath';
+
+function blockPct(b) {
+  return b.migrationStatus === 'complete'
+    ? getPorcentajeFallback(b.unitTracking, b.excelTotalBasales)
+    : getPorcentajeLegacy(b.legacyOaStatus, b.excelTotalBasales);
+}
 
 export default function CoberturaTeacherView() {
   const { teacherId: paramTeacherId } = useParams();
@@ -33,6 +41,32 @@ export default function CoberturaTeacherView() {
     return acc;
   }, {});
 
+  // Gráfico por asignatura (promedio entre cursos)
+  const bySubjectChart = useMemo(() =>
+    SUBJECT_ORDER
+      .map(s => {
+        const blocks = data.filter(b => b.subject === s);
+        if (!blocks.length) return null;
+        const avg = blocks.reduce((acc, b) => acc + blockPct(b), 0) / blocks.length;
+        return { label: SUBJECT_LABELS[s] ?? s, pct: avg };
+      })
+      .filter(Boolean),
+    [data]
+  );
+
+  // Gráfico por curso (promedio entre asignaturas)
+  const byGradeChart = useMemo(() =>
+    GRADE_ORDER
+      .map(g => {
+        const blocks = data.filter(b => b.grade === g);
+        if (!blocks.length) return null;
+        const avg = blocks.reduce((acc, b) => acc + blockPct(b), 0) / blocks.length;
+        return { label: GRADE_LABELS[g] ?? g, pct: avg };
+      })
+      .filter(Boolean),
+    [data]
+  );
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -56,6 +90,30 @@ export default function CoberturaTeacherView() {
         </div>
         <YearSelector />
       </div>
+
+      {/* Gráficos resumen */}
+      {!loading && sorted.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {bySubjectChart.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={16} className="text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-700">Por asignatura</h2>
+              </div>
+              <CoverageBarChart data={bySubjectChart} height={180} />
+            </div>
+          )}
+          {byGradeChart.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={16} className="text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-700">Por curso</h2>
+              </div>
+              <CoverageBarChart data={byGradeChart} height={180} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bloques por curso */}
       {loading ? (
