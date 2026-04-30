@@ -75,6 +75,7 @@ export function useCurriculumOas(year, grade, subject) {
   const [error,   setError]   = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!year || !grade || !subject) { setLoading(false); return; }
 
     const gradeSlug   = GRADE_TO_SLUG[grade];
@@ -127,4 +128,63 @@ export function useCurriculumOas(year, grade, subject) {
   }, [year, grade, subject]);
 
   return { oas, loading, error };
+}
+
+/**
+ * Carga los OAs del currículum para todos los subjects de un grado en paralelo.
+ * Reutiliza la caché de useCurriculumOas para evitar lecturas duplicadas.
+ *
+ * @param {number} year
+ * @param {string} grade    - ej. "5A"
+ * @param {string[]} subjects - slugs de asignatura presentes en el grado
+ * @returns {{ oasBySubject: Record<string, {codigo,descripcion,eje}[]>, loading: boolean }}
+ */
+export function useCurriculumOasForGrade(year, grade, subjects) {
+  const subjectsKey = subjects.slice().sort().join(',');
+  const [oasBySubject, setOasBySubject] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!year || !grade || !subjects.length) { setLoading(false); return; }
+    const gradeSlug = GRADE_TO_SLUG[grade];
+    if (!gradeSlug) { setLoading(false); return; }
+
+    let cancelled = false;
+    setLoading(true);
+
+    Promise.all(subjects.map(async subject => {
+      const subjectSlug = SUBJECT_TO_CURRICULUM_SLUG[subject] ?? subject;
+      const docId       = `${gradeSlug}_${subjectSlug}`;
+      const key         = `${year}/${docId}`;
+
+      if (oaCache.has(key)) return [subject, oaCache.get(key)];
+
+      const effectiveYear = await resolveYear(year, docId);
+      const fallbackKey   = `${effectiveYear}/${docId}`;
+
+      if (oaCache.has(fallbackKey)) {
+        const r = oaCache.get(fallbackKey);
+        oaCache.set(key, r);
+        return [subject, r];
+      }
+
+      const snap   = await getDoc(doc(db, 'curriculum', String(effectiveYear), 'oas', docId));
+      const parsed = snap.exists() ? parseSnap(snap) : [];
+      oaCache.set(fallbackKey, parsed);
+      oaCache.set(key, parsed);
+      return [subject, parsed];
+    }))
+      .then(entries => {
+        if (!cancelled) {
+          setOasBySubject(Object.fromEntries(entries));
+          setLoading(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, grade, subjectsKey]);
+
+  return { oasBySubject, loading };
 }

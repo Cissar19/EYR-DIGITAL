@@ -323,21 +323,34 @@ export default function CoberturaAdminList() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden relative">
+    <div className="flex-1 flex flex-col overflow-hidden">
+
+      {/* ── Header de página ── */}
+      <div className="shrink-0 px-8 py-4 border-b border-eyr-outline-variant/10 bg-white flex items-center gap-3">
+        <div className="p-2.5 bg-inst-navy/20 rounded-xl shrink-0">
+          <BookOpen className="w-6 h-6 text-inst-navy" />
+        </div>
+        <div className="flex-1">
+          <h1 className="text-2xl font-headline font-extrabold tracking-tight text-eyr-on-surface">Cobertura Curricular</h1>
+          <p className="text-sm text-eyr-on-variant">Avance de OAs por curso y asignatura — {year}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
 
       {/* ── Sidebar de cursos/docentes ── */}
       <aside className="w-56 shrink-0 bg-white border-r border-slate-100 flex flex-col overflow-y-auto">
         {/* Header sidebar */}
         <div className="px-4 pt-5 pb-3 border-b border-slate-100 space-y-2">
           {/* Tabs Cursos / Docentes */}
-          <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-0.5">
+          <div className="flex items-center gap-0.5 bg-eyr-surface-high rounded-xl p-0.5">
             <button
               onClick={() => setSidebarMode('cursos')}
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
                 sidebarMode === 'cursos'
-                  ? 'bg-white text-slate-700 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'bg-inst-navy text-white shadow-sm'
+                  : 'text-eyr-on-variant hover:text-eyr-on-surface'
               )}
             >
               <GraduationCap size={12} /> Cursos
@@ -347,8 +360,8 @@ export default function CoberturaAdminList() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
                 sidebarMode === 'docentes'
-                  ? 'bg-white text-slate-700 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'bg-inst-navy text-white shadow-sm'
+                  : 'text-eyr-on-variant hover:text-eyr-on-surface'
               )}
             >
               <Users size={12} /> Docentes
@@ -406,18 +419,18 @@ export default function CoberturaAdminList() {
                   className={cn(
                     'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-l-[3px]',
                     isActive
-                      ? 'bg-indigo-50 border-indigo-500'
+                      ? 'bg-inst-navy/10 border-inst-navy'
                       : 'border-transparent hover:bg-slate-50'
                   )}
                 >
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
-                    isActive ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500'
+                    isActive ? 'bg-inst-navy text-white' : 'bg-slate-100 text-slate-500'
                   )}>
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-xs font-semibold truncate', isActive ? 'text-indigo-700' : 'text-slate-600')}>
+                    <p className={cn('text-xs font-semibold truncate', isActive ? 'text-inst-navy' : 'text-slate-600')}>
                       {t.name}
                     </p>
                     <div className="flex items-center gap-1 mt-0.5">
@@ -425,7 +438,7 @@ export default function CoberturaAdminList() {
                     </div>
                     <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className={cn('h-full rounded-full transition-all', isActive ? 'bg-indigo-400' : 'bg-slate-300')}
+                        className={cn('h-full rounded-full transition-all', isActive ? 'bg-inst-navy' : 'bg-slate-300')}
                         style={{ width: `${t.pct * 100}%` }}
                       />
                     </div>
@@ -482,7 +495,7 @@ export default function CoberturaAdminList() {
       </aside>
 
       {/* ── Panel principal ── */}
-      <main className="flex-1 overflow-y-auto bg-slate-50/60">
+      <main className="flex-1 overflow-y-auto bg-eyr-surface-low/40">
         {loading ? (
           <SkeletonMain />
         ) : error ? (
@@ -497,22 +510,22 @@ export default function CoberturaAdminList() {
           ) : (
             <>
               {/* Header docente */}
-              <div className="px-8 py-6 border-b bg-gradient-to-br from-indigo-50 to-slate-50 border-indigo-100">
+              <div className="px-8 py-6 border-b bg-inst-navy/5 border-inst-navy/10">
                 <div className="flex flex-wrap items-center justify-between gap-y-3">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center text-white text-xl font-black shrink-0">
+                    <div className="w-14 h-14 rounded-2xl bg-inst-navy flex items-center justify-center text-white text-xl font-black shrink-0">
                       {activeTeacher.name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
                     </div>
                     <div>
-                      <h1 className="text-xl font-bold text-indigo-700">{activeTeacher.name}</h1>
-                      <p className="text-sm text-slate-400">
+                      <h1 className="text-xl font-headline font-bold text-inst-navy">{activeTeacher.name}</h1>
+                      <p className="text-sm text-eyr-on-variant">
                         {activeTeacher.blockCount} asignaturas · {activeTeacher.gradeCount} cursos · {year}
                       </p>
                     </div>
                   </div>
                   {activeTeacherStats && (
                     <div className="flex items-center gap-4">
-                      <KpiMini label="OA pasados"    value={activeTeacherStats.pasados}    color="text-indigo-600" />
+                      <KpiMini label="OA pasados"    value={activeTeacherStats.pasados}    color="text-inst-navy" />
                       <KpiMini label="OA pendientes" value={activeTeacherStats.pendientes} color="text-amber-600" />
                       <KpiMini label="Logro" value={activeTeacherStats.pct * 100} suffix="%"
                         color={getCoverageLevel(activeTeacherStats.pct) === 'green' ? 'text-emerald-600' : getCoverageLevel(activeTeacherStats.pct) === 'yellow' ? 'text-amber-600' : 'text-rose-600'}
@@ -527,19 +540,19 @@ export default function CoberturaAdminList() {
                 <div className="px-8 pt-6 pb-0">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {teacherBySubjectChart.length > 0 && (
-                      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                      <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-sm p-5">
                         <div className="flex items-center gap-2 mb-3">
-                          <BarChart2 size={15} className="text-slate-400" />
-                          <h3 className="text-xs font-semibold text-slate-600">Por asignatura</h3>
+                          <BarChart2 size={15} className="text-inst-navy/50" />
+                          <h3 className="text-xs font-semibold text-eyr-on-variant">Por asignatura</h3>
                         </div>
                         <CoverageBarChart data={teacherBySubjectChart} height={150} />
                       </div>
                     )}
                     {teacherByGradeChart.length > 0 && (
-                      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                      <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-sm p-5">
                         <div className="flex items-center gap-2 mb-3">
-                          <BarChart2 size={15} className="text-slate-400" />
-                          <h3 className="text-xs font-semibold text-slate-600">Por curso</h3>
+                          <BarChart2 size={15} className="text-inst-navy/50" />
+                          <h3 className="text-xs font-semibold text-eyr-on-variant">Por curso</h3>
                         </div>
                         <CoverageBarChart data={teacherByGradeChart} height={150} />
                       </div>
@@ -568,23 +581,23 @@ export default function CoberturaAdminList() {
                     {GRADE_LABELS[activeGrade]}
                   </span>
                   <div>
-                    <h1 className={cn('text-xl font-bold', gc.text)}>
+                    <h1 className={cn('text-xl font-headline font-bold', gc.text)}>
                       {GRADE_FULL_LABELS[activeGrade]}
                     </h1>
-                    <p className="text-sm text-slate-400">{activeBlocks.length} asignaturas · {year}</p>
+                    <p className="text-sm text-eyr-on-variant">{activeBlocks.length} asignaturas · {year}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
                   {/* Toggle Vista */}
-                  <div className="flex items-center bg-white border border-slate-200 rounded-xl p-0.5 shadow-sm">
+                  <div className="flex items-center bg-eyr-surface-high rounded-xl p-0.5">
                     <button
                       onClick={() => setViewMode('general')}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
                         viewMode === 'general'
-                          ? 'bg-slate-800 text-white shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-inst-navy text-white shadow-sm'
+                          : 'text-eyr-on-variant hover:text-eyr-on-surface'
                       )}
                     >
                       Vista General
@@ -595,7 +608,7 @@ export default function CoberturaAdminList() {
                         'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
                         viewMode === 'basal'
                           ? 'bg-amber-500 text-white shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
+                          : 'text-eyr-on-variant hover:text-eyr-on-surface'
                       )}
                     >
                       Vista Basal
@@ -605,7 +618,7 @@ export default function CoberturaAdminList() {
                   {/* KPIs del curso */}
                   {gradeStats && (
                     <div className="flex items-center gap-4">
-                      <KpiMini label="OA pasados"    value={gradeStats.pasados}          color={gc.text} />
+                      <KpiMini label="OA pasados"    value={gradeStats.pasados}          color="text-inst-navy" />
                       <KpiMini label="OA pendientes" value={gradeStats.pendientes}        color="text-amber-600" />
                       <KpiMini label="Logro"         value={gradeStats.pct * 100} suffix="%"
                         color={getCoverageLevel(gradeStats.pct) === 'green' ? 'text-emerald-600' : getCoverageLevel(gradeStats.pct) === 'yellow' ? 'text-amber-600' : 'text-rose-600'}
@@ -620,10 +633,10 @@ export default function CoberturaAdminList() {
             {/* Gráfico por asignatura */}
             {activeGradeChartData.length > 0 && (
               <div className="px-8 pt-6 pb-0">
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-3">
-                    <BarChart2 size={15} className="text-slate-400" />
-                    <h3 className="text-xs font-semibold text-slate-600">% logro por asignatura</h3>
+                    <BarChart2 size={15} className="text-inst-navy/50" />
+                    <h3 className="text-xs font-semibold text-eyr-on-variant">% logro por asignatura</h3>
                   </div>
                   <CoverageBarChart data={activeGradeChartData} height={160} />
                 </div>
@@ -647,7 +660,7 @@ export default function CoberturaAdminList() {
               {/* Asignaturas faltantes */}
               {!isClosed && ['super_admin', 'admin', 'utp_head'].includes(user?.role) && missingSubjects.length > 0 && (
                 <div className="mt-6">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  <p className="text-xs font-semibold text-eyr-on-variant uppercase tracking-widest mb-3">
                     Asignaturas sin datos
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -656,7 +669,7 @@ export default function CoberturaAdminList() {
                         <button
                           onClick={() => handleCreateBlock(s)}
                           disabled={creatingSubject}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-l-xl border border-dashed border-slate-300 text-slate-500 text-xs font-medium hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-l-xl border border-dashed border-slate-300 text-slate-500 text-xs font-medium hover:border-inst-navy hover:text-inst-navy hover:bg-inst-navy/5 transition-all disabled:opacity-40"
                           title={`Crear solo para ${GRADE_LABELS[activeGrade]}`}
                         >
                           <Plus size={11} />
@@ -689,6 +702,7 @@ export default function CoberturaAdminList() {
           onClose={() => setDrawerBlock(null)}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -718,9 +732,9 @@ function AnimatedNumber({ value, suffix = '', className }) {
 /* ─── KPI mini (header) ──────────────────────────────────────────────────── */
 function KpiMini({ label, value, suffix = '', color, highlight }) {
   return (
-    <div className={cn('text-center', highlight && 'bg-white rounded-xl px-4 py-2 shadow-sm border border-slate-100')}>
+    <div className={cn('text-center', highlight && 'bg-white rounded-xl px-4 py-2 shadow-sm border border-eyr-outline-variant/10')}>
       <AnimatedNumber value={value} suffix={suffix} className={cn('text-2xl font-bold', color)} />
-      <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+      <p className="text-xs text-eyr-on-variant mt-0.5">{label}</p>
     </div>
   );
 }
@@ -1179,7 +1193,7 @@ function OADetailDrawer({ block, year, onClose }) {
           </div>
 
           {/* ── Lista de OAs (flat, 2 columnas) ── */}
-          <div className="flex-1 overflow-y-auto bg-slate-50/60">
+          <div className="flex-1 overflow-y-auto bg-eyr-surface-low/40">
             {loading ? (
               <div className="flex items-center justify-center py-20 text-slate-400">
                 <Loader2 size={20} className="animate-spin mr-2" /> Cargando OAs…
@@ -1250,7 +1264,7 @@ function OADetailDrawer({ block, year, onClose }) {
                               {normalizedCode}
                             </span>
                             {oa.eje && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-eyr-surface-high text-eyr-on-variant font-medium">
                                 {oa.eje}
                               </span>
                             )}

@@ -431,5 +431,39 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isUTP();
     }
+
+    // ============================================
+    // AGENDA SEMANAL (UTP)
+    // ============================================
+    match /agenda_semanal/{entryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || isUTP();
+    }
+
+    match /agenda_noticias/{notId} {
+      allow read: if isAuthenticated();
+      // El docente solo puede crear noticias bajo su propio uid
+      allow create: if isAuthenticated() &&
+        request.resource.data.docenteId == request.auth.uid;
+      // El docente edita/borra las suyas; admin/UTP puede borrar cualquiera
+      allow update, delete: if isAuthenticated() && (
+        resource.data.docenteId == request.auth.uid ||
+        isAdmin() || isUTP()
+      );
+    }
+
+    // ============================================
+    // AGENDA CONTENIDO (llenada por el docente)
+    // ============================================
+    match /agenda_contenido/{docId} {
+      allow read: if isAuthenticated();
+      // El docente solo escribe documentos bajo su propio uid
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.docenteId == request.auth.uid;
+      allow delete: if isAuthenticated() && (
+        resource.data.docenteId == request.auth.uid ||
+        isAdmin() || isUTP()
+      );
+    }
   }
 }

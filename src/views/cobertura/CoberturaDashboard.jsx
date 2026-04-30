@@ -96,9 +96,14 @@ export default function CoberturaDashboard() {
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-fade-in-up">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-eyr-on-surface">Cobertura Curricular</h1>
-          <p className="text-sm text-slate-500">Resumen global — {year}</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-inst-navy/20 rounded-xl shrink-0">
+            <LayoutGrid className="w-6 h-6 text-inst-navy" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-headline font-extrabold tracking-tight text-eyr-on-surface">Cobertura Curricular</h1>
+            <p className="text-sm text-eyr-on-variant">Resumen global — {year}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {prevYear != null && !loading && data.length > 0 && (
@@ -151,20 +156,20 @@ export default function CoberturaDashboard() {
           <KpiRow data={data} globalAvg={globalAvg} />
 
           {/* Grid principal */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+          <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <LayoutGrid size={16} className="text-slate-400" />
-              <h2 className="text-sm font-semibold text-slate-700">Mapa de cobertura</h2>
+              <LayoutGrid size={16} className="text-inst-navy/50" />
+              <h2 className="text-sm font-semibold text-eyr-on-surface">Mapa de cobertura</h2>
             </div>
             <CoverageGrid blocks={data} />
           </div>
 
           {/* Gráficos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+            <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-card p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={16} className="text-slate-400" />
-                <h2 className="text-sm font-semibold text-slate-700">Promedio por asignatura</h2>
+                <BarChart2 size={16} className="text-inst-navy/50" />
+                <h2 className="text-sm font-semibold text-eyr-on-surface">Promedio por asignatura</h2>
                 {showCompare && (
                   <ComparisonLegend currentYear={year} prevYear={prevYear} />
                 )}
@@ -177,10 +182,10 @@ export default function CoberturaDashboard() {
                 prevYear={prevYear}
               />
             </div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+            <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-card p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={16} className="text-slate-400" />
-                <h2 className="text-sm font-semibold text-slate-700">Promedio por curso</h2>
+                <BarChart2 size={16} className="text-inst-navy/50" />
+                <h2 className="text-sm font-semibold text-eyr-on-surface">Promedio por curso</h2>
                 {showCompare && (
                   <ComparisonLegend currentYear={year} prevYear={prevYear} />
                 )}
@@ -197,10 +202,10 @@ export default function CoberturaDashboard() {
 
           {/* Gráfico por docente */}
           {byTeacherChart.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+            <div className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-card p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={16} className="text-slate-400" />
-                <h2 className="text-sm font-semibold text-slate-700">Promedio por docente</h2>
+                <BarChart2 size={16} className="text-inst-navy/50" />
+                <h2 className="text-sm font-semibold text-eyr-on-surface">Promedio por docente</h2>
                 {showCompare && (
                   <ComparisonLegend currentYear={year} prevYear={prevYear} />
                 )}
@@ -247,9 +252,9 @@ function KpiRow({ data, globalAvg }) {
         { label: 'Con datos por unidad', value: complete, color: 'text-emerald-600' },
         { label: 'Pendientes migración', value: pending, color: pending > 0 ? 'text-amber-600' : 'text-slate-700' },
       ].map(({ label, value, color }) => (
-        <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-card px-5 py-4">
+        <div key={label} className="bg-white rounded-2xl border border-eyr-outline-variant/10 shadow-card px-5 py-4">
           <p className={cn('text-2xl font-bold', color ?? 'text-eyr-primary')}>{value}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+          <p className="text-xs text-eyr-on-variant mt-0.5">{label}</p>
         </div>
       ))}
     </div>

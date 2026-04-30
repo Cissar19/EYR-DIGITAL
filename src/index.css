@@ -46,6 +46,28 @@
   scrollbar-width: none;
 }
 
+/* ── Calendario Evaluaciones — animated background keyframes ── */
+@keyframes calDriftA {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-120px, -120px, 0); }
+}
+@keyframes calDriftB {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(200px, -100px, 0); }
+}
+@keyframes calFloatA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-40px, 60px) scale(1.1); }
+}
+@keyframes calFloatB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(60px, -40px) scale(1.05); }
+}
+@keyframes calFloatC {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(80px, -30px) scale(1.15); }
+}
+
 /* Animation utilities matching the "Premium" feel */
 .scan-line-shadow {
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);

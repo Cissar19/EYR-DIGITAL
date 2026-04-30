@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare, CalendarDays, BookMarked
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare, CalendarDays, BookMarked, CalendarRange
 } from 'lucide-react';
 
 /**
@@ -175,6 +175,15 @@ export const MODULE_REGISTRY = [
         name: 'Calendario Evaluaciones',
         icon: CalendarDays,
         path: '/utp/calendario',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+    },
+    {
+        key: 'utp_agenda',
+        name: 'Agenda Semanal',
+        icon: CalendarRange,
+        path: '/utp/agenda',
         category: 'role_specific',
         group: 'utp',
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],

@@ -34,6 +34,7 @@ import EntrevistasView from './views/EntrevistasView';
 import UTPView from './utp/UTPView';
 import EditorFormato from './utp/EditorFormato';
 import CalendarioEvaluaciones from './utp/CalendarioEvaluaciones';
+import AgendaSemanal from './utp/AgendaSemanal';
 import ControlSanoView from './views/ControlSanoView';
 import FichaClap from './views/FichaClap';
 import AtencionDiariaView from './views/AtencionDiariaView';
@@ -254,6 +255,12 @@ export default function App() {
           <Route path="/cobertura" element={<PermissionGate moduleKey="cobertura"><CoberturaPage /></PermissionGate>} />
           <Route path="/cobertura/dashboard" element={<Navigate to="/cobertura" replace />} />
 
+          {/* ── Agenda Semanal — full-bleed (sin padding wrapper) ── */}
+          <Route path="/utp/agenda" element={<PermissionGate moduleKey="utp_agenda"><AgendaSemanal /></PermissionGate>} />
+
+          {/* ── Calendario de Evaluaciones — full-bleed (fondo animado propio) ── */}
+          <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
+
           {/* ── Todas las demás rutas — con padding estándar ── */}
           <Route element={<PaddedLayout />}>
             <Route path="/" element={<HomeRedirect />} />
@@ -283,7 +290,7 @@ export default function App() {
             <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
             <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
             <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
-            <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
+            {/* utp/calendario moved to full-bleed above */}
             <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
             <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />
             <Route path="/enfermeria/ficha-clap" element={<PermissionGate moduleKey="ficha_clap"><FichaClap /></PermissionGate>} />
