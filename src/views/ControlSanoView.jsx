@@ -207,16 +207,13 @@ export default function ControlSanoView() {
 
     const isEditing = !!editingRegistro;
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!deleteConfirm) return;
-        try {
-            await removeDocument('control_sano', deleteConfirm.id);
-            toast.success('Ficha eliminada');
-        } catch (err) {
-            toast.error(err?.message || 'Error al eliminar');
-        } finally {
-            setDeleteConfirm(null);
-        }
+        const id = deleteConfirm.id;
+        setDeleteConfirm(null);
+        removeDocument('control_sano', id)
+            .then(() => toast.success('Ficha eliminada'))
+            .catch(err => toast.error(err?.message || 'Error al eliminar'));
     };
 
     const handleAddStudent = async () => {

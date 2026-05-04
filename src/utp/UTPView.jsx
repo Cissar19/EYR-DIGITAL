@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { GraduationCap, Plus, Search, X, ChevronDown, ChevronUp, Trash2, Calendar, ArrowLeft, SlidersHorizontal, ClipboardList, BarChart3, BookOpen, TrendingUp, ListChecks, ExternalLink, CheckCircle2, XCircle, Clock, Send, ShieldCheck, MessageSquare, Users, FileQuestion, FileText, Loader2, ScanEye, Copy, Table2, Map, ClipboardCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth, canEdit, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import { ASIGNATURAS, CURSOS } from '../data/objetivosAprendizaje';
@@ -98,23 +98,6 @@ export default function UTPView() {
         return list;
     }, [evaluaciones, user, userIsManagement, search, filterCurso, filterAsignatura]);
 
-    // Group evaluaciones by curso+asignatura for card view
-    const groupedEvaluaciones = useMemo(() => {
-        const groups = {};
-        filteredEvaluaciones.forEach(e => {
-            const key = `${e.curso}|||${e.asignatura}`;
-            if (!groups[key]) {
-                groups[key] = { curso: e.curso, asignatura: e.asignatura, items: [] };
-            }
-            groups[key].items.push(e);
-        });
-        // Sort groups: by curso then asignatura
-        return Object.values(groups).sort((a, b) => {
-            const cursoCompare = a.curso.localeCompare(b.curso);
-            if (cursoCompare !== 0) return cursoCompare;
-            return getAsignaturaName(a.asignatura).localeCompare(getAsignaturaName(b.asignatura));
-        });
-    }, [filteredEvaluaciones]);
 
     // KPIs
     const kpis = useMemo(() => {
@@ -197,14 +180,14 @@ export default function UTPView() {
 
     // Permission to delete: admin can delete any, teacher/utp_head can only delete their own
     const canDeleteEval = (item) => {
-        if (userCanEdit) return true;
+        if (userCanEdit || user?.role === 'utp_head') return true;
         if (canCreateEval && item.createdBy?.id === user?.uid) return true;
         return false;
     };
 
-    const handleDelete = async (id) => {
-        await deleteEvaluacion(id);
+    const handleDelete = (id) => {
         setDeleteConfirm(null);
+        deleteEvaluacion(id);
     };
 
     const handleDuplicate = async (id) => {
@@ -255,172 +238,317 @@ export default function UTPView() {
         return evaluaciones.filter(e => e.status === 'pending' || !e.status);
     }, [evaluaciones, userCanApprove]);
 
+    // ── Design tokens (del prototipo Editor Evaluacion UTP) ──
+    const DT = {
+        primary: '#7B5BE0', primaryDark: '#5028B8',
+        pink: '#EC5BA1', coral: '#FF7A4D', amber: '#F4B400',
+        mint: '#2BB673', sky: '#3B8FE5',
+        bgSoft: '#F4F1FB', ink: '#2a1a3a', muted: '#7a6a8a',
+        line: 'rgba(20,10,40,0.06)',
+    };
+
     // ── Detail View ──
     if (liveEval) {
+        const statusLabel = liveEval.status === 'approved' ? 'APROBADA'
+            : liveEval.status === 'rejected' ? 'RECHAZADA' : 'PENDIENTE';
+        const statusColors = liveEval.status === 'approved'
+            ? { bg:'#D9F5E4', color:'#0F7B3F', dot:'#2BB673' }
+            : liveEval.status === 'rejected'
+            ? { bg:'#FFE4E4', color:'#B91C1C', dot:'#EF4444' }
+            : { bg:'#FFF1C8', color:'#9A6A00', dot:'#F4B400' };
+
         return (
-            <div className="space-y-6">
-                {/* Back header */}
-                <div className="flex items-center gap-3">
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+                {/* Fila superior: volver + aprobar/rechazar */}
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                     <button
                         onClick={() => setSelectedEval(null)}
-                        className="p-2 text-eyr-on-variant hover:text-eyr-on-surface hover:bg-eyr-surface-high rounded-lg transition-colors"
+                        style={{
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            width:34, height:34, borderRadius:10, border:`1.5px solid ${DT.line}`,
+                            background:'white', color:DT.muted, cursor:'pointer', flexShrink:0,
+                        }}
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-4 h-4" />
                     </button>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold text-eyr-on-surface font-headline truncate">{liveEval.name}</h1>
-                            <StatusBadge status={liveEval.status || 'pending'} />
-                        </div>
-                        <p className="text-sm text-eyr-on-variant">
-                            {getAsignaturaName(liveEval.asignatura)} — {liveEval.curso} — {formatDate(liveEval.date)} — {liveEval.totalQuestions} preguntas
-                            {liveEval.driveLink && (
-                                <>
-                                    {' — '}
-                                    <a href={liveEval.driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-eyr-primary hover:text-eyr-primary-dim font-medium">
-                                        Ver prueba <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                </>
-                            )}
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-3 flex-wrap">
-                            <label className="flex items-center gap-1.5">
-                                <span className="text-xs text-slate-500">Exigencia:</span>
-                                <div className="flex items-center gap-0.5">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={evalExigencia}
-                                        onChange={e => setEvalExigencia(e.target.value)}
-                                        onBlur={handleSaveExigencia}
-                                        placeholder="60"
-                                        className="w-14 px-1.5 py-0.5 border border-transparent hover:border-slate-200 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 rounded-lg text-xs text-center outline-none bg-transparent hover:bg-white focus:bg-white transition-all"
-                                    />
-                                    <span className="text-xs text-slate-400">%</span>
-                                </div>
-                            </label>
-                            <label className="flex items-center gap-1.5 flex-1 min-w-[180px]">
-                                <span className="text-xs text-slate-500 shrink-0">OA:</span>
-                                <input
-                                    type="text"
-                                    value={evalOA}
-                                    onChange={e => setEvalOA(e.target.value)}
-                                    onBlur={handleSaveOA}
-                                    placeholder="Objetivo de aprendizaje trabajado…"
-                                    className="flex-1 min-w-0 px-1.5 py-0.5 border border-transparent hover:border-slate-200 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 rounded-lg text-xs outline-none bg-transparent hover:bg-white focus:bg-white transition-all"
-                                />
-                            </label>
-                        </div>
-                        {liveEval.questions?.some(q => q.enunciado) && (
-                            <div className="mt-1 flex items-center gap-2 flex-wrap">
-                            {formatos.length > 1 && (
-                                <select
-                                    value={selectedFormatoId}
-                                    onChange={e => setSelectedFormatoId(e.target.value)}
-                                    className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 bg-white focus:ring-2 focus:ring-violet-200 outline-none">
-                                    <option value="__default__">{formatos[0]?.nombre || 'Formato por defecto'}</option>
-                                    {formatos.slice(1).map(f => (
-                                        <option key={f.id} value={f.id}>{f.nombre}</option>
-                                    ))}
-                                </select>
-                            )}
-                            <button
-                                onClick={handleGenerarDocs}
-                                disabled={generatingDocs}
-                                className="inline-flex items-center gap-1.5 text-xs font-medium text-eyr-primary hover:text-eyr-primary-dim disabled:opacity-50 transition-colors"
-                            >
-                                {generatingDocs
-                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
-                                    : <><FileText className="w-3.5 h-3.5" /> Descargar prueba (.docx)</>
-                                }
-                            </button>
-                            </div>
-                        )}
-                    </div>
-                    {/* Approve/Reject buttons for approvers */}
+                    <div style={{ flex:1 }} />
                     {userCanApprove && (liveEval.status === 'pending' || !liveEval.status) && (
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div style={{ display:'flex', gap:8 }}>
                             <button
                                 onClick={() => handleApprove(liveEval.id)}
-                                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors text-sm font-medium"
+                                style={{
+                                    display:'inline-flex', alignItems:'center', gap:6,
+                                    padding:'8px 14px', borderRadius:10, border:'none',
+                                    background:DT.mint, color:'white',
+                                    fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                                }}
                             >
-                                <CheckCircle2 className="w-4 h-4" /> Aprobar
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Aprobar
                             </button>
                             <button
                                 onClick={() => { setRejectTarget(liveEval.id); setRejectReason(''); }}
-                                className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors text-sm font-medium"
+                                style={{
+                                    display:'inline-flex', alignItems:'center', gap:6,
+                                    padding:'8px 14px', borderRadius:10, border:'none',
+                                    background:'#EF4444', color:'white',
+                                    fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                                }}
                             >
-                                <XCircle className="w-4 h-4" /> Rechazar
+                                <XCircle className="w-3.5 h-3.5" /> Rechazar
                             </button>
                         </div>
                     )}
                 </div>
 
+                {/* Header card */}
+                <div style={{
+                    background:'white', borderRadius:18, padding:'18px 22px',
+                    border:`1px solid ${DT.line}`,
+                    boxShadow:'0 1px 3px rgba(40,20,80,0.04)',
+                    display:'flex', alignItems:'center', gap:18, flexWrap:'wrap',
+                }}>
+                    <div style={{
+                        width:54, height:54, borderRadius:14, flexShrink:0,
+                        background:`linear-gradient(135deg, ${DT.primary}, ${DT.pink})`,
+                        display:'flex', alignItems:'center', justifyContent:'center', color:'white',
+                    }}>
+                        <FileText className="w-6 h-6" />
+                    </div>
+                    <div style={{ flex:1, minWidth:200 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
+                            <h1 style={{ margin:0, fontSize:20, fontWeight:700, letterSpacing:'-0.025em', color:DT.ink }}>{liveEval.name}</h1>
+                            <span style={{
+                                display:'inline-flex', alignItems:'center', gap:5,
+                                padding:'4px 10px', borderRadius:8,
+                                background:statusColors.bg, color:statusColors.color,
+                                fontSize:11, fontWeight:600, letterSpacing:0.4,
+                            }}>
+                                <span style={{ width:6, height:6, borderRadius:'50%', background:statusColors.dot }}/>
+                                {statusLabel}
+                            </span>
+                        </div>
+                        <div style={{ fontSize:13, color:DT.muted, fontWeight:600, display:'flex', flexWrap:'wrap', gap:'3px 12px' }}>
+                            <span style={{ color:DT.ink, fontWeight:700 }}>{getAsignaturaName(liveEval.asignatura)}</span>
+                            <span>·</span>
+                            <span>{liveEval.curso}</span>
+                            <span>·</span>
+                            <span>{formatDate(liveEval.date)}</span>
+                            <span>·</span>
+                            <span>{liveEval.totalQuestions || 0} preguntas</span>
+                            {liveEval.driveLink && (
+                                <>
+                                    <span>·</span>
+                                    <a href={liveEval.driveLink} target="_blank" rel="noopener noreferrer"
+                                        style={{ color:DT.primary, fontWeight:700, display:'inline-flex', alignItems:'center', gap:4 }}>
+                                        Ver prueba <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    {/* Stat cards: Exigencia y OA (editables) */}
+                    <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                        <div style={{
+                            padding:'8px 14px', borderRadius:12,
+                            background:`${DT.coral}10`, border:`1.5px solid ${DT.coral}25`,
+                            minWidth:100,
+                        }}>
+                            <div style={{ fontSize:10, fontWeight:600, color:DT.coral, letterSpacing:0.4, textTransform:'uppercase', marginBottom:3 }}>Exigencia</div>
+                            <div style={{ display:'flex', alignItems:'baseline', gap:2 }}>
+                                <input
+                                    type="number" min="0" max="100"
+                                    value={evalExigencia}
+                                    onChange={e => setEvalExigencia(e.target.value)}
+                                    onBlur={handleSaveExigencia}
+                                    placeholder="60"
+                                    style={{
+                                        width:40, border:'none', background:'transparent',
+                                        fontSize:15, fontWeight:600, color:DT.ink,
+                                        outline:'none', padding:0, fontFamily:'inherit',
+                                        fontVariantNumeric:'tabular-nums',
+                                    }}
+                                />
+                                <span style={{ fontSize:13, fontWeight:600, color:DT.muted }}>%</span>
+                            </div>
+                        </div>
+                        <div style={{
+                            padding:'8px 14px', borderRadius:12,
+                            background:`${DT.primary}10`, border:`1.5px solid ${DT.primary}25`,
+                            maxWidth:220,
+                        }}>
+                            <div style={{ fontSize:10, fontWeight:600, color:DT.primary, letterSpacing:0.4, textTransform:'uppercase', marginBottom:3 }}>OA</div>
+                            <input
+                                type="text"
+                                value={evalOA}
+                                onChange={e => setEvalOA(e.target.value)}
+                                onBlur={handleSaveOA}
+                                placeholder="Código OA…"
+                                style={{
+                                    width:'100%', border:'none', background:'transparent',
+                                    fontSize:13, fontWeight:600, color:DT.ink,
+                                    outline:'none', padding:0, fontFamily:'inherit',
+                                }}
+                            />
+                        </div>
+                        {/* Descargar .docx */}
+                        {liveEval.questions?.some(q => q.enunciado) && (
+                            <div style={{
+                                padding:'8px 14px', borderRadius:12,
+                                background:`${DT.mint}10`, border:`1.5px solid ${DT.mint}25`,
+                                display:'flex', flexDirection:'column', gap:4,
+                            }}>
+                                <div style={{ fontSize:10, fontWeight:600, color:DT.mint, letterSpacing:0.4, textTransform:'uppercase' }}>Exportar</div>
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                    {formatos.length > 1 && (
+                                        <select
+                                            value={selectedFormatoId}
+                                            onChange={e => setSelectedFormatoId(e.target.value)}
+                                            style={{
+                                                padding:'2px 6px', border:`1px solid ${DT.line}`,
+                                                borderRadius:6, fontSize:11, color:DT.ink,
+                                                background:'white', outline:'none', fontFamily:'inherit',
+                                            }}>
+                                            <option value="__default__">{formatos[0]?.nombre || 'Por defecto'}</option>
+                                            {formatos.slice(1).map(f => (
+                                                <option key={f.id} value={f.id}>{f.nombre}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    <button
+                                        onClick={handleGenerarDocs}
+                                        disabled={generatingDocs}
+                                        style={{
+                                            display:'inline-flex', alignItems:'center', gap:5,
+                                            border:'none', background:'transparent',
+                                            fontSize:12, fontWeight:700, color:DT.mint,
+                                            cursor:'pointer', padding:0, fontFamily:'inherit',
+                                            opacity: generatingDocs ? 0.6 : 1,
+                                        }}
+                                    >
+                                        {generatingDocs
+                                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
+                                            : <><FileText className="w-3.5 h-3.5" /> .docx</>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Status banners */}
                 {(liveEval.status === 'pending' || !liveEval.status) && !userCanApprove && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
-                        <Clock className="w-5 h-5 text-amber-600 shrink-0" />
-                        <p className="text-sm text-amber-700">Esta evaluacion esta pendiente de aprobacion por UTP. No puedes ingresar resultados hasta que sea aprobada.</p>
+                    <div style={{
+                        background:'linear-gradient(90deg, #FFF7E0, #FFF1C8)',
+                        border:'1.5px solid #F4D26B', borderRadius:14,
+                        padding:'14px 18px', display:'flex', alignItems:'center', gap:14,
+                    }}>
+                        <div style={{
+                            width:36, height:36, borderRadius:10, flexShrink:0,
+                            background:DT.amber, color:'white',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                        }}>
+                            <Clock className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex:1 }}>
+                            <div style={{ fontSize:13, fontWeight:600, color:'#7a5400', marginBottom:2 }}>Pendiente de aprobación por UTP</div>
+                            <div style={{ fontSize:12, color:'#9A6A00', fontWeight:500, lineHeight:1.4 }}>
+                                Esta evaluación está pendiente de aprobación. No podrás ingresar resultados hasta que sea aprobada.
+                            </div>
+                        </div>
                     </div>
                 )}
 
                 {liveEval.status === 'rejected' && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-                        <XCircle className="w-5 h-5 text-red-600 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-red-700">Evaluacion rechazada</p>
+                    <div style={{
+                        background:'#FFF5F5', border:'1.5px solid #FECACA', borderRadius:14,
+                        padding:'14px 18px', display:'flex', alignItems:'center', gap:14,
+                    }}>
+                        <div style={{
+                            width:36, height:36, borderRadius:10, flexShrink:0,
+                            background:'#EF4444', color:'white',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                        }}>
+                            <XCircle className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex:1 }}>
+                            <div style={{ fontSize:13, fontWeight:600, color:'#B91C1C', marginBottom:2 }}>Evaluación rechazada</div>
                             {liveEval.rejectionReason && (
-                                <p className="text-sm text-red-600 mt-0.5">Motivo: {liveEval.rejectionReason}</p>
+                                <div style={{ fontSize:12, color:'#DC2626', fontWeight:500 }}>Motivo: {liveEval.rejectionReason}</div>
                             )}
                         </div>
                         {liveEval.createdBy?.id === user?.uid && (
                             <button
                                 onClick={() => handleResubmit(liveEval.id)}
-                                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium shrink-0"
+                                style={{
+                                    display:'inline-flex', alignItems:'center', gap:6,
+                                    padding:'8px 14px', borderRadius:10, border:'none',
+                                    background:'#6366F1', color:'white',
+                                    fontSize:12.5, fontWeight:700, cursor:'pointer', flexShrink:0, fontFamily:'inherit',
+                                }}
                             >
-                                <Send className="w-4 h-4" /> Reenviar
+                                <Send className="w-3.5 h-3.5" /> Reenviar
                             </button>
                         )}
                     </div>
                 )}
 
                 {liveEval.status === 'approved' && (
-                    <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
-                        <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-                        <p className="text-sm text-emerald-700">
+                    <div style={{
+                        background:'#F0FDF4', border:'1.5px solid #BBF7D0', borderRadius:14,
+                        padding:'12px 18px', display:'flex', alignItems:'center', gap:12,
+                    }}>
+                        <ShieldCheck className="w-5 h-5 shrink-0" style={{ color:DT.mint }} />
+                        <span style={{ fontSize:13, fontWeight:600, color:'#166534' }}>
                             Aprobada{liveEval.approvedBy?.name ? ` por ${liveEval.approvedBy.name}` : ''}
-                        </p>
+                        </span>
                     </div>
                 )}
 
-                {/* Tabs */}
-                <div className="flex gap-1 bg-eyr-surface-high rounded-xl p-1 w-fit flex-wrap">
+                {/* TabsBar — estilo del diseño: contenedor con gradiente violeta/rosa */}
+                <div style={{
+                    background:`linear-gradient(135deg, ${DT.primary}10, ${DT.pink}10)`,
+                    border:`1.5px solid ${DT.primary}20`,
+                    borderRadius:16, padding:8,
+                    display:'flex', flexWrap:'wrap', gap:4,
+                }}>
                     {[
-                        { id: 'preguntas',   icon: FileQuestion,  label: 'Preguntas' },
-                        { id: 'oas',         icon: BookOpen,      label: 'Asignar OAs' },
-                        { id: 'indicadores', icon: ListChecks,    label: 'Indicadores' },
-                        { id: 'preview',     icon: ScanEye,       label: 'Vista previa' },
-                        { id: 'grid',        icon: ClipboardList, label: 'Resultados' },
-                        { id: 'resumen',     icon: BarChart3,     label: 'Resumen OA' },
-                        { id: 'tabla',       icon: Table2,         label: 'Tabla espec.' },
-                        { id: 'pauta_esp',   icon: ClipboardCheck, label: 'Pauta espec.' },
-                        { id: 'comentarios', icon: MessageSquare,  label: 'Comentarios' },
-                    ].map(({ id, icon: Icon, label }) => (
-                        <button
-                            key={id}
-                            onClick={() => setDetailTab(id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                detailTab === id
-                                    ? 'bg-white text-eyr-on-surface shadow-sm'
-                                    : 'text-eyr-on-variant hover:text-eyr-on-surface'
-                            }`}
-                        >
-                            <Icon className="w-4 h-4" /> {label}
-                        </button>
-                    ))}
+                        { id: 'preguntas',   Icon: FileQuestion,  label: 'Preguntas' },
+                        { id: 'oas',         Icon: BookOpen,      label: 'Asignar OAs' },
+                        { id: 'indicadores', Icon: ListChecks,    label: 'Indicadores' },
+                        { id: 'preview',     Icon: ScanEye,       label: 'Vista previa' },
+                        { id: 'grid',        Icon: ClipboardList, label: 'Resultados' },
+                        { id: 'resumen',     Icon: BarChart3,     label: 'Resumen OA' },
+                        { id: 'tabla',       Icon: Table2,        label: 'Tabla espec.' },
+                        { id: 'pauta_esp',   Icon: ClipboardCheck,label: 'Pauta espec.' },
+                        { id: 'comentarios', Icon: MessageSquare, label: 'Comentarios' },
+                    ].map((tab) => {
+                        const isActive = detailTab === tab.id;
+                        const TabIcon = tab.Icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setDetailTab(tab.id)}
+                                style={{
+                                    display:'inline-flex', alignItems:'center', gap:7,
+                                    padding:'9px 14px', borderRadius:11, border:'none',
+                                    background: isActive ? 'white' : 'transparent',
+                                    color: isActive ? DT.primaryDark : DT.muted,
+                                    fontSize:13, fontWeight: isActive ? 700 : 600,
+                                    cursor:'pointer', fontFamily:'inherit',
+                                    boxShadow: isActive ? '0 4px 10px -4px rgba(80,40,184,0.25)' : 'none',
+                                    transition:'all .15s',
+                                }}
+                            >
+                                <TabIcon className="w-3.5 h-3.5" style={{ strokeWidth: isActive ? 2.4 : 2 }} />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
                 </div>
 
+                {/* Panel content */}
                 {detailTab === 'grid' ? (
                     <ResultadosGrid evaluacion={liveEval} />
                 ) : detailTab === 'preguntas' ? (
@@ -613,13 +741,7 @@ export default function UTPView() {
                 {/* Panel de filtros colapsable */}
                 <AnimatePresence>
                     {showFilters && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -8 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex flex-wrap gap-3 p-4 bg-eyr-surface-low rounded-2xl border border-eyr-outline-variant/20"
-                        >
+                        <div className="flex flex-wrap gap-3 p-4 bg-eyr-surface-low rounded-2xl border border-eyr-outline-variant/20">
                             <div className="relative flex-1 min-w-48">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-eyr-on-variant" />
                                 <input
@@ -664,7 +786,7 @@ export default function UTPView() {
                                     <X className="w-3.5 h-3.5" /> Limpiar
                                 </button>
                             )}
-                        </motion.div>
+                        </div>
                     )}
                 </AnimatePresence>
 

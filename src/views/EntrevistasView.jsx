@@ -129,9 +129,9 @@ export default function EntrevistasView() {
         setShowModal(true);
     };
 
-    const handleDelete = async (id) => {
-        await deleteEntrevista(id);
+    const handleDelete = (id) => {
         setDeleteConfirm(null);
+        deleteEntrevista(id);
     };
 
     const handleDownloadResumen = () => {

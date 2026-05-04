@@ -59,6 +59,11 @@ export const OA_DATA = {
         { code: 'MA01-OA13', eje: 'Medicion', description: 'Determinar longitudes de objetos, usando unidades de medida no estandarizadas' },
         { code: 'MA01-OA14', eje: 'Medicion', description: 'Leer e interpretar lineas de tiempo y calendarios' },
         { code: 'MA01-OA15', eje: 'Datos y probabilidades', description: 'Recolectar y registrar datos para responder preguntas estadisticas sobre juegos con monedas y dados' },
+        { code: 'MA01-OA16', eje: 'Datos y probabilidades', description: 'Construir y leer pictogramas sencillos con una categoría para representar datos del entorno escolar y familiar' },
+        { code: 'MA01-OA17', eje: 'Numeros y operaciones', description: 'Resolver problemas rutinarios de adicion y sustraccion hasta 20 en situaciones de la vida cotidiana' },
+        { code: 'MA01-OA18', eje: 'Numeros y operaciones', description: 'Reconocer monedas de $10, $50 y $100 del sistema monetario chileno y usarlas en situaciones cotidianas de compra' },
+        { code: 'MA01-OA19', eje: 'Numeros y operaciones', description: 'Resolver situaciones problemáticas simples de compra y venta usando monedas hasta $100' },
+        { code: 'MA01-OA20', eje: 'Datos y probabilidades', description: 'Registrar y representar datos simples del entorno en pictogramas y describirlos oralmente' },
     ],
 
     // ══════════════════════════════════════════════
@@ -81,6 +86,12 @@ export const OA_DATA = {
         { code: 'MA02-OA14', eje: 'Medicion', description: 'Determinar las unidades de longitud estandarizadas (cm y m), usando la regla y el metro' },
         { code: 'MA02-OA15', eje: 'Medicion', description: 'Leer e interpretar calendarios en relacion a horas, dias, semanas, meses y fechas significativas' },
         { code: 'MA02-OA16', eje: 'Datos y probabilidades', description: 'Recolectar y registrar datos para responder preguntas estadísticas, usando tablas de conteo y pictogramas' },
+        { code: 'MA02-OA17', eje: 'Numeros y operaciones', description: 'Reconocer monedas y billetes del sistema monetario chileno hasta $1.000 y usarlos en situaciones de compra, venta y cambio' },
+        { code: 'MA02-OA18', eje: 'Numeros y operaciones', description: 'Resolver problemas de compra y venta usando billetes y monedas hasta $1.000, calculando el vuelto' },
+        { code: 'MA02-OA19', eje: 'Numeros y operaciones', description: 'Resolver problemas cotidianos de adición y sustracción hasta 100 en distintos contextos de la vida real' },
+        { code: 'MA02-OA20', eje: 'Patrones y algebra', description: 'Resolver problemas que involucren la multiplicación usando representaciones concretas, pictóricas y simbólicas hasta 10x10' },
+        { code: 'MA02-OA21', eje: 'Datos y probabilidades', description: 'Construir y leer pictogramas con escala y gráficos de barra simple para representar y comunicar datos del entorno' },
+        { code: 'MA02-OA22', eje: 'Datos y probabilidades', description: 'Organizar datos en tablas de doble entrada y gráficos de barra, e interpretarlos para responder preguntas estadísticas' },
     ],
 
     // ══════════════════════════════════════════════
@@ -107,6 +118,11 @@ export const OA_DATA = {
         { code: 'MA03-OA18', eje: 'Medicion', description: 'Demostrar que comprende el perimetro de una figura regular e irregular' },
         { code: 'MA03-OA19', eje: 'Datos y probabilidades', description: 'Registrar y ordenar datos obtenidos de juegos aleatorios con dados y monedas, encontrando el dato mas frecuente' },
         { code: 'MA03-OA20', eje: 'Datos y probabilidades', description: 'Construir, leer e interpretar pictogramas y graficos de barra simple con escala' },
+        { code: 'MA03-OA21', eje: 'Numeros y operaciones', description: 'Reconocer y usar monedas y billetes del sistema monetario chileno hasta $10.000 en situaciones de compra, venta y cambio' },
+        { code: 'MA03-OA22', eje: 'Numeros y operaciones', description: 'Resolver problemas de compra y venta con billetes y monedas hasta $10.000, calculando el vuelto y comparando precios' },
+        { code: 'MA03-OA23', eje: 'Medicion', description: 'Medir y estimar capacidades usando unidades estandarizadas (litro y mililitro) en situaciones cotidianas' },
+        { code: 'MA03-OA24', eje: 'Datos y probabilidades', description: 'Resolver problemas de datos que involucren la recolección, registro, organización e interpretación de información en gráficos y tablas' },
+        { code: 'MA03-OA25', eje: 'Numeros y operaciones', description: 'Resolver problemas combinados de adición, sustracción, multiplicación y división usando distintas estrategias en contextos reales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -135,6 +151,11 @@ export const OA_DATA = {
         { code: 'MA04-OA20', eje: 'Medicion', description: 'Determinar el area de rectangulos y cuadrados, estimando con cuadriculas' },
         { code: 'MA04-OA21', eje: 'Datos y probabilidades', description: 'Realizar encuestas, clasificar y organizar los datos obtenidos en tablas y visualizarlos en graficos de barra simple' },
         { code: 'MA04-OA22', eje: 'Datos y probabilidades', description: 'Leer e interpretar pictogramas y graficos de barra simple con escala y comunicar conclusiones' },
+        { code: 'MA04-OA23', eje: 'Numeros y operaciones', description: 'Reconocer y usar billetes y monedas del sistema monetario chileno hasta $100.000 en situaciones de compra, venta y cambio' },
+        { code: 'MA04-OA24', eje: 'Numeros y operaciones', description: 'Resolver problemas que involucren el uso del dinero hasta $100.000, incluyendo operaciones combinadas de suma, resta y multiplicación' },
+        { code: 'MA04-OA25', eje: 'Medicion', description: 'Medir masas y volúmenes con unidades estandarizadas (kg, g, L, mL) y realizar conversiones entre ellas en contextos cotidianos' },
+        { code: 'MA04-OA26', eje: 'Datos y probabilidades', description: 'Construir, leer e interpretar tablas de doble entrada y gráficos de barra doble con escala para comunicar datos' },
+        { code: 'MA04-OA27', eje: 'Numeros y operaciones', description: 'Resolver problemas no rutinarios de múltiples pasos que combinen las cuatro operaciones y distintos contextos matemáticos reales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -161,6 +182,10 @@ export const OA_DATA = {
         { code: 'MA05-OA18', eje: 'Datos y probabilidades', description: 'Calcular el promedio de datos e interpretar en contextos significativos' },
         { code: 'MA05-OA19', eje: 'Datos y probabilidades', description: 'Leer, interpretar y completar tablas, graficos de barra simple y de linea' },
         { code: 'MA05-OA20', eje: 'Datos y probabilidades', description: 'Comparar probabilidades de distintos eventos, usando material concreto y pictórico' },
+        { code: 'MA05-OA21', eje: 'Numeros y operaciones', description: 'Resolver problemas que involucren porcentajes en contextos de compra, descuento e impuesto en situaciones cotidianas' },
+        { code: 'MA05-OA22', eje: 'Datos y probabilidades', description: 'Construir y leer tablas de frecuencia y gráficos estadísticos variados (barra, línea, circular) para analizar datos del entorno' },
+        { code: 'MA05-OA23', eje: 'Datos y probabilidades', description: 'Calcular la probabilidad de eventos simples como fracción entre los resultados favorables y los posibles' },
+        { code: 'MA05-OA24', eje: 'Numeros y operaciones', description: 'Resolver problemas matemáticos de múltiples pasos que involucren las cuatro operaciones y contextos variados de la vida real' },
     ],
 
     // ══════════════════════════════════════════════
@@ -183,6 +208,14 @@ export const OA_DATA = {
         { code: 'MA06-OA14', eje: 'Medicion', description: 'Calcular el area de la superficie de cubos y paralelepipedos usando redes' },
         { code: 'MA06-OA15', eje: 'Datos y probabilidades', description: 'Interpretar datos desde tablas y graficos de barra doble, usando informacion de los datos' },
         { code: 'MA06-OA16', eje: 'Datos y probabilidades', description: 'Comparar distribuciones de dos grupos, usando diagramas de puntos y de tallo y hoja' },
+        { code: 'MA06-OA17', eje: 'Numeros y operaciones', description: 'Resolver problemas que involucren razones y proporciones en contextos geométricos, estadísticos y cotidianos' },
+        { code: 'MA06-OA18', eje: 'Numeros y operaciones', description: 'Calcular intereses simples y aplicar porcentajes en contextos de finanzas personales (ahorro, descuento, impuesto)' },
+        { code: 'MA06-OA19', eje: 'Algebra', description: 'Modelar situaciones de la vida cotidiana usando expresiones algebraicas con letras e incógnitas' },
+        { code: 'MA06-OA20', eje: 'Medicion', description: 'Calcular el volumen de cuerpos regulares (cubos y paralelepípedos) en distintas unidades y resolver problemas de aplicación' },
+        { code: 'MA06-OA21', eje: 'Datos y probabilidades', description: 'Calcular la probabilidad de eventos simples y compuestos, comparando resultados teóricos y experimentales' },
+        { code: 'MA06-OA22', eje: 'Datos y probabilidades', description: 'Resolver problemas estadísticos que involucren recolección, representación e interpretación de datos usando distintos tipos de gráficos' },
+        { code: 'MA06-OA23', eje: 'Datos y probabilidades', description: 'Calcular e interpretar medidas de tendencia central (media, mediana, moda) y de dispersión (rango) en conjuntos de datos reales' },
+        { code: 'MA06-OA24', eje: 'Numeros y operaciones', description: 'Resolver problemas complejos de múltiples pasos que involucren operaciones con fracciones, decimales, porcentajes y proporciones en contextos reales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -205,6 +238,10 @@ export const OA_DATA = {
         { code: 'MA07-OA14', eje: 'Datos y probabilidades', description: 'Calcular e interpretar medidas de tendencia central y el rango en datos numéricos no agrupados' },
         { code: 'MA07-OA15', eje: 'Datos y probabilidades', description: 'Utilizar la frecuencia absoluta y la frecuencia relativa para representar información' },
         { code: 'MA07-OA16', eje: 'Datos y probabilidades', description: 'Usar experimentos aleatorios para determinar probabilidades' },
+        { code: 'MA07-OA17', eje: 'Algebra', description: 'Modelar y resolver situaciones de la vida cotidiana usando funciones lineales, representándolas en tablas, gráficos y expresiones algebraicas' },
+        { code: 'MA07-OA18', eje: 'Algebra', description: 'Resolver sistemas de ecuaciones de primer grado con dos incógnitas usando métodos gráficos y algebraicos básicos' },
+        { code: 'MA07-OA19', eje: 'Datos y probabilidades', description: 'Representar datos estadísticos usando distintos tipos de gráficos (circular, de línea, histograma) y seleccionar el más adecuado según el contexto' },
+        { code: 'MA07-OA20', eje: 'Datos y probabilidades', description: 'Usar datos estadísticos para construir modelos matemáticos simples y hacer predicciones en distintos contextos reales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -227,6 +264,12 @@ export const OA_DATA = {
         { code: 'MA08-OA14', eje: 'Datos y probabilidades', description: 'Utilizar permutaciones y combinaciones sencillas para calcular probabilidades' },
         { code: 'MA08-OA15', eje: 'Datos y probabilidades', description: 'Mostrar que comprende las medidas de tendencia central y el rango para datos agrupados en tablas de frecuencia' },
         { code: 'MA08-OA16', eje: 'Datos y probabilidades', description: 'Evaluar la forma en que los datos están presentados y usar la información para comparar' },
+        { code: 'MA08-OA17', eje: 'Algebra', description: 'Modelar y resolver situaciones usando funciones afines e inversas, representándolas gráfica y algebraicamente' },
+        { code: 'MA08-OA18', eje: 'Geometria', description: 'Resolver problemas de geometría analítica en el plano cartesiano: calcular distancia entre puntos, pendiente y ecuación de la recta' },
+        { code: 'MA08-OA19', eje: 'Algebra', description: 'Resolver sistemas de ecuaciones de primer grado con dos incógnitas usando sustitución, igualación y reducción' },
+        { code: 'MA08-OA20', eje: 'Datos y probabilidades', description: 'Calcular probabilidades de eventos compuestos usando reglas de la suma y el producto en situaciones concretas' },
+        { code: 'MA08-OA21', eje: 'Datos y probabilidades', description: 'Construir e interpretar distintos tipos de gráficos estadísticos (histograma, diagrama de caja y bigotes) para comparar distribuciones' },
+        { code: 'MA08-OA22', eje: 'Datos y probabilidades', description: 'Resolver problemas estadísticos complejos que involucren medidas de dispersión (varianza, desviación estándar) y análisis de datos agrupados' },
     ],
 
     // ══════════════════════════════════════════════
@@ -251,6 +294,13 @@ export const OA_DATA = {
         { code: 'LE01-OA16', eje: 'Comunicacion oral', description: 'Interactuar de acuerdo con las convenciones sociales en diferentes situaciones (presentarse, saludar, despedirse)' },
         { code: 'LE01-OA17', eje: 'Comunicacion oral', description: 'Expresarse de manera coherente y articulada sobre temas de su interés' },
         { code: 'LE01-OA18', eje: 'Comunicacion oral', description: 'Incorporar de manera pertinente en sus intervenciones orales el vocabulario nuevo extraido de textos escuchados o leidos' },
+        { code: 'LE01-OA19', eje: 'Escritura', description: 'Escribir con letra legible, manteniendo un tamaño y espaciado uniformes en distintos tipos de texto' },
+        { code: 'LE01-OA20', eje: 'Escritura', description: 'Usar mayúsculas al inicio de oración y en nombres propios, y punto final al terminar la idea' },
+        { code: 'LE01-OA21', eje: 'Comunicacion oral', description: 'Comprender textos orales breves (instrucciones, relatos cortos) para identificar información explícita y responder preguntas' },
+        { code: 'LE01-OA22', eje: 'Comunicacion oral', description: 'Participar en conversaciones grupales respetando turnos de habla y escuchando a los compañeros con atención' },
+        { code: 'LE01-OA23', eje: 'Comunicacion oral', description: 'Expresar con claridad mensajes, ideas, sentimientos y experiencias propias, usando frases completas y vocabulario adecuado' },
+        { code: 'LE01-OA24', eje: 'Comunicacion oral', description: 'Recitar de memoria poemas, canciones y rimas con entonación y volumen adecuados para una audiencia' },
+        { code: 'LE01-OA25', eje: 'Comunicacion oral', description: 'Usar nuevas palabras aprendidas de textos escuchados y leídos en sus propias conversaciones y producciones escritas' },
     ],
 
     // ══════════════════════════════════════════════
@@ -275,6 +325,17 @@ export const OA_DATA = {
         { code: 'LE02-OA16', eje: 'Comunicacion oral', description: 'Comprender textos orales (explicaciones, instrucciones, relatos, anécdotas) para obtener información' },
         { code: 'LE02-OA17', eje: 'Comunicacion oral', description: 'Disfrutar de la experiencia de asistir a obras de teatro infantiles o representaciones para ampliar sus posibilidades de expresión' },
         { code: 'LE02-OA18', eje: 'Comunicacion oral', description: 'Expresarse de manera coherente y articulada sobre temas de su interés: presentando información, opiniones, narrando experiencias' },
+        { code: 'LE02-OA19', eje: 'Escritura', description: 'Escribir con letra legible y con disposición correcta en la página, respetando márgenes y separación entre palabras' },
+        { code: 'LE02-OA20', eje: 'Escritura', description: 'Usar correctamente los signos de puntuación básicos (punto, coma, signos de interrogación y exclamación) en sus escritos' },
+        { code: 'LE02-OA21', eje: 'Escritura', description: 'Aplicar en sus escritos las reglas ortográficas estudiadas: uso de mayúsculas, b/v, c/s, h muda' },
+        { code: 'LE02-OA22', eje: 'Escritura', description: 'Usar herramientas digitales básicas para escribir, revisar y presentar textos sencillos' },
+        { code: 'LE02-OA23', eje: 'Comunicacion oral', description: 'Comprender textos orales variados para extraer información explícita e implícita y responder preguntas pertinentes' },
+        { code: 'LE02-OA24', eje: 'Comunicacion oral', description: 'Participar en conversaciones y diálogos, compartiendo ideas y experiencias y respetando las normas de comunicación oral' },
+        { code: 'LE02-OA25', eje: 'Comunicacion oral', description: 'Expresarse de manera organizada en presentaciones orales breves, manteniendo contacto visual con la audiencia' },
+        { code: 'LE02-OA26', eje: 'Comunicacion oral', description: 'Escuchar con atención y comprensión textos literarios y no literarios leídos en voz alta, respondiendo preguntas de comprensión' },
+        { code: 'LE02-OA27', eje: 'Comunicacion oral', description: 'Recitar y disfrutar textos de la literatura oral (poemas, adivinanzas, refranes) con expresión y entonación adecuadas' },
+        { code: 'LE02-OA28', eje: 'Comunicacion oral', description: 'Usar el vocabulario nuevo aprendido de textos leídos y escuchados en sus propias producciones orales y escritas' },
+        { code: 'LE02-OA29', eje: 'Comunicacion oral', description: 'Participar en dramatizaciones y juegos de roles, representando situaciones de la literatura y la vida cotidiana' },
     ],
 
     // ══════════════════════════════════════════════
@@ -299,6 +360,18 @@ export const OA_DATA = {
         { code: 'LE03-OA16', eje: 'Comunicacion oral', description: 'Comprender textos orales (explicaciones, instrucciones, noticias, documentales, películas, relatos, anécdotas)' },
         { code: 'LE03-OA17', eje: 'Comunicacion oral', description: 'Participar activamente en conversaciones grupales sobre textos leídos o escuchados en clases' },
         { code: 'LE03-OA18', eje: 'Comunicacion oral', description: 'Expresarse de manera coherente y articulada sobre temas de su interés' },
+        { code: 'LE03-OA19', eje: 'Escritura', description: 'Escribir con letra legible, clara y en tamaño adecuado para distintos soportes y propósitos comunicativos' },
+        { code: 'LE03-OA20', eje: 'Escritura', description: 'Aplicar correctamente reglas ortográficas estudiadas (uso de g/j, z/c, ll/y, h muda, q) en sus producciones escritas' },
+        { code: 'LE03-OA21', eje: 'Escritura', description: 'Revisar y editar sus textos para mejorar el contenido, la organización y la ortografía, con apoyo del docente y los pares' },
+        { code: 'LE03-OA22', eje: 'Escritura', description: 'Usar herramientas digitales para escribir, revisar y publicar textos de distintos tipos' },
+        { code: 'LE03-OA23', eje: 'Escritura', description: 'Usar conectores temporales y causales (y, pero, porque, entonces, sin embargo) para dar cohesión a sus textos' },
+        { code: 'LE03-OA24', eje: 'Comunicacion oral', description: 'Comprender textos orales de distinto tipo (instrucciones, explicaciones, noticias) para extraer información relevante y responder preguntas' },
+        { code: 'LE03-OA25', eje: 'Comunicacion oral', description: 'Participar activamente en conversaciones y debates, aportando ideas con fundamento y respetando las normas de comunicación oral' },
+        { code: 'LE03-OA26', eje: 'Comunicacion oral', description: 'Expresarse de manera organizada y clara en presentaciones orales sobre temas de su interés, usando material de apoyo visual' },
+        { code: 'LE03-OA27', eje: 'Comunicacion oral', description: 'Escuchar con atención textos literarios y no literarios leídos en voz alta, respondiendo preguntas de comprensión e inferencia' },
+        { code: 'LE03-OA28', eje: 'Comunicacion oral', description: 'Usar el vocabulario nuevo aprendido en distintos contextos comunicativos, orales y escritos, con pertinencia y precisión' },
+        { code: 'LE03-OA29', eje: 'Comunicacion oral', description: 'Participar en representaciones dramáticas y juegos de roles, desarrollando habilidades de expresión y cooperación' },
+        { code: 'LE03-OA30', eje: 'Comunicacion oral', description: 'Reconocer y apreciar la diversidad de acentos y expresiones del español de Chile y América Latina, valorando la riqueza lingüística del idioma' },
     ],
 
     // ══════════════════════════════════════════════
@@ -323,6 +396,17 @@ export const OA_DATA = {
         { code: 'LE04-OA16', eje: 'Escritura', description: 'Planificar la escritura: estableciendo proposito y destinatario, generando ideas, organizando ideas' },
         { code: 'LE04-OA17', eje: 'Comunicacion oral', description: 'Comprender textos orales (explicaciones, instrucciones, noticias, documentales, películas, relatos, anécdotas)' },
         { code: 'LE04-OA18', eje: 'Comunicacion oral', description: 'Participar activamente en conversaciones grupales sobre textos leidos o escuchados en clases' },
+        { code: 'LE04-OA19', eje: 'Escritura', description: 'Escribir con letra clara y legible, adaptando el formato y el tipo de letra al propósito comunicativo y al soporte' },
+        { code: 'LE04-OA20', eje: 'Escritura', description: 'Aplicar reglas ortográficas estudiadas (acentuación, uso de puntuación variada, mayúsculas) con creciente autonomía en sus producciones escritas' },
+        { code: 'LE04-OA21', eje: 'Escritura', description: 'Revisar y editar sus textos para mejorar la coherencia, la cohesión y la adecuación al propósito y la audiencia' },
+        { code: 'LE04-OA22', eje: 'Escritura', description: 'Usar recursos digitales para escribir, revisar, diseñar y publicar textos con distintos propósitos comunicativos' },
+        { code: 'LE04-OA23', eje: 'Comunicacion oral', description: 'Comprender textos orales de distinta índole (instrucciones, noticias, documentales, entrevistas) para extraer información, hacer inferencias y reflexionar sobre su propósito' },
+        { code: 'LE04-OA24', eje: 'Comunicacion oral', description: 'Participar activamente en debates y conversaciones, aportando argumentos fundamentados y respondiendo a las ideas de los demás con respeto' },
+        { code: 'LE04-OA25', eje: 'Comunicacion oral', description: 'Exponer de manera organizada y clara sobre temas investigados, usando material de apoyo visual y manteniendo la atención de la audiencia' },
+        { code: 'LE04-OA26', eje: 'Comunicacion oral', description: 'Escuchar críticamente textos orales identificando recursos expresivos y propósitos del hablante' },
+        { code: 'LE04-OA27', eje: 'Comunicacion oral', description: 'Comprender y producir distintos tipos de discurso oral: narración, descripción, argumentación, exposición' },
+        { code: 'LE04-OA28', eje: 'Comunicacion oral', description: 'Usar vocabulario preciso y variado en sus producciones orales y escritas, evitando repeticiones innecesarias' },
+        { code: 'LE04-OA29', eje: 'Comunicacion oral', description: 'Participar en dramatizaciones, lecturas dramatizadas y representaciones colectivas integrando habilidades expresivas y cooperativas' },
     ],
 
     // ══════════════════════════════════════════════
@@ -347,6 +431,16 @@ export const OA_DATA = {
         { code: 'LE05-OA16', eje: 'Escritura', description: 'Escribir, revisar y editar sus textos para satisfacer un proposito y transmitir sus ideas con claridad' },
         { code: 'LE05-OA17', eje: 'Comunicacion oral', description: 'Comprender textos orales (explicaciones, instrucciones, noticias, documentales, películas, testimonios, relatos)' },
         { code: 'LE05-OA18', eje: 'Comunicacion oral', description: 'Expresarse de manera clara y efectiva en exposiciones orales para comunicar temas de su interés' },
+        { code: 'LE05-OA19', eje: 'Escritura', description: 'Escribir con fluidez y legibilidad en distintos soportes, adaptando el formato al propósito y la audiencia' },
+        { code: 'LE05-OA20', eje: 'Escritura', description: 'Aplicar correctamente las principales reglas ortográficas y de puntuación en sus producciones escritas, corrigiéndolas con creciente autonomía' },
+        { code: 'LE05-OA21', eje: 'Escritura', description: 'Revisar y editar textos propios y de compañeros, usando criterios de contenido, estructura, vocabulario y corrección ortográfica' },
+        { code: 'LE05-OA22', eje: 'Escritura', description: 'Usar recursos digitales para crear, diseñar y publicar textos de distintos tipos para audiencias reales' },
+        { code: 'LE05-OA23', eje: 'Escritura', description: 'Escribir textos argumentativos breves (cartas de opinión, reseñas) expresando y fundamentando un punto de vista propio' },
+        { code: 'LE05-OA24', eje: 'Comunicacion oral', description: 'Comprender textos orales complejos (documentales, entrevistas, debates) para analizar información e identificar la posición del hablante' },
+        { code: 'LE05-OA25', eje: 'Comunicacion oral', description: 'Participar con autonomía en debates y discusiones, fundamentando opiniones con argumentos y contraargumentos pertinentes' },
+        { code: 'LE05-OA26', eje: 'Comunicacion oral', description: 'Exponer de manera organizada sobre temas investigados, usando recursos de apoyo variados (visual, digital) para distintas audiencias' },
+        { code: 'LE05-OA27', eje: 'Comunicacion oral', description: 'Escuchar críticamente textos de distintos géneros y propósitos, identificando recursos retóricos y persuasivos del hablante' },
+        { code: 'LE05-OA28', eje: 'Comunicacion oral', description: 'Usar vocabulario preciso, rico y variado en distintos contextos comunicativos, seleccionando el registro apropiado según la situación' },
     ],
 
     // ══════════════════════════════════════════════
@@ -371,6 +465,17 @@ export const OA_DATA = {
         { code: 'LE06-OA16', eje: 'Escritura', description: 'Planificar sus textos: estableciendo proposito y destinatario, generando ideas a partir de sus conocimientos e investigación' },
         { code: 'LE06-OA17', eje: 'Comunicacion oral', description: 'Comprender textos orales (explicaciones, instrucciones, noticias, documentales, películas, testimonios, relatos)' },
         { code: 'LE06-OA18', eje: 'Comunicacion oral', description: 'Expresarse de manera clara y efectiva en exposiciones orales para comunicar temas de su interés' },
+        { code: 'LE06-OA19', eje: 'Escritura', description: 'Escribir con fluidez y precisión en distintos soportes y registros, adaptando el estilo al propósito y la audiencia' },
+        { code: 'LE06-OA20', eje: 'Escritura', description: 'Aplicar con autonomía las normas ortográficas y de puntuación del español en la producción de textos de distintos géneros' },
+        { code: 'LE06-OA21', eje: 'Escritura', description: 'Revisar y editar textos propios con criterios de coherencia, cohesión, adecuación y corrección, usando retroalimentación del docente y los pares' },
+        { code: 'LE06-OA22', eje: 'Escritura', description: 'Crear contenidos digitales de distintos géneros y formatos para publicar y compartir con audiencias reales con propósito comunicativo claro' },
+        { code: 'LE06-OA23', eje: 'Comunicacion oral', description: 'Comprender textos orales formales e informales de distintos géneros, analizando su estructura, propósito y recursos expresivos' },
+        { code: 'LE06-OA24', eje: 'Comunicacion oral', description: 'Participar activa y críticamente en debates, mesas redondas y foros, fundamentando posiciones con argumentos y evidencia concreta' },
+        { code: 'LE06-OA25', eje: 'Comunicacion oral', description: 'Exponer con dominio y fluidez sobre temas complejos, usando recursos de apoyo variados y adaptando el discurso a la audiencia' },
+        { code: 'LE06-OA26', eje: 'Comunicacion oral', description: 'Escuchar críticamente textos orales de distintos géneros, evaluando la calidad de los argumentos y la pertinencia de los recursos expresivos' },
+        { code: 'LE06-OA27', eje: 'Comunicacion oral', description: 'Comprender y utilizar convenciones propias del discurso oral formal (turnos de palabra, registro adecuado, cortesía lingüística) en distintas situaciones' },
+        { code: 'LE06-OA28', eje: 'Comunicacion oral', description: 'Usar vocabulario preciso, variado y adecuado al contexto en producciones orales y escritas, incluyendo términos técnicos de las disciplinas estudiadas' },
+        { code: 'LE06-OA29', eje: 'Comunicacion oral', description: 'Participar en producciones teatrales, lecturas expresivas y creaciones colectivas integrando habilidades lingüísticas, artísticas y comunicativas' },
     ],
 
     // ══════════════════════════════════════════════
@@ -393,6 +498,15 @@ export const OA_DATA = {
         { code: 'LE07-OA14', eje: 'Comunicacion oral', description: 'Dialogar constructivamente para debatir o explorar ideas: manteniendo el foco, fundamentando su postura con evidencia' },
         { code: 'LE07-OA15', eje: 'Comunicacion oral', description: 'Expresarse de manera clara y efectiva en presentaciones orales para comunicar temas de su interés' },
         { code: 'LE07-OA16', eje: 'Comunicacion oral', description: 'Usar conscientemente los elementos que influyen y configuran los textos orales: volumen de la voz, velocidad, pausas, entonacion' },
+        { code: 'LE07-OA17', eje: 'Escritura', description: 'Escribir textos de mayor extensión y complejidad, con coherencia temática, cohesión y adecuación al propósito, género y registro' },
+        { code: 'LE07-OA18', eje: 'Escritura', description: 'Aplicar con precisión y autonomía normas ortográficas y convenciones del español escrito en la producción de textos complejos' },
+        { code: 'LE07-OA19', eje: 'Escritura', description: 'Revisar y editar textos propios y ajenos con criterios técnicos de coherencia, cohesión, adecuación y normativa, incorporando retroalimentación' },
+        { code: 'LE07-OA20', eje: 'Escritura', description: 'Crear contenidos digitales de distinto tipo y formato para comunicar, informar o persuadir a audiencias reales, usando recursos multimodales' },
+        { code: 'LE07-OA21', eje: 'Comunicacion oral', description: 'Comprender textos orales complejos de distintos géneros discursivos (conferencias, podcasts, debates) para analizar propósito, estructura y recursos retóricos' },
+        { code: 'LE07-OA22', eje: 'Comunicacion oral', description: 'Participar con autonomía y pensamiento crítico en debates y discusiones formales, construyendo argumentos sólidos y rebatiendo posiciones opuestas con evidencia' },
+        { code: 'LE07-OA23', eje: 'Comunicacion oral', description: 'Exponer con dominio y fluidez ante audiencias diversas, adaptando el discurso al contexto, usando recursos multimodales y respondiendo preguntas' },
+        { code: 'LE07-OA24', eje: 'Comunicacion oral', description: 'Escuchar y analizar críticamente discursos orales de distintos géneros, identificando intenciones, sesgos y recursos persuasivos del hablante' },
+        { code: 'LE07-OA25', eje: 'Comunicacion oral', description: 'Usar con precisión y riqueza el vocabulario disciplinar en producciones orales y escritas, demostrando comprensión y manejo de registros formales e informales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -415,6 +529,16 @@ export const OA_DATA = {
         { code: 'LE08-OA14', eje: 'Comunicacion oral', description: 'Dialogar constructivamente para debatir o explorar ideas: manteniendo el foco en un tema' },
         { code: 'LE08-OA15', eje: 'Comunicacion oral', description: 'Expresarse de manera clara y efectiva en presentaciones orales para comunicar temas de su interés' },
         { code: 'LE08-OA16', eje: 'Comunicacion oral', description: 'Usar conscientemente los elementos que influyen y configuran los textos orales' },
+        { code: 'LE08-OA17', eje: 'Escritura', description: 'Escribir textos extensos y complejos de distintos géneros (ensayo, crónica, artículo de opinión, carta formal) con estructura, coherencia y estilo propios' },
+        { code: 'LE08-OA18', eje: 'Escritura', description: 'Aplicar con precisión y dominio las normas ortográficas y convenciones del español en producciones escritas de distintos géneros y propósitos' },
+        { code: 'LE08-OA19', eje: 'Escritura', description: 'Revisar, editar y reescribir textos propios a partir de criterios técnicos de coherencia, cohesión, adecuación y normativa, incorporando retroalimentación' },
+        { code: 'LE08-OA20', eje: 'Escritura', description: 'Publicar y compartir producciones escritas digitales, usando múltiples recursos y plataformas, para audiencias reales dentro y fuera del contexto escolar' },
+        { code: 'LE08-OA21', eje: 'Comunicacion oral', description: 'Comprender textos orales de alta complejidad (conferencias, debates académicos, discursos) analizando críticamente propósito, estructura, recursos retóricos e ideología' },
+        { code: 'LE08-OA22', eje: 'Comunicacion oral', description: 'Participar con autonomía, pensamiento crítico y liderazgo comunicativo en debates, foros y paneles formales, construyendo y sustentando argumentos complejos' },
+        { code: 'LE08-OA23', eje: 'Comunicacion oral', description: 'Exponer con dominio pleno ante distintas audiencias, usando recursos multimodales y estrategias discursivas variadas, adaptando el registro con solvencia' },
+        { code: 'LE08-OA24', eje: 'Comunicacion oral', description: 'Escuchar y evaluar críticamente discursos orales complejos de distintos géneros y contextos, identificando sesgos, falacias, intenciones y recursos retóricos' },
+        { code: 'LE08-OA25', eje: 'Comunicacion oral', description: 'Usar con precisión y riqueza el vocabulario disciplinar y literario en producciones orales y escritas, demostrando dominio de registros formales, académicos y estéticos' },
+        { code: 'LE08-OA26', eje: 'Comunicacion oral', description: 'Reflexionar metacognitivamente sobre el propio desempeño comunicativo oral y escrito, estableciendo metas de mejora y reconociendo los aprendizajes logrados' },
     ],
 
     // ══════════════════════════════════════════════
@@ -495,6 +619,8 @@ export const OA_DATA = {
         { code: 'CN04-OA15', eje: 'Ciencias de la Tierra y el universo', description: 'Describir, por medio de modelos, que la Tierra tiene una estructura de capas con diferentes características' },
         { code: 'CN04-OA16', eje: 'Ciencias de la Tierra y el universo', description: 'Explicar los cambios de la superficie de la Tierra a partir de la interacción de sus capas y los movimientos de las placas tectónicas' },
         { code: 'CN04-OA17', eje: 'Ciencias de la Tierra y el universo', description: 'Proponer medidas de prevención y seguridad ante riesgos naturales en la escuela, la calle y el hogar' },
+        { code: 'CN04-OA18', eje: 'Ciencias de la vida', description: 'Investigar y comprender el impacto de la acción humana sobre los ecosistemas de Chile, proponiendo medidas de conservación y sustentabilidad' },
+        { code: 'CN04-OA19', eje: 'Habilidades cientificas', description: 'Diseñar y realizar experimentos científicos sencillos, registrando observaciones y formulando conclusiones usando el método científico' },
     ],
 
     // ══════════════════════════════════════════════
@@ -515,6 +641,18 @@ export const OA_DATA = {
         { code: 'CN05-OA12', eje: 'Ciencias de la Tierra y el universo', description: 'Describir la distribución del agua dulce y salada en la Tierra, considerando océanos, glaciares, ríos y lagos, aguas subterráneas, nubes, vapor de agua' },
         { code: 'CN05-OA13', eje: 'Ciencias de la Tierra y el universo', description: 'Analizar y describir las características de los océanos y lagos: variación de temperatura, luminosidad y presión en relación a la profundidad, diversidad de flora y fauna' },
         { code: 'CN05-OA14', eje: 'Ciencias de la Tierra y el universo', description: 'Investigar y explicar efectos positivos y negativos de la actividad humana en los océanos, lagos, ríos, glaciares, proponiendo acciones de protección de las reservas hídricas en Chile' },
+        { code: 'CN05-OA15', eje: 'Habilidades cientificas', description: 'Planificar y realizar investigaciones científicas, formulando preguntas, hipótesis, diseñando procedimientos y registrando resultados con rigor' },
+        { code: 'CN05-OA16', eje: 'Ciencias de la vida', description: 'Analizar el impacto de las actividades humanas sobre la biodiversidad de Chile, identificando acciones de conservación y uso sustentable de los recursos naturales' },
+        { code: 'CN05-OA17', eje: 'Ciencias de la vida', description: 'Investigar y describir los distintos biomas y ecosistemas presentes en Chile, relacionándolos con las condiciones climáticas y geográficas del país' },
+        { code: 'CN05-OA18', eje: 'Ciencias fisicas y quimicas', description: 'Investigar y describir fuentes de energía renovables y no renovables presentes en Chile, analizando su impacto ambiental y social' },
+        { code: 'CN05-OA19', eje: 'Ciencias fisicas y quimicas', description: 'Explicar el concepto de energía, sus distintas formas (luminosa, térmica, eléctrica, mecánica) y sus transformaciones en situaciones cotidianas' },
+        { code: 'CN05-OA20', eje: 'Habilidades cientificas', description: 'Comunicar los resultados de investigaciones científicas usando tablas, gráficos e informes escritos con vocabulario científico pertinente' },
+        { code: 'CN05-OA21', eje: 'Ciencias de la vida', description: 'Analizar el ciclo del agua y su importancia para los seres vivos y los ecosistemas, relacionándolo con los fenómenos meteorológicos y climáticos de Chile' },
+        { code: 'CN05-OA22', eje: 'Ciencias de la vida', description: 'Investigar y describir las características de los principales ecosistemas de Chile (desierto, bosque, estepa, costal) y las relaciones entre los seres vivos que los habitan' },
+        { code: 'CN05-OA23', eje: 'Ciencias fisicas y quimicas', description: 'Investigar y describir propiedades físicas y químicas de materiales presentes en el entorno, clasificándolos según sus características y usos' },
+        { code: 'CN05-OA24', eje: 'Ciencias de la Tierra y el universo', description: 'Describir el Sistema Solar y sus componentes (Sol, planetas, satélites, asteroides), explicando los movimientos de traslación y rotación y sus consecuencias en la Tierra' },
+        { code: 'CN05-OA25', eje: 'Habilidades cientificas', description: 'Analizar e interpretar datos y evidencias para construir explicaciones científicas y evaluar argumentos, reconociendo la diferencia entre opinión y evidencia' },
+        { code: 'CN05-OA26', eje: 'Ciencias de la vida', description: 'Investigar y explicar la importancia de los microorganismos (bacterias, hongos, virus) en los ecosistemas y en la salud humana, identificando medidas de prevención de enfermedades' },
     ],
 
     // ══════════════════════════════════════════════
@@ -559,6 +697,15 @@ export const OA_DATA = {
         { code: 'CN07-OA13', eje: 'Ciencias de la Tierra y el universo', description: 'Describir la formación de planetas rocosos y gaseosos, considerando las condiciones que dieron origen a la Tierra y sus características actuales' },
         { code: 'CN07-OA14', eje: 'Ciencias de la Tierra y el universo', description: 'Explicar que el clima en la Tierra depende de diversos factores como la cantidad de energía que recibe del Sol y la distribución de la energía en la atmósfera y océanos' },
         { code: 'CN07-OA15', eje: 'Ciencias de la Tierra y el universo', description: 'Analizar factores que contribuyen al cambio climático y sus consecuencias en los ecosistemas, proponiendo medidas de mitigación y adaptación' },
+        { code: 'CN07-OA16', eje: 'Habilidades cientificas', description: 'Planificar y ejecutar investigaciones científicas complejas, formulando hipótesis, diseñando procedimientos controlados y analizando resultados con rigor estadístico' },
+        { code: 'CN07-OA17', eje: 'Ciencias de la vida', description: 'Investigar y explicar la estructura y función del sistema nervioso humano y su relación con la percepción sensorial, los reflejos y la coordinación motora' },
+        { code: 'CN07-OA18', eje: 'Ciencias fisicas y quimicas', description: 'Investigar y describir propiedades de las ondas (sonido, luz) y sus aplicaciones tecnológicas en la comunicación y la medicina' },
+        { code: 'CN07-OA19', eje: 'Ciencias fisicas y quimicas', description: 'Explicar el concepto de energía mecánica (cinética y potencial) y la ley de conservación de la energía en distintas situaciones físicas' },
+        { code: 'CN07-OA20', eje: 'Habilidades cientificas', description: 'Evaluar críticamente fuentes de información científica, distinguiendo entre evidencia empírica, opinión y pseudociencia en distintos contextos' },
+        { code: 'CN07-OA21', eje: 'Ciencias de la vida', description: 'Analizar las adaptaciones de los organismos a sus ambientes y cómo estas favorecen la supervivencia y reproducción en distintos ecosistemas' },
+        { code: 'CN07-OA22', eje: 'Ciencias fisicas y quimicas', description: 'Investigar y describir reacciones químicas cotidianas (combustión, oxidación, fotosíntesis), identificando reactantes, productos y sus aplicaciones' },
+        { code: 'CN07-OA23', eje: 'Ciencias de la Tierra y el universo', description: 'Investigar y describir fenómenos astronómicos observables (fases de la Luna, eclipses, mareas) y su influencia en los ecosistemas y las culturas humanas' },
+        { code: 'CN07-OA24', eje: 'Habilidades cientificas', description: 'Comunicar y debatir resultados de investigaciones científicas, usando lenguaje preciso, evidencia empírica y argumentos fundamentados, reconociendo la provisionalidad del conocimiento científico' },
     ],
 
     // ══════════════════════════════════════════════
@@ -580,6 +727,7 @@ export const OA_DATA = {
         { code: 'CN08-OA13', eje: 'Ciencias fisicas y quimicas', description: 'Desarrollar modelos que expliquen que la materia está constituida por átomos que interactúan, generando diversas partículas y sustancias' },
         { code: 'CN08-OA14', eje: 'Ciencias fisicas y quimicas', description: 'Usar la tabla periódica como un modelo para predecir las propiedades relativas de los elementos químicos basándose en los patrones de sus átomos' },
         { code: 'CN08-OA15', eje: 'Ciencias de la Tierra y el universo', description: 'Investigar y argumentar que existen algunos elementos químicos más frecuentes en la Tierra que son comunes en los seres vivos y son fundamentales para la vida' },
+        { code: 'CN08-OA16', eje: 'Habilidades cientificas', description: 'Diseñar, ejecutar y evaluar investigaciones científicas complejas, integrando variables, controles, análisis estadístico y comunicación de resultados con rigor y precisión' },
     ],
 
     // ══════════════════════════════════════════════
@@ -600,6 +748,7 @@ export const OA_DATA = {
         { code: 'HI01-OA12', eje: 'Formacion ciudadana', description: 'Mostrar actitudes y realizar acciones concretas en su entorno cercano que reflejen respeto al otro, empatía y responsabilidad' },
         { code: 'HI01-OA13', eje: 'Formacion ciudadana', description: 'Explicar y aplicar algunas normas para la buena convivencia y para la seguridad y el autocuidado en su familia, en la escuela y en la vía pública' },
         { code: 'HI01-OA14', eje: 'Formacion ciudadana', description: 'Identificar la labor que cumplen, en beneficio de la comunidad, instituciones como la escuela, la municipalidad, el hospital, Carabineros de Chile' },
+        { code: 'HI01-OA15', eje: 'Formacion ciudadana', description: 'Demostrar actitudes de respeto, cooperación y responsabilidad en el hogar, la escuela y la comunidad, valorando los derechos y deberes de niñas y niños' },
     ],
 
     // ══════════════════════════════════════════════
@@ -618,6 +767,10 @@ export const OA_DATA = {
         { code: 'HI02-OA10', eje: 'Formacion ciudadana', description: 'Reconocer y respetar la igualdad de derechos entre hombres y mujeres en situaciones de la vida cotidiana' },
         { code: 'HI02-OA11', eje: 'Formacion ciudadana', description: 'Reconocer diversas expresiones del patrimonio cultural del país y de su región, como manifestaciones artísticas, tradiciones folclóricas, leyendas y costumbres familiares' },
         { code: 'HI02-OA12', eje: 'Formacion ciudadana', description: 'Aplicar algunas normas para la buena convivencia, la seguridad y el cuidado de los espacios en que se desenvuelve' },
+        { code: 'HI02-OA13', eje: 'Formacion ciudadana', description: 'Identificar derechos y responsabilidades propios de su vida escolar y familiar, y reconocer instituciones que los protegen' },
+        { code: 'HI02-OA14', eje: 'Historia', description: 'Describir hechos y personajes destacados de la historia de Chile, reconociendo su contribución a la identidad y el patrimonio cultural nacional' },
+        { code: 'HI02-OA15', eje: 'Historia', description: 'Secuenciar hechos históricos relevantes de la historia local y nacional usando líneas de tiempo y vocabulario temporal básico' },
+        { code: 'HI02-OA16', eje: 'Geografia', description: 'Describir las características geográficas de la región en que vive (relieve, clima, recursos naturales) y su relación con las actividades humanas' },
     ],
 
     // ══════════════════════════════════════════════
@@ -637,6 +790,9 @@ export const OA_DATA = {
         { code: 'HI03-OA11', eje: 'Formacion ciudadana', description: 'Mostrar actitudes y realizar acciones concretas en su entorno cercano que reflejen valores y virtudes ciudadanas, como la tolerancia, el respeto, la empatía y la responsabilidad' },
         { code: 'HI03-OA12', eje: 'Formacion ciudadana', description: 'Reconocer que los niños tienen derechos que les permiten recibir un cuidado especial por parte de la sociedad' },
         { code: 'HI03-OA13', eje: 'Formacion ciudadana', description: 'Investigar y comunicar sus resultados sobre algunas instituciones públicas y privadas, identificando el servicio que prestan en la comunidad' },
+        { code: 'HI03-OA14', eje: 'Historia', description: 'Describir hechos y personajes destacados de la historia de Chile desde el período prehispánico hasta la Independencia, reconociendo su impacto en la identidad nacional' },
+        { code: 'HI03-OA15', eje: 'Historia', description: 'Secuenciar en líneas de tiempo los principales períodos y hechos de la historia de Chile, usando vocabulario temporal adecuado (siglo, período, época)' },
+        { code: 'HI03-OA16', eje: 'Geografia', description: 'Describir y comparar las características geográficas de las distintas zonas de Chile (Norte Grande, Norte Chico, Zona Central, Zona Sur, Zona Austral), relacionándolas con la vida de sus habitantes' },
     ],
 
     // ══════════════════════════════════════════════
@@ -655,6 +811,11 @@ export const OA_DATA = {
         { code: 'HI04-OA10', eje: 'Formacion ciudadana', description: 'Distinguir recursos naturales renovables y no renovables, reconocer el carácter limitado de los recursos naturales y la necesidad de cuidarlos' },
         { code: 'HI04-OA11', eje: 'Formacion ciudadana', description: 'Demostrar respeto por todas las personas mediante acciones en su vida diaria, sin discriminar por condiciones físicas, sociales, económicas, étnicas o culturales' },
         { code: 'HI04-OA12', eje: 'Formacion ciudadana', description: 'Participar en su comunidad, tomando parte en elecciones para una directiva de curso, evaluando las propuestas realizadas por los diferentes candidatos' },
+        { code: 'HI04-OA13', eje: 'Historia', description: 'Describir el proceso de Independencia de Chile: causas, actores, hechos fundamentales y su significado para la identidad nacional' },
+        { code: 'HI04-OA14', eje: 'Historia', description: 'Identificar y describir hechos relevantes de la historia de Chile en el siglo XIX (organización de la República, expansión territorial, Guerra del Pacífico) y sus consecuencias' },
+        { code: 'HI04-OA15', eje: 'Historia', description: 'Analizar el surgimiento de Chile como nación: su organización política, social y económica en el siglo XIX, y los desafíos para la convivencia democrática' },
+        { code: 'HI04-OA16', eje: 'Geografia', description: 'Describir y comparar las características geográficas, económicas y culturales de las regiones de Chile, identificando sus recursos naturales y actividades productivas' },
+        { code: 'HI04-OA17', eje: 'Formacion ciudadana', description: 'Analizar la importancia de los valores democráticos (libertad, igualdad, justicia) y de los derechos humanos para la convivencia en la sociedad chilena contemporánea' },
     ],
 
     // ══════════════════════════════════════════════
@@ -716,6 +877,13 @@ export const OA_DATA = {
         { code: 'HI07-OA13', eje: 'Formacion ciudadana', description: 'Caracterizar la Europa del Renacimiento y la Edad Moderna, considerando cambios económicos, culturales, políticos y sociales' },
         { code: 'HI07-OA14', eje: 'Formacion ciudadana', description: 'Caracterizar los grandes procesos de exploración y expansión europea durante los siglos XV y XVI' },
         { code: 'HI07-OA15', eje: 'Formacion ciudadana', description: 'Analizar la centralización del poder en los Estados europeos, el desarrollo de las monarquías absolutas y el rol de la burguesía' },
+        { code: 'HI07-OA16', eje: 'Historia', description: 'Analizar el proceso de la Revolución Francesa: causas, etapas, actores principales y legado para la construcción de las democracias modernas' },
+        { code: 'HI07-OA17', eje: 'Historia', description: 'Describir el proceso de independencia de América Latina en el siglo XIX, identificando factores comunes y diferencias entre los distintos movimientos independentistas' },
+        { code: 'HI07-OA18', eje: 'Historia', description: 'Analizar el impacto de la Revolución Industrial en la economía, la sociedad y el medioambiente, reconociendo transformaciones que se prolongan hasta el presente' },
+        { code: 'HI07-OA19', eje: 'Historia', description: 'Analizar el proceso de formación y consolidación de los estados nacionales en Europa y América durante el siglo XIX, y los conflictos asociados a la construcción de identidades nacionales' },
+        { code: 'HI07-OA20', eje: 'Formacion ciudadana', description: 'Comprender y valorar el surgimiento de los derechos políticos y sociales en el siglo XIX y comienzos del XX, relacionándolos con los derechos fundamentales vigentes en Chile' },
+        { code: 'HI07-OA21', eje: 'Geografia', description: 'Analizar los procesos de colonización e imperialismo del siglo XIX, identificando sus causas económicas, políticas y culturales, y su impacto en los pueblos colonizados' },
+        { code: 'HI07-OA22', eje: 'Historia', description: 'Analizar las causas, el desarrollo y las consecuencias de la Primera Guerra Mundial, reconociendo su impacto en la reorganización política y territorial del mundo' },
     ],
 
     // ══════════════════════════════════════════════
@@ -737,6 +905,12 @@ export const OA_DATA = {
         { code: 'HI08-OA13', eje: 'Geografia', description: 'Caracterizar geográficamente las regiones político-administrativas del país, considerando rasgos físicos, económicos, demográficos y culturales' },
         { code: 'HI08-OA14', eje: 'Formacion ciudadana', description: 'Reconocer la importancia de la participación ciudadana en una sociedad democrática, considerando mecanismos como el sufragio y la organización social' },
         { code: 'HI08-OA15', eje: 'Formacion ciudadana', description: 'Explicar el concepto de desarrollo sustentable, considerando la dimensión económica, social y ambiental' },
+        { code: 'HI08-OA16', eje: 'Historia', description: 'Analizar el período de entreguerras (1919-1939): crisis económica de 1929, surgimiento de los totalitarismos y el ascenso del fascismo y el nazismo en Europa' },
+        { code: 'HI08-OA17', eje: 'Historia', description: 'Analizar las causas, el desarrollo y las consecuencias de la Segunda Guerra Mundial, incluyendo el Holocausto y su impacto en la creación de la ONU y la Declaración Universal de Derechos Humanos' },
+        { code: 'HI08-OA18', eje: 'Historia', description: 'Analizar el proceso de la Guerra Fría: causas, características, conflictos asociados y su influencia en América Latina y Chile durante el siglo XX' },
+        { code: 'HI08-OA19', eje: 'Historia', description: 'Describir y analizar los procesos de descolonización en Asia y África durante la segunda mitad del siglo XX y el surgimiento del Tercer Mundo' },
+        { code: 'HI08-OA20', eje: 'Historia', description: 'Analizar el proceso histórico de Chile en el siglo XX: del parlamentarismo a los gobiernos radicales, la UP, el régimen militar y la transición a la democracia' },
+        { code: 'HI08-OA21', eje: 'Formacion ciudadana', description: 'Analizar las violaciones a los derechos humanos ocurridas en Chile y el mundo durante el siglo XX, valorando la memoria histórica y el nunca más como fundamento ético de la convivencia democrática' },
     ],
 
     // ══════════════════════════════════════════════
@@ -811,6 +985,8 @@ export const OA_DATA = {
         { code: 'IN05-OA11', eje: 'Expresion oral', description: 'Demostrar conocimiento y uso del vocabulario aprendido: vocabulario temático, palabras de uso frecuente y expresiones comunes' },
         { code: 'IN05-OA12', eje: 'Expresion escrita', description: 'Completar y escribir, de acuerdo a un modelo, textos no literarios y literarios sobre temas conocidos o de otras asignaturas' },
         { code: 'IN05-OA13', eje: 'Expresion escrita', description: 'Escribir, en forma guiada, para describir acciones cotidianas, expresar gustos, cantidades, información general sobre temas conocidos y solicitar información' },
+        { code: 'IN05-OA14', eje: 'Conciencia cultural', description: 'Reconocer y comparar aspectos culturales de países de habla inglesa (celebraciones, costumbres, geografía) con los propios, valorando la diversidad cultural' },
+        { code: 'IN05-OA15', eje: 'Conciencia cultural', description: 'Comprender la importancia del inglés como idioma global de comunicación, ciencia y tecnología, y valorar el aprendizaje de la lengua extranjera para la vida futura' },
     ],
 
     // ══════════════════════════════════════════════
@@ -830,6 +1006,8 @@ export const OA_DATA = {
         { code: 'IN06-OA11', eje: 'Expresion oral', description: 'Demostrar conocimiento y uso del vocabulario aprendido: vocabulario temático, palabras de uso frecuente, expresiones de uso común' },
         { code: 'IN06-OA12', eje: 'Expresion escrita', description: 'Completar y escribir de acuerdo a un modelo textos no literarios y literarios sobre temas de su vida diaria o de otras asignaturas' },
         { code: 'IN06-OA13', eje: 'Expresion escrita', description: 'Escribir en forma guiada para describir acciones, lugares, objetos y personas, expresar gustos, preferencias y solicitar información' },
+        { code: 'IN06-OA14', eje: 'Conciencia cultural', description: 'Analizar y comparar aspectos culturales de países angloparlantes (historia, tradiciones, arte, deportes) con Chile, desarrollando una actitud de respeto y curiosidad intercultural' },
+        { code: 'IN06-OA15', eje: 'Conciencia cultural', description: 'Reflexionar sobre el rol del inglés en el mundo globalizado e identificar oportunidades de uso en distintos contextos académicos, laborales y personales' },
     ],
 
     // ══════════════════════════════════════════════
@@ -849,6 +1027,9 @@ export const OA_DATA = {
         { code: 'IN07-OA11', eje: 'Expresion oral', description: 'Demostrar conocimiento y uso del vocabulario aprendido: vocabulario temático, palabras de uso frecuente, expresiones de uso común y conectores' },
         { code: 'IN07-OA12', eje: 'Expresion escrita', description: 'Escribir historias cortas e información relevante de acuerdo a un modelo y usando herramientas digitales sobre temas del entorno cercano' },
         { code: 'IN07-OA13', eje: 'Expresion escrita', description: 'Escribir para describir, expresar gustos, preferencias, cantidades, posesiones, expresar obligación, hacer sugerencias, pedir y dar información' },
+        { code: 'IN07-OA14', eje: 'Conciencia cultural', description: 'Analizar y comparar expresiones culturales y artísticas de países de habla inglesa (música, cine, literatura, arte) con la cultura chilena, reflexionando sobre la identidad propia y la diversidad' },
+        { code: 'IN07-OA15', eje: 'Conciencia cultural', description: 'Analizar el impacto del inglés en la cultura juvenil, los medios digitales y la comunicación global, reflexionando sobre el uso responsable y crítico del idioma' },
+        { code: 'IN07-OA16', eje: 'Conciencia cultural', description: 'Investigar y presentar aspectos de la cultura y la historia de países angloparlantes, reconociendo similitudes y diferencias con la realidad latinoamericana' },
     ],
 
     // ══════════════════════════════════════════════
@@ -868,6 +1049,9 @@ export const OA_DATA = {
         { code: 'IN08-OA11', eje: 'Expresion oral', description: 'Demostrar conocimiento y uso del vocabulario aprendido: vocabulario temático, palabras de uso frecuente, expresiones de uso común, conectores y marcadores de secuencia' },
         { code: 'IN08-OA12', eje: 'Expresion escrita', description: 'Escribir historias cortas e información relevante de acuerdo a un modelo y usando herramientas digitales sobre temas variados' },
         { code: 'IN08-OA13', eje: 'Expresion escrita', description: 'Escribir para describir, expresar gustos, preferencias, cantidades, posesiones, expresar obligación, necesidad, hacer sugerencias, expresar opiniones, acuerdo y desacuerdo' },
+        { code: 'IN08-OA14', eje: 'Conciencia cultural', description: 'Analizar críticamente aspectos culturales, históricos y sociales de países de habla inglesa, estableciendo comparaciones fundadas con Chile y América Latina' },
+        { code: 'IN08-OA15', eje: 'Conciencia cultural', description: 'Reflexionar críticamente sobre la influencia del inglés en la globalización cultural y tecnológica, valorando el multilingüismo y la diversidad cultural como riqueza' },
+        { code: 'IN08-OA16', eje: 'Conciencia cultural', description: 'Investigar y debatir en inglés sobre temas globales relevantes (medioambiente, diversidad, tecnología), usando evidencia y argumentos para sostener posiciones propias' },
     ],
 
     // ══════════════════════════════════════════════
@@ -1134,6 +1318,448 @@ export const OA_DATA = {
         { code: 'RC08-OA03', eje: 'Jesucristo y el Evangelio', description: 'Analizar el diálogo fe-razón y la contribución del pensamiento cristiano a la cultura y la ciencia' },
         { code: 'RC08-OA04', eje: 'La Iglesia y los Sacramentos', description: 'Conocer el Concilio Vaticano II y la renovación de la Iglesia en su misión evangelizadora' },
         { code: 'RC08-OA05', eje: 'La Iglesia y los Sacramentos', description: 'Comprometerse con acciones de justicia, solidaridad y cuidado de la creación como respuesta a la fe' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 1° BASICO
+    // ══════════════════════════════════════════════
+    'EF01': [
+        { code: 'EF01-OA01', eje: 'Habilidades motrices', description: 'Demostrar habilidades motrices básicas de locomoción (caminar, correr, saltar, trepar, deslizarse) y de manipulación (lanzar, cachar, golpear, patear) en juegos y actividades físicas' },
+        { code: 'EF01-OA02', eje: 'Habilidades motrices', description: 'Demostrar habilidades de equilibrio y coordinación en juegos y actividades físicas' },
+        { code: 'EF01-OA03', eje: 'Vida activa y saludable', description: 'Participar en actividades físicas de intensidad moderada a vigorosa, reconociendo sus beneficios para la salud' },
+        { code: 'EF01-OA04', eje: 'Vida activa y saludable', description: 'Reconocer la importancia del aseo personal, la postura y el descanso para mantener la salud' },
+        { code: 'EF01-OA05', eje: 'Vida activa y saludable', description: 'Identificar alimentos saludables y su importancia para el crecimiento y la actividad física' },
+        { code: 'EF01-OA06', eje: 'Juego limpio y liderazgo', description: 'Participar en juegos y actividades grupales mostrando respeto por los compañeros, los turnos y las reglas' },
+        { code: 'EF01-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar actitudes de colaboración, honestidad y espíritu de superación en juegos y actividades físicas' },
+        { code: 'EF01-OA08', eje: 'Seguridad y primeros auxilios', description: 'Identificar situaciones de riesgo en la práctica de actividades físicas y aplicar medidas básicas de seguridad' },
+        { code: 'EF01-OA09', eje: 'Juego limpio y liderazgo', description: 'Reconocer y valorar la diversidad de capacidades físicas entre los compañeros, respetando las diferencias individuales' },
+        { code: 'EF01-OA10', eje: 'Habilidades motrices', description: 'Explorar y descubrir las posibilidades de movimiento de su propio cuerpo en diferentes planos y direcciones' },
+        { code: 'EF01-OA11', eje: 'Vida activa y saludable', description: 'Demostrar conocimiento de las partes del cuerpo y su función en el movimiento' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 2° BASICO
+    // ══════════════════════════════════════════════
+    'EF02': [
+        { code: 'EF02-OA01', eje: 'Habilidades motrices', description: 'Demostrar habilidades motrices básicas (locomoción, estabilidad y manipulación) con mayor control y coordinación en juegos y actividades físicas variadas' },
+        { code: 'EF02-OA02', eje: 'Habilidades motrices', description: 'Combinar habilidades motrices básicas en secuencias de movimiento con ritmo y fluidez' },
+        { code: 'EF02-OA03', eje: 'Vida activa y saludable', description: 'Participar en actividades físicas de intensidad moderada a vigorosa, reconociendo los cambios que se producen en el cuerpo durante el ejercicio' },
+        { code: 'EF02-OA04', eje: 'Vida activa y saludable', description: 'Reconocer la importancia de la actividad física regular, la alimentación equilibrada y el descanso para la salud' },
+        { code: 'EF02-OA05', eje: 'Vida activa y saludable', description: 'Distinguir alimentos saludables de no saludables y comprender la importancia de una dieta equilibrada para la práctica de actividad física' },
+        { code: 'EF02-OA06', eje: 'Juego limpio y liderazgo', description: 'Participar en juegos y actividades grupales respetando las reglas, los compañeros y el espacio de juego' },
+        { code: 'EF02-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar conductas de juego limpio: honestidad, respeto al adversario y aceptación de resultados' },
+        { code: 'EF02-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar medidas de seguridad básicas antes, durante y después de la práctica de actividad física' },
+        { code: 'EF02-OA09', eje: 'Juego limpio y liderazgo', description: 'Reconocer y apreciar las capacidades de todos los compañeros, fomentando la inclusión en los juegos y actividades' },
+        { code: 'EF02-OA10', eje: 'Habilidades motrices', description: 'Explorar y practicar movimientos rítmicos y expresivos en actividades de expresión corporal' },
+        { code: 'EF02-OA11', eje: 'Vida activa y saludable', description: 'Mantener una postura corporal adecuada en diferentes posiciones y durante la práctica de actividades físicas' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 3° BASICO
+    // ══════════════════════════════════════════════
+    'EF03': [
+        { code: 'EF03-OA01', eje: 'Habilidades motrices', description: 'Demostrar habilidades motrices especializadas (lanzar, cachar, golpear, dribling) en juegos deportivos y actividades físicas, con énfasis en la precisión y el control' },
+        { code: 'EF03-OA02', eje: 'Habilidades motrices', description: 'Combinar habilidades motrices en situaciones de juego predeportivo con mayor complejidad' },
+        { code: 'EF03-OA03', eje: 'Vida activa y saludable', description: 'Participar en actividades físicas de intensidad moderada a vigorosa, identificando la frecuencia cardíaca como indicador de esfuerzo' },
+        { code: 'EF03-OA04', eje: 'Vida activa y saludable', description: 'Reconocer la importancia de la actividad física para el bienestar físico y mental, y planificar momentos de actividad en la rutina diaria' },
+        { code: 'EF03-OA05', eje: 'Vida activa y saludable', description: 'Comprender la importancia de la hidratación antes, durante y después de la actividad física' },
+        { code: 'EF03-OA06', eje: 'Juego limpio y liderazgo', description: 'Participar activamente en juegos y actividades grupales asumiendo distintos roles (jugador, árbitro, organizador)' },
+        { code: 'EF03-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar responsabilidad y compromiso con el grupo en la realización de actividades físicas colectivas' },
+        { code: 'EF03-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar procedimientos de calentamiento y enfriamiento en las sesiones de actividad física' },
+        { code: 'EF03-OA09', eje: 'Juego limpio y liderazgo', description: 'Proponer y acordar reglas para la práctica de juegos en el contexto escolar, resolviendo conflictos de manera pacífica' },
+        { code: 'EF03-OA10', eje: 'Habilidades motrices', description: 'Participar en actividades de expresión corporal y danza, coordinando movimientos con ritmo y música' },
+        { code: 'EF03-OA11', eje: 'Vida activa y saludable', description: 'Reconocer las capacidades físicas básicas (resistencia, fuerza, flexibilidad y velocidad) e identificar actividades que las desarrollan' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 4° BASICO
+    // ══════════════════════════════════════════════
+    'EF04': [
+        { code: 'EF04-OA01', eje: 'Habilidades motrices', description: 'Demostrar habilidades motrices especializadas en juegos predeportivos y deportes básicos (fútbol, básquetbol, voleibol u otros), aplicando técnicas fundamentales' },
+        { code: 'EF04-OA02', eje: 'Habilidades motrices', description: 'Combinar habilidades motrices en situaciones de juego con oposición, tomando decisiones tácticas sencillas' },
+        { code: 'EF04-OA03', eje: 'Vida activa y saludable', description: 'Participar regularmente en actividades físicas de intensidad moderada a vigorosa, valorando sus efectos en la salud' },
+        { code: 'EF04-OA04', eje: 'Vida activa y saludable', description: 'Describir los efectos que produce la actividad física en el organismo: aumento de la frecuencia cardíaca y respiratoria, sudoración' },
+        { code: 'EF04-OA05', eje: 'Vida activa y saludable', description: 'Comprender la importancia de la actividad física regular, la alimentación saludable y el descanso para la calidad de vida' },
+        { code: 'EF04-OA06', eje: 'Juego limpio y liderazgo', description: 'Colaborar en la organización y práctica de juegos y actividades deportivas, asumiendo distintos roles con responsabilidad' },
+        { code: 'EF04-OA07', eje: 'Juego limpio y liderazgo', description: 'Mostrar actitudes de respeto, tolerancia e inclusión en la práctica de actividades físicas y deportivas' },
+        { code: 'EF04-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar medidas de seguridad y primeros auxilios básicos en la práctica de actividades físicas' },
+        { code: 'EF04-OA09', eje: 'Juego limpio y liderazgo', description: 'Asumir el liderazgo en situaciones de juego y actividad física, promoviendo la participación y el bienestar del grupo' },
+        { code: 'EF04-OA10', eje: 'Habilidades motrices', description: 'Realizar actividades de expresión corporal, danza y juegos rítmicos con coordinación y creatividad' },
+        { code: 'EF04-OA11', eje: 'Vida activa y saludable', description: 'Evaluar su condición física mediante pruebas sencillas y establecer metas personales de mejora' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 5° BASICO
+    // ══════════════════════════════════════════════
+    'EF05': [
+        { code: 'EF05-OA01', eje: 'Habilidades motrices', description: 'Demostrar habilidades motrices en deportes y actividades físicas, aplicando técnicas y tácticas básicas en situaciones de juego real' },
+        { code: 'EF05-OA02', eje: 'Habilidades motrices', description: 'Aplicar principios tácticos ofensivos y defensivos elementales en juegos deportivos' },
+        { code: 'EF05-OA03', eje: 'Vida activa y saludable', description: 'Practicar actividad física de forma regular, reconociendo los beneficios a corto y largo plazo para la salud física y mental' },
+        { code: 'EF05-OA04', eje: 'Vida activa y saludable', description: 'Analizar y evaluar sus hábitos de alimentación, actividad física y descanso, proponiendo mejoras' },
+        { code: 'EF05-OA05', eje: 'Vida activa y saludable', description: 'Reconocer los efectos del sedentarismo y las enfermedades asociadas, valorando la actividad física como prevención' },
+        { code: 'EF05-OA06', eje: 'Juego limpio y liderazgo', description: 'Organizar y arbitrar juegos y actividades deportivas, aplicando las reglas con criterio y justicia' },
+        { code: 'EF05-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar valores de juego limpio, respeto al rival y aceptación de la derrota en competencias deportivas' },
+        { code: 'EF05-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar procedimientos de calentamiento específico, enfriamiento y técnicas básicas de primeros auxilios' },
+        { code: 'EF05-OA09', eje: 'Juego limpio y liderazgo', description: 'Proponer y desarrollar estrategias de juego en equipo, valorando el aporte de cada integrante' },
+        { code: 'EF05-OA10', eje: 'Habilidades motrices', description: 'Participar en actividades de danza, expresión corporal y juegos cooperativos, integrando habilidades motrices y sociales' },
+        { code: 'EF05-OA11', eje: 'Vida activa y saludable', description: 'Evaluar su condición física (resistencia, fuerza, flexibilidad y velocidad) e implementar un plan básico de mejora' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 6° BASICO
+    // ══════════════════════════════════════════════
+    'EF06': [
+        { code: 'EF06-OA01', eje: 'Habilidades motrices', description: 'Aplicar habilidades motrices especializadas en deportes individuales y colectivos con mayor nivel de complejidad técnica y táctica' },
+        { code: 'EF06-OA02', eje: 'Habilidades motrices', description: 'Desarrollar y aplicar estrategias tácticas en situaciones de juego reducido y real' },
+        { code: 'EF06-OA03', eje: 'Vida activa y saludable', description: 'Diseñar y ejecutar un plan personal de actividad física semanal considerando intensidad, frecuencia y duración' },
+        { code: 'EF06-OA04', eje: 'Vida activa y saludable', description: 'Analizar los cambios corporales propios de la pubertad y su relación con la actividad física y la salud' },
+        { code: 'EF06-OA05', eje: 'Vida activa y saludable', description: 'Comprender el concepto de condición física saludable y sus componentes: resistencia cardiovascular, fuerza muscular, flexibilidad y composición corporal' },
+        { code: 'EF06-OA06', eje: 'Juego limpio y liderazgo', description: 'Liderar equipos en la práctica de actividades físicas y deportivas, promoviendo la inclusión y el respeto entre pares' },
+        { code: 'EF06-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar conductas éticas y valores de juego limpio en competencias y actividades deportivas formales' },
+        { code: 'EF06-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar protocolos de seguridad, calentamiento específico y primeros auxilios básicos en la práctica deportiva' },
+        { code: 'EF06-OA09', eje: 'Juego limpio y liderazgo', description: 'Resolver conflictos de manera autónoma y pacífica durante la práctica de actividades físicas y deportivas' },
+        { code: 'EF06-OA10', eje: 'Habilidades motrices', description: 'Participar en actividades de danza folklórica nacional, reconociendo su valor cultural' },
+        { code: 'EF06-OA11', eje: 'Vida activa y saludable', description: 'Evaluar su condición física mediante baterías de pruebas estandarizadas y proponer metas de mejora personal' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 7° BASICO
+    // ══════════════════════════════════════════════
+    'EF07': [
+        { code: 'EF07-OA01', eje: 'Habilidades motrices', description: 'Aplicar y perfeccionar habilidades técnicas y tácticas en deportes individuales y colectivos, participando en competencias formales internas' },
+        { code: 'EF07-OA02', eje: 'Habilidades motrices', description: 'Analizar y evaluar el propio desempeño técnico-táctico en deportes y actividades físicas, identificando fortalezas y aspectos a mejorar' },
+        { code: 'EF07-OA03', eje: 'Vida activa y saludable', description: 'Diseñar, ejecutar y evaluar un plan de entrenamiento personal de 4 semanas que incluya los componentes de la condición física saludable' },
+        { code: 'EF07-OA04', eje: 'Vida activa y saludable', description: 'Analizar la influencia de los medios de comunicación y las redes sociales en los hábitos de actividad física y alimentación de los adolescentes' },
+        { code: 'EF07-OA05', eje: 'Vida activa y saludable', description: 'Comprender los principios del entrenamiento deportivo (especificidad, sobrecarga, progresión y recuperación) y aplicarlos en actividades físicas' },
+        { code: 'EF07-OA06', eje: 'Juego limpio y liderazgo', description: 'Organizar y dirigir eventos deportivos escolares, asumiendo roles de liderazgo con responsabilidad y criterio' },
+        { code: 'EF07-OA07', eje: 'Juego limpio y liderazgo', description: 'Demostrar respeto por la diversidad cultural en prácticas deportivas y de actividad física' },
+        { code: 'EF07-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar técnicas de primeros auxilios en situaciones de emergencia durante la práctica deportiva' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  EDUCACION FISICA Y SALUD 8° BASICO
+    // ══════════════════════════════════════════════
+    'EF08': [
+        { code: 'EF08-OA01', eje: 'Habilidades motrices', description: 'Demostrar un nivel de competencia técnica y táctica en al menos dos deportes o actividades físicas, participando en instancias competitivas formales' },
+        { code: 'EF08-OA02', eje: 'Habilidades motrices', description: 'Analizar el desempeño propio y del equipo en situaciones de juego real, proponiendoestrategias de mejora' },
+        { code: 'EF08-OA03', eje: 'Vida activa y saludable', description: 'Diseñar y ejecutar un plan de actividad física personal de largo plazo, integrando los principios del entrenamiento y los componentes de la condición física saludable' },
+        { code: 'EF08-OA04', eje: 'Vida activa y saludable', description: 'Analizar críticamente factores personales, sociales y ambientales que facilitan u obstaculizan la práctica de actividad física regular en la adolescencia' },
+        { code: 'EF08-OA05', eje: 'Vida activa y saludable', description: 'Comprender y valorar la práctica de actividad física como un estilo de vida saludable que previene enfermedades crónicas no transmisibles' },
+        { code: 'EF08-OA06', eje: 'Juego limpio y liderazgo', description: 'Liderar con autonomía la organización de eventos deportivos y actividades físicas escolares' },
+        { code: 'EF08-OA07', eje: 'Juego limpio y liderazgo', description: 'Reflexionar sobre el deporte como fenómeno social y cultural, reconociendo su impacto en la sociedad contemporánea' },
+        { code: 'EF08-OA08', eje: 'Seguridad y primeros auxilios', description: 'Aplicar con autonomía protocolos de seguridad y primeros auxilios en la práctica de actividades físicas y deportivas' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 1° BASICO
+    // ══════════════════════════════════════════════
+    'MU01': [
+        { code: 'MU01-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y describir cualidades del sonido (altura, duración, timbre e intensidad) en piezas musicales de distintos géneros y estilos, incluyendo la música de Chile' },
+        { code: 'MU01-OA02', eje: 'Escuchar y apreciar', description: 'Identificar instrumentos musicales de las familias de viento, cuerda y percusión al escucharlos en distintas obras musicales' },
+        { code: 'MU01-OA03', eje: 'Interpretar y crear', description: 'Cantar canciones del repertorio infantil y de la tradición oral chilena, con afinación y expresión adecuadas' },
+        { code: 'MU01-OA04', eje: 'Interpretar y crear', description: 'Ejecutar ritmos sencillos con instrumentos de percusión de la sala y con el cuerpo (palmas, pies), manteniendo el pulso y siguiendo indicaciones del profesor' },
+        { code: 'MU01-OA05', eje: 'Interpretar y crear', description: 'Improvisar sonidos, ritmos y melodías sencillas, usando la voz, el cuerpo e instrumentos, para acompañar textos, imágenes y situaciones' },
+        { code: 'MU01-OA06', eje: 'Reflexionar y contextualizar', description: 'Expresar mediante el movimiento, el dibujo u otras formas las emociones y sensaciones que le produce la música escuchada' },
+        { code: 'MU01-OA07', eje: 'Reflexionar y contextualizar', description: 'Reconocer y valorar manifestaciones musicales de la tradición oral chilena (rondas, canciones de cuna, villancicos) como parte de la identidad cultural nacional' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 2° BASICO
+    // ══════════════════════════════════════════════
+    'MU02': [
+        { code: 'MU02-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar con atención piezas musicales de distintos géneros y culturas, identificando elementos musicales como el pulso, el ritmo y la melodía' },
+        { code: 'MU02-OA02', eje: 'Escuchar y apreciar', description: 'Reconocer y describir el uso de los elementos musicales en obras del patrimonio musical chileno e iberoamericano' },
+        { code: 'MU02-OA03', eje: 'Interpretar y crear', description: 'Cantar canciones del repertorio escolar, folclórico y popular, con atención a la afinación, la expresión y la dinámica' },
+        { code: 'MU02-OA04', eje: 'Interpretar y crear', description: 'Ejecutar patrones rítmicos con instrumentos de percusión y con el cuerpo, manteniendo el tempo y la coordinación con el grupo' },
+        { code: 'MU02-OA05', eje: 'Interpretar y crear', description: 'Crear e improvisar acompañamientos rítmicos y melódicos para canciones y poemas, usando instrumentos y materiales de la sala' },
+        { code: 'MU02-OA06', eje: 'Reflexionar y contextualizar', description: 'Utilizar un vocabulario básico para describir y comentar la música escuchada y las propias producciones musicales' },
+        { code: 'MU02-OA07', eje: 'Reflexionar y contextualizar', description: 'Reconocer y valorar la música folclórica de diferentes regiones de Chile, identificando características propias de cada zona' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 3° BASICO
+    // ══════════════════════════════════════════════
+    'MU03': [
+        { code: 'MU03-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y analizar obras musicales de distintos géneros, estilos y culturas, identificando elementos de la forma musical (introducción, estrofa, coro, coda)' },
+        { code: 'MU03-OA02', eje: 'Escuchar y apreciar', description: 'Identificar y describir el uso de los elementos del lenguaje musical (melodía, ritmo, armonía, textura, timbre, dinámica y tempo) en obras escuchadas' },
+        { code: 'MU03-OA03', eje: 'Interpretar y crear', description: 'Cantar canciones en dos voces o con canon, manteniendo la afinación, la expresión y la coordinación con el grupo' },
+        { code: 'MU03-OA04', eje: 'Interpretar y crear', description: 'Ejecutar ritmos con mayor complejidad usando instrumentos de percusión, siguiendo la partitura rítmica básica y el director' },
+        { code: 'MU03-OA05', eje: 'Interpretar y crear', description: 'Componer piezas musicales breves usando los elementos del lenguaje musical aprendidos, con recursos del entorno y digitales' },
+        { code: 'MU03-OA06', eje: 'Reflexionar y contextualizar', description: 'Compartir y comentar las propias experiencias musicales usando un vocabulario musical pertinente y con respeto hacia las producciones de los compañeros' },
+        { code: 'MU03-OA07', eje: 'Reflexionar y contextualizar', description: 'Reconocer y valorar géneros y estilos de la música popular chilena e iberoamericana, identificando sus contextos culturales e históricos' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 4° BASICO
+    // ══════════════════════════════════════════════
+    'MU04': [
+        { code: 'MU04-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y analizar obras del repertorio musical occidental (música barroca, clásica, romántica) identificando características de cada período' },
+        { code: 'MU04-OA02', eje: 'Escuchar y apreciar', description: 'Reconocer y describir el uso de los elementos del lenguaje musical en obras de distintos períodos de la historia de la música, comparando estilos y géneros' },
+        { code: 'MU04-OA03', eje: 'Interpretar y crear', description: 'Interpretar piezas vocales e instrumentales sencillas, solo y en grupo, con expresión musical adecuada al estilo de la obra' },
+        { code: 'MU04-OA04', eje: 'Interpretar y crear', description: 'Leer y ejecutar ritmos escritos en notación musical básica (redonda, blanca, negra, corchea) en instrumentos de percusión' },
+        { code: 'MU04-OA05', eje: 'Interpretar y crear', description: 'Crear y presentar composiciones musicales originales, usando los elementos del lenguaje musical y recursos tecnológicos básicos' },
+        { code: 'MU04-OA06', eje: 'Reflexionar y contextualizar', description: 'Reflexionar sobre el papel de la música en distintos contextos de la vida cotidiana (ceremonias, publicidad, películas, fiestas) y en la propia experiencia personal' },
+        { code: 'MU04-OA07', eje: 'Reflexionar y contextualizar', description: 'Identificar y valorar el aporte de músicos y compositores chilenos al patrimonio musical nacional, reconociendo sus obras más representativas' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 5° BASICO
+    // ══════════════════════════════════════════════
+    'MU05': [
+        { code: 'MU05-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y analizar obras de distintos géneros y culturas musicales del mundo, comparando sus características y contextos culturales' },
+        { code: 'MU05-OA02', eje: 'Escuchar y apreciar', description: 'Analizar críticamente el rol de la música en los medios de comunicación, el cine y la publicidad, identificando recursos del lenguaje musical utilizados' },
+        { code: 'MU05-OA03', eje: 'Interpretar y crear', description: 'Interpretar piezas musicales vocales e instrumentales con mayor complejidad técnica y expresiva, en conjunto con sus pares' },
+        { code: 'MU05-OA04', eje: 'Interpretar y crear', description: 'Leer y ejecutar melodías sencillas en notación musical convencional, usando un instrumento melódico o la voz' },
+        { code: 'MU05-OA05', eje: 'Interpretar y crear', description: 'Componer piezas musicales originales integrando elementos de la armonía básica (acorde tónica y dominante) y estructuras formales' },
+        { code: 'MU05-OA06', eje: 'Reflexionar y contextualizar', description: 'Investigar y presentar aspectos de la vida y obra de un músico o compositor chileno o latinoamericano de relevancia histórica o contemporánea' },
+        { code: 'MU05-OA07', eje: 'Reflexionar y contextualizar', description: 'Valorar y respetar las distintas expresiones musicales de las culturas originarias de Chile y América Latina, reconociendo su vigencia en la actualidad' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 6° BASICO
+    // ══════════════════════════════════════════════
+    'MU06': [
+        { code: 'MU06-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y analizar obras representativas de distintos géneros y movimientos musicales del siglo XX y XXI, identificando características y contextos' },
+        { code: 'MU06-OA02', eje: 'Escuchar y apreciar', description: 'Analizar cómo los elementos del lenguaje musical (melodía, ritmo, armonía, textura, timbre, dinámica y forma) se utilizan para crear efectos expresivos en distintas obras' },
+        { code: 'MU06-OA03', eje: 'Interpretar y crear', description: 'Interpretar piezas musicales en conjunto, asumiendo distintos roles y responsabilidades dentro del ensamble' },
+        { code: 'MU06-OA04', eje: 'Interpretar y crear', description: 'Leer y ejecutar fragmentos musicales en notación convencional con mayor fluidez y precisión rítmica y melódica' },
+        { code: 'MU06-OA05', eje: 'Interpretar y crear', description: 'Crear y presentar una producción musical original para una audiencia, integrando elementos compositivos y tecnología musical básica' },
+        { code: 'MU06-OA06', eje: 'Reflexionar y contextualizar', description: 'Investigar y reflexionar sobre fenómenos musicales contemporáneos (géneros urbanos, fusiones, música electrónica) y su impacto social y cultural' },
+        { code: 'MU06-OA07', eje: 'Reflexionar y contextualizar', description: 'Valorar el patrimonio musical chileno en su diversidad de géneros y regiones, reconociendo su aporte a la identidad cultural nacional' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 7° BASICO
+    // ══════════════════════════════════════════════
+    'MU07': [
+        { code: 'MU07-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar y analizar obras musicales de distintos géneros, períodos y culturas, explicando sus características técnicas y su contexto histórico-cultural' },
+        { code: 'MU07-OA02', eje: 'Escuchar y apreciar', description: 'Analizar con pensamiento crítico el uso de la música en los medios de comunicación, las industrias culturales y la vida cotidiana' },
+        { code: 'MU07-OA03', eje: 'Interpretar y crear', description: 'Interpretar piezas musicales en conjunto con mayor nivel técnico y expresivo, demostrando autonomía y sensibilidad artística' },
+        { code: 'MU07-OA04', eje: 'Interpretar y crear', description: 'Leer y ejecutar partituras con mayor complejidad rítmica y melódica, utilizando convenciones de la notación musical estándar' },
+        { code: 'MU07-OA05', eje: 'Interpretar y crear', description: 'Componer y arreglar piezas musicales originales, usando recursos analógicos y digitales, para distintos contextos y audiencias' },
+        { code: 'MU07-OA06', eje: 'Reflexionar y contextualizar', description: 'Investigar y presentar el legado de músicos y movimientos musicales chilenos e iberoamericanos, valorando su aporte a la cultura universal' },
+        { code: 'MU07-OA07', eje: 'Reflexionar y contextualizar', description: 'Reflexionar críticamente sobre las propias producciones musicales y las de sus compañeros, usando criterios estéticos fundamentados' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  MUSICA 8° BASICO
+    // ══════════════════════════════════════════════
+    'MU08': [
+        { code: 'MU08-OA01', eje: 'Escuchar y apreciar', description: 'Escuchar, analizar y comparar obras musicales representativas de distintas épocas, géneros y culturas, fundamentando juicios estéticos propios' },
+        { code: 'MU08-OA02', eje: 'Escuchar y apreciar', description: 'Analizar y evaluar críticamente el papel de la música en la identidad cultural, la globalización y los fenómenos sociales contemporáneos' },
+        { code: 'MU08-OA03', eje: 'Interpretar y crear', description: 'Interpretar un repertorio musical variado y de mayor complejidad técnica, demostrando control expresivo y autonomía artística' },
+        { code: 'MU08-OA04', eje: 'Interpretar y crear', description: 'Leer y ejecutar partituras con fluidez, integrando aspectos técnicos y expresivos de la notación musical' },
+        { code: 'MU08-OA05', eje: 'Interpretar y crear', description: 'Crear proyectos musicales originales que integren composición, interpretación y uso de tecnología musical, presentándolos a una audiencia' },
+        { code: 'MU08-OA06', eje: 'Reflexionar y contextualizar', description: 'Investigar y reflexionar sobre la historia de la música chilena y su inserción en el contexto latinoamericano y mundial' },
+        { code: 'MU08-OA07', eje: 'Reflexionar y contextualizar', description: 'Evaluar de manera fundamentada producciones musicales propias y ajenas, aplicando criterios estéticos, técnicos y culturales' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 1° BASICO
+    // ══════════════════════════════════════════════
+    'AV01': [
+        { code: 'AV01-OA01', eje: 'Expresion creativa', description: 'Crear trabajos de arte usando una variedad de herramientas, soportes y técnicas bidimensionales y tridimensionales (dibujo, pintura, modelado, collage), para expresar ideas y experiencias' },
+        { code: 'AV01-OA02', eje: 'Expresion creativa', description: 'Experimentar con distintos materiales y texturas para descubrir posibilidades expresivas en la creación plástica' },
+        { code: 'AV01-OA03', eje: 'Apreciar y responder', description: 'Observar y describir obras de arte y objetos del entorno, usando vocabulario visual básico (línea, forma, color, textura)' },
+        { code: 'AV01-OA04', eje: 'Apreciar y responder', description: 'Identificar elementos del lenguaje visual (línea, forma, color, textura) en obras de arte y en el entorno natural y cultural' },
+        { code: 'AV01-OA05', eje: 'Apreciar y responder', description: 'Compartir y comentar sus propias creaciones y las de sus compañeros, expresando sensaciones, emociones e ideas con respeto' },
+        { code: 'AV01-OA06', eje: 'Contextualizar', description: 'Reconocer manifestaciones artísticas presentes en el entorno local (murales, artesanía, monumentos) y en su patrimonio cultural' },
+        { code: 'AV01-OA07', eje: 'Contextualizar', description: 'Conocer y apreciar manifestaciones del arte y la artesanía de los pueblos originarios de Chile' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 2° BASICO
+    // ══════════════════════════════════════════════
+    'AV02': [
+        { code: 'AV02-OA01', eje: 'Expresion creativa', description: 'Crear trabajos de arte usando diversas técnicas bidimensionales y tridimensionales, integrando intencionalmente elementos del lenguaje visual para expresar ideas y sentimientos' },
+        { code: 'AV02-OA02', eje: 'Expresion creativa', description: 'Explorar las posibilidades expresivas del color (mezclas, armonías y contrastes) en trabajos de arte propios' },
+        { code: 'AV02-OA03', eje: 'Apreciar y responder', description: 'Observar, describir e interpretar obras de arte de distintos artistas nacionales e internacionales, expresando impresiones personales' },
+        { code: 'AV02-OA04', eje: 'Apreciar y responder', description: 'Identificar y describir el uso de los elementos del lenguaje visual (línea, forma, color, textura, espacio) en obras de arte y en el entorno' },
+        { code: 'AV02-OA05', eje: 'Apreciar y responder', description: 'Compartir y fundamentar sus apreciaciones sobre las propias obras y las de sus compañeros, usando vocabulario visual adecuado' },
+        { code: 'AV02-OA06', eje: 'Contextualizar', description: 'Reconocer manifestaciones artísticas de distintas culturas y épocas, valorando la diversidad de expresiones humanas' },
+        { code: 'AV02-OA07', eje: 'Contextualizar', description: 'Conocer la vida y obra de artistas chilenos representativos, valorando su aporte a la cultura nacional' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 3° BASICO
+    // ══════════════════════════════════════════════
+    'AV03': [
+        { code: 'AV03-OA01', eje: 'Expresion creativa', description: 'Crear trabajos de arte planificados, usando técnicas y materiales variados, que comuniquen ideas, experiencias y emociones con intención artística' },
+        { code: 'AV03-OA02', eje: 'Expresion creativa', description: 'Explorar y usar intencionalmente elementos del lenguaje visual (línea, forma, color, textura, espacio, valor) para crear efectos expresivos' },
+        { code: 'AV03-OA03', eje: 'Apreciar y responder', description: 'Observar, analizar e interpretar obras de arte de distintos períodos y culturas, usando un vocabulario visual pertinente' },
+        { code: 'AV03-OA04', eje: 'Apreciar y responder', description: 'Identificar y analizar cómo los artistas usan los elementos del lenguaje visual para transmitir significados, emociones e ideas en sus obras' },
+        { code: 'AV03-OA05', eje: 'Apreciar y responder', description: 'Elaborar juicios estéticos sobre obras de arte propias y ajenas, fundamentándolos con criterios visuales y personales' },
+        { code: 'AV03-OA06', eje: 'Contextualizar', description: 'Investigar sobre manifestaciones del arte y la artesanía de regiones de Chile, valorando su identidad cultural' },
+        { code: 'AV03-OA07', eje: 'Contextualizar', description: 'Reconocer estilos y movimientos artísticos significativos de la historia del arte occidental (renacimiento, impresionismo, muralismo) y sus características' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 4° BASICO
+    // ══════════════════════════════════════════════
+    'AV04': [
+        { code: 'AV04-OA01', eje: 'Expresion creativa', description: 'Crear trabajos de arte originales y planificados, usando técnicas variadas y recursos digitales básicos, para comunicar ideas y experiencias con intención artística' },
+        { code: 'AV04-OA02', eje: 'Expresion creativa', description: 'Usar intencionalmente principios de diseño (repetición, contraste, ritmo, equilibrio, proporción) en la creación de trabajos artísticos' },
+        { code: 'AV04-OA03', eje: 'Apreciar y responder', description: 'Analizar e interpretar obras de arte de distintas épocas y culturas, considerando el contexto histórico y cultural en que fueron creadas' },
+        { code: 'AV04-OA04', eje: 'Apreciar y responder', description: 'Analizar cómo los artistas usan elementos y principios del lenguaje visual para crear significados, emociones y mensajes en sus obras' },
+        { code: 'AV04-OA05', eje: 'Apreciar y responder', description: 'Elaborar y fundamentar juicios estéticos sobre obras de arte propias y ajenas, usando criterios técnicos, expresivos y culturales' },
+        { code: 'AV04-OA06', eje: 'Contextualizar', description: 'Investigar y presentar la vida y obra de artistas chilenos relevantes, valorando su aporte a la identidad y el patrimonio cultural' },
+        { code: 'AV04-OA07', eje: 'Contextualizar', description: 'Analizar el arte como expresión de valores, creencias e identidad de distintas culturas y épocas, desarrollando respeto por la diversidad' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 5° BASICO
+    // ══════════════════════════════════════════════
+    'AV05': [
+        { code: 'AV05-OA01', eje: 'Expresion creativa', description: 'Crear trabajos de arte elaborados y planificados, usando técnicas variadas y recursos digitales, que integren elementos y principios del lenguaje visual con propósito expresivo' },
+        { code: 'AV05-OA02', eje: 'Expresion creativa', description: 'Desarrollar proyectos artísticos personales que expresen una visión original, aplicando procesos creativos de exploración, experimentación y reflexión' },
+        { code: 'AV05-OA03', eje: 'Apreciar y responder', description: 'Analizar obras de arte de distintos movimientos y estilos, comparando el uso de los elementos del lenguaje visual y los propósitos expresivos' },
+        { code: 'AV05-OA04', eje: 'Apreciar y responder', description: 'Analizar críticamente el uso de imágenes y recursos visuales en los medios de comunicación y la publicidad, identificando mensajes e intenciones' },
+        { code: 'AV05-OA05', eje: 'Apreciar y responder', description: 'Elaborar juicios estéticos fundamentados sobre obras de arte y diseño, usando criterios técnicos, expresivos, culturales y éticos' },
+        { code: 'AV05-OA06', eje: 'Contextualizar', description: 'Investigar sobre movimientos artísticos latinoamericanos (muralismo, arte precolombino, arte popular) y su relación con contextos históricos y sociales' },
+        { code: 'AV05-OA07', eje: 'Contextualizar', description: 'Analizar el arte contemporáneo chileno, reconociendo la diversidad de expresiones, medios y temáticas que abordan artistas actuales' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 6° BASICO
+    // ══════════════════════════════════════════════
+    'AV06': [
+        { code: 'AV06-OA01', eje: 'Expresion creativa', description: 'Crear proyectos artísticos personales y colaborativos, usando técnicas variadas y medios digitales, que comuniquen ideas complejas con intención artística y coherencia visual' },
+        { code: 'AV06-OA02', eje: 'Expresion creativa', description: 'Desarrollar procesos creativos personales: investigar, planificar, ejecutar y reflexionar sobre proyectos artísticos propios' },
+        { code: 'AV06-OA03', eje: 'Apreciar y responder', description: 'Analizar obras de arte de distintos períodos históricos, identificando características formales, expresivas y contextuales' },
+        { code: 'AV06-OA04', eje: 'Apreciar y responder', description: 'Analizar críticamente el papel de las artes visuales en la construcción de identidades culturales, sociales y políticas' },
+        { code: 'AV06-OA05', eje: 'Apreciar y responder', description: 'Elaborar y comunicar juicios estéticos fundamentados sobre obras de arte y diseño, considerando criterios técnicos, expresivos y culturales' },
+        { code: 'AV06-OA06', eje: 'Contextualizar', description: 'Investigar sobre el arte de los pueblos originarios de Chile y América, valorando su vigencia y aporte a la identidad cultural contemporánea' },
+        { code: 'AV06-OA07', eje: 'Contextualizar', description: 'Analizar el rol del arte y el diseño en la sociedad contemporánea, reconociendo su capacidad para generar reflexión crítica y transformación social' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 7° BASICO
+    // ══════════════════════════════════════════════
+    'AV07': [
+        { code: 'AV07-OA01', eje: 'Expresion creativa', description: 'Crear proyectos artísticos autorales usando técnicas y medios variados (incluyendo fotografía, video y medios digitales), que expresen una visión personal con coherencia técnica y estética' },
+        { code: 'AV07-OA02', eje: 'Expresion creativa', description: 'Desarrollar procesos creativos complejos: investigar referentes, planificar, experimentar, ejecutar y reflexionar críticamente sobre proyectos artísticos personales' },
+        { code: 'AV07-OA03', eje: 'Apreciar y responder', description: 'Analizar obras de arte de distintos movimientos y vanguardias del siglo XX, identificando características formales, conceptuales y contextuales' },
+        { code: 'AV07-OA04', eje: 'Apreciar y responder', description: 'Analizar críticamente el uso de imágenes visuales en los medios de comunicación, la publicidad y las redes sociales, identificando intenciones y efectos' },
+        { code: 'AV07-OA05', eje: 'Apreciar y responder', description: 'Elaborar juicios estéticos fundamentados sobre obras de arte contemporáneo, considerando criterios técnicos, conceptuales, culturales y éticos' },
+        { code: 'AV07-OA06', eje: 'Contextualizar', description: 'Investigar sobre artistas chilenos contemporáneos y sus obras, analizando su aporte al arte nacional e internacional' },
+        { code: 'AV07-OA07', eje: 'Contextualizar', description: 'Reflexionar sobre la relación entre arte, poder, identidad y sociedad, analizando ejemplos de distintas culturas y períodos históricos' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  ARTES VISUALES 8° BASICO
+    // ══════════════════════════════════════════════
+    'AV08': [
+        { code: 'AV08-OA01', eje: 'Expresion creativa', description: 'Desarrollar y presentar proyectos artísticos personales de mayor complejidad técnica y conceptual, usando técnicas, medios y lenguajes visuales variados con autonomía creativa' },
+        { code: 'AV08-OA02', eje: 'Expresion creativa', description: 'Desarrollar procesos creativos autorales: investigar, conceptualizar, planificar, ejecutar, reflexionar y comunicar proyectos artísticos propios con fundamentación' },
+        { code: 'AV08-OA03', eje: 'Apreciar y responder', description: 'Analizar y comparar obras de arte contemporáneo de distintas culturas, identificando características formales, conceptuales y sus contextos de producción' },
+        { code: 'AV08-OA04', eje: 'Apreciar y responder', description: 'Analizar críticamente el arte como herramienta de reflexión, denuncia y transformación social en distintos períodos históricos y culturas' },
+        { code: 'AV08-OA05', eje: 'Apreciar y responder', description: 'Elaborar y comunicar juicios estéticos fundamentados sobre obras de arte y diseño, usando criterios técnicos, conceptuales, culturales y éticos con autonomía crítica' },
+        { code: 'AV08-OA06', eje: 'Contextualizar', description: 'Investigar sobre movimientos artísticos latinoamericanos contemporáneos y su relación con contextos políticos, sociales y culturales' },
+        { code: 'AV08-OA07', eje: 'Contextualizar', description: 'Reflexionar sobre el propio proceso creativo y la identidad artística personal, valorando el arte como forma de expresión y conocimiento' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 1° BASICO
+    // ══════════════════════════════════════════════
+    'TE01': [
+        { code: 'TE01-OA01', eje: 'Uso responsable de TIC', description: 'Identificar y usar dispositivos tecnológicos del entorno (computador, tablet, teléfono) reconociendo sus partes y funciones principales' },
+        { code: 'TE01-OA02', eje: 'Uso responsable de TIC', description: 'Usar dispositivos tecnológicos básicos con autonomía para explorar programas educativos, juegos y recursos multimedia' },
+        { code: 'TE01-OA03', eje: 'Uso responsable de TIC', description: 'Distinguir usos responsables y seguros de la tecnología, identificando situaciones de riesgo en el entorno digital' },
+        { code: 'TE01-OA04', eje: 'Diseño y resolución de problemas', description: 'Explorar y manipular objetos tecnológicos del entorno, identificando sus funciones y el problema que resuelven' },
+        { code: 'TE01-OA05', eje: 'Diseño y resolución de problemas', description: 'Diseñar y construir objetos sencillos con materiales del entorno para resolver un problema concreto, siguiendo un proceso de diseño básico' },
+        { code: 'TE01-OA06', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales básicas (procesador de texto, software de dibujo) para crear productos sencillos' },
+        { code: 'TE01-OA07', eje: 'Diseño y resolución de problemas', description: 'Presentar y evaluar los objetos diseñados, explicando si resuelven el problema planteado y cómo podrían mejorarse' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 2° BASICO
+    // ══════════════════════════════════════════════
+    'TE02': [
+        { code: 'TE02-OA01', eje: 'Uso responsable de TIC', description: 'Usar con mayor autonomía dispositivos tecnológicos y programas educativos básicos para aprender y crear' },
+        { code: 'TE02-OA02', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales (procesador de texto, presentaciones, software de dibujo) para comunicar ideas y crear productos digitales sencillos' },
+        { code: 'TE02-OA03', eje: 'Uso responsable de TIC', description: 'Reconocer la importancia de proteger la información personal y mantener comportamientos seguros y responsables en entornos digitales' },
+        { code: 'TE02-OA04', eje: 'Diseño y resolución de problemas', description: 'Analizar objetos tecnológicos del entorno, identificando los materiales, las funciones y cómo resuelven necesidades humanas' },
+        { code: 'TE02-OA05', eje: 'Diseño y resolución de problemas', description: 'Diseñar y construir objetos o sistemas sencillos para resolver un problema, aplicando un proceso de diseño paso a paso' },
+        { code: 'TE02-OA06', eje: 'Pensamiento computacional', description: 'Resolver problemas sencillos mediante algoritmos básicos (secuencias de pasos) y explorar actividades introductorias de programación visual' },
+        { code: 'TE02-OA07', eje: 'Diseño y resolución de problemas', description: 'Presentar y evaluar colectivamente los objetos o sistemas diseñados, identificando aspectos logrados y posibles mejoras' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 3° BASICO
+    // ══════════════════════════════════════════════
+    'TE03': [
+        { code: 'TE03-OA01', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales con mayor fluidez para buscar información, crear contenidos y comunicarse, evaluando la calidad de la información obtenida en línea' },
+        { code: 'TE03-OA02', eje: 'Uso responsable de TIC', description: 'Crear contenidos digitales (presentaciones, documentos, producciones multimedia sencillas) para comunicar ideas y compartir aprendizajes' },
+        { code: 'TE03-OA03', eje: 'Uso responsable de TIC', description: 'Identificar y practicar comportamientos seguros, éticos y responsables en el uso de internet y redes sociales' },
+        { code: 'TE03-OA04', eje: 'Diseño y resolución de problemas', description: 'Analizar necesidades del entorno y diseñar objetos o sistemas tecnológicos que las resuelvan, considerando criterios de funcionalidad, seguridad y sustentabilidad' },
+        { code: 'TE03-OA05', eje: 'Diseño y resolución de problemas', description: 'Construir y probar prototipos de objetos o sistemas tecnológicos, evaluando si cumplen con los criterios de diseño establecidos y realizando mejoras' },
+        { code: 'TE03-OA06', eje: 'Pensamiento computacional', description: 'Desarrollar y aplicar el pensamiento computacional (descomposición, patrones, abstracción, algoritmos) para resolver problemas usando programación visual por bloques' },
+        { code: 'TE03-OA07', eje: 'Diseño y resolución de problemas', description: 'Comunicar y evaluar los resultados del proceso de diseño tecnológico, reflexionando sobre el impacto de la tecnología en la sociedad y el medio ambiente' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 4° BASICO
+    // ══════════════════════════════════════════════
+    'TE04': [
+        { code: 'TE04-OA01', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales avanzadas para investigar, crear y colaborar, evaluando críticamente la información obtenida en línea' },
+        { code: 'TE04-OA02', eje: 'Uso responsable de TIC', description: 'Crear contenidos digitales originales (sitios web sencillos, videos, podcasts, presentaciones interactivas) para distintos propósitos y audiencias' },
+        { code: 'TE04-OA03', eje: 'Uso responsable de TIC', description: 'Analizar situaciones de seguridad, privacidad y ética en el uso de tecnologías digitales, desarrollando comportamientos responsables en línea' },
+        { code: 'TE04-OA04', eje: 'Diseño y resolución de problemas', description: 'Aplicar un proceso de diseño tecnológico completo para diseñar, construir y evaluar objetos o sistemas que resuelvan problemas reales del entorno' },
+        { code: 'TE04-OA05', eje: 'Diseño y resolución de problemas', description: 'Seleccionar y usar materiales, herramientas y técnicas adecuadas para la construcción de objetos o sistemas tecnológicos, considerando criterios de calidad' },
+        { code: 'TE04-OA06', eje: 'Pensamiento computacional', description: 'Aplicar el pensamiento computacional para crear programas con estructuras de control (secuencias, condicionales, bucles) usando lenguajes de programación visual' },
+        { code: 'TE04-OA07', eje: 'Diseño y resolución de problemas', description: 'Reflexionar sobre el impacto social, cultural y medioambiental de las tecnologías, proponiendo usos responsables y sustentables' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 5° BASICO
+    // ══════════════════════════════════════════════
+    'TE05': [
+        { code: 'TE05-OA01', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales de manera autónoma y crítica para investigar, crear, colaborar y comunicar, evaluando la calidad y pertinencia de la información' },
+        { code: 'TE05-OA02', eje: 'Uso responsable de TIC', description: 'Crear y publicar contenidos digitales originales y de calidad para distintos propósitos y audiencias, usando herramientas digitales avanzadas' },
+        { code: 'TE05-OA03', eje: 'Uso responsable de TIC', description: 'Analizar dilemas éticos relacionados con la tecnología (privacidad, propiedad intelectual, fake news) y desarrollar criterios para un uso responsable y ético' },
+        { code: 'TE05-OA04', eje: 'Diseño y resolución de problemas', description: 'Aplicar un proceso de diseño tecnológico iterativo para desarrollar soluciones innovadoras a problemas reales, incorporando criterios de sustentabilidad' },
+        { code: 'TE05-OA05', eje: 'Diseño y resolución de problemas', description: 'Construir y probar prototipos funcionales de objetos o sistemas tecnológicos, evaluando el desempeño y realizando iteraciones de mejora' },
+        { code: 'TE05-OA06', eje: 'Pensamiento computacional', description: 'Crear programas y proyectos de robótica educativa que resuelvan problemas reales, usando lenguajes de programación visual y físicos con lógica de control avanzada' },
+        { code: 'TE05-OA07', eje: 'Diseño y resolución de problemas', description: 'Analizar críticamente el impacto de las tecnologías emergentes (inteligencia artificial, robótica, realidad aumentada) en la sociedad y el mundo del trabajo' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 6° BASICO
+    // ══════════════════════════════════════════════
+    'TE06': [
+        { code: 'TE06-OA01', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales colaborativas para investigar, crear proyectos y comunicar resultados con calidad técnica y pertinencia comunicativa' },
+        { code: 'TE06-OA02', eje: 'Uso responsable de TIC', description: 'Crear proyectos digitales colaborativos de mayor complejidad (sitios web, aplicaciones básicas, producciones audiovisuales) para audiencias reales' },
+        { code: 'TE06-OA03', eje: 'Uso responsable de TIC', description: 'Analizar y debatir sobre el impacto social, económico y cultural de las tecnologías digitales, desarrollando una ciudadanía digital crítica y responsable' },
+        { code: 'TE06-OA04', eje: 'Diseño y resolución de problemas', description: 'Aplicar un proceso de diseño tecnológico centrado en el usuario para crear soluciones innovadoras a problemas comunitarios o escolares' },
+        { code: 'TE06-OA05', eje: 'Diseño y resolución de problemas', description: 'Construir y probar sistemas tecnológicos funcionales (incluyendo circuitos eléctricos básicos o prototipos con componentes electrónicos), evaluando el desempeño' },
+        { code: 'TE06-OA06', eje: 'Pensamiento computacional', description: 'Crear proyectos de programación y robótica que integren sensores, actuadores y lógica de control para resolver problemas reales de manera autónoma' },
+        { code: 'TE06-OA07', eje: 'Diseño y resolución de problemas', description: 'Reflexionar y debatir sobre temas de ética tecnológica y futuro del trabajo, desarrollando visiones críticas y propositivas sobre el rol de la tecnología en la sociedad' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 7° BASICO
+    // ══════════════════════════════════════════════
+    'TE07': [
+        { code: 'TE07-OA01', eje: 'Uso responsable de TIC', description: 'Usar herramientas digitales avanzadas de manera autónoma y crítica para investigar, crear, comunicar y colaborar en proyectos complejos' },
+        { code: 'TE07-OA02', eje: 'Uso responsable de TIC', description: 'Crear y publicar proyectos digitales de calidad profesional (portafolios digitales, aplicaciones web, producciones multimedia) para audiencias reales y con propósito claro' },
+        { code: 'TE07-OA03', eje: 'Uso responsable de TIC', description: 'Analizar y evaluar críticamente el impacto de las tecnologías digitales en la vida personal, social y el medioambiente, desarrollando una ciudadanía digital activa' },
+        { code: 'TE07-OA04', eje: 'Diseño y resolución de problemas', description: 'Aplicar metodologías de diseño centradas en el usuario (design thinking) para crear soluciones tecnológicas innovadoras a problemas reales de la comunidad' },
+        { code: 'TE07-OA05', eje: 'Diseño y resolución de problemas', description: 'Construir y evaluar sistemas tecnológicos complejos (incluyendo electrónica, robótica o impresión 3D) con criterios de funcionalidad, seguridad y sustentabilidad' },
+        { code: 'TE07-OA06', eje: 'Pensamiento computacional', description: 'Crear programas y aplicaciones usando lenguajes de programación de texto, aplicando principios de la ingeniería del software y el pensamiento computacional' },
+        { code: 'TE07-OA07', eje: 'Diseño y resolución de problemas', description: 'Investigar y reflexionar sobre tecnologías emergentes (IA, blockchain, IoT, biotecnología) y sus implicancias éticas, sociales y económicas para el futuro' },
+    ],
+
+    // ══════════════════════════════════════════════
+    //  TECNOLOGIA 8° BASICO
+    // ══════════════════════════════════════════════
+    'TE08': [
+        { code: 'TE08-OA01', eje: 'Uso responsable de TIC', description: 'Usar con dominio herramientas digitales profesionales para investigar, crear, colaborar y comunicar proyectos de alto nivel técnico y creativo' },
+        { code: 'TE08-OA02', eje: 'Uso responsable de TIC', description: 'Crear proyectos digitales originales y de alta calidad que demuestren dominio de múltiples herramientas y lenguajes digitales, con propósito comunicativo claro' },
+        { code: 'TE08-OA03', eje: 'Uso responsable de TIC', description: 'Analizar y evaluar críticamente el rol de la tecnología en la construcción de la identidad digital, la ciudadanía y los derechos en el mundo contemporáneo' },
+        { code: 'TE08-OA04', eje: 'Diseño y resolución de problemas', description: 'Liderar procesos de diseño tecnológico complejos para crear soluciones innovadoras a problemas reales, incorporando metodologías ágiles y centradas en el usuario' },
+        { code: 'TE08-OA05', eje: 'Diseño y resolución de problemas', description: 'Construir, probar y optimizar sistemas tecnológicos complejos, evaluando su impacto técnico, social y medioambiental con criterios de sustentabilidad' },
+        { code: 'TE08-OA06', eje: 'Pensamiento computacional', description: 'Desarrollar proyectos de programación avanzada y aplicaciones funcionales usando lenguajes de texto, aplicando principios de la ingeniería de software y análisis de datos' },
+        { code: 'TE08-OA07', eje: 'Diseño y resolución de problemas', description: 'Reflexionar sobre el propio proceso de aprendizaje tecnológico y planificar un camino de desarrollo de competencias digitales para el futuro personal y profesional' },
     ],
 };
 

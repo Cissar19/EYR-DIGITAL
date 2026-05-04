@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { auth, db } from '../lib/firebase';
 import {
     signInWithEmailAndPassword,
@@ -18,6 +18,7 @@ import {
     setDoc,
     updateDoc,
     deleteDoc,
+    onSnapshot,
 } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -107,7 +108,36 @@ export const AuthProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Fetch all users from Firestore
+    // Ref to hold the users collection unsubscribe function
+    const usersUnsub = useRef(null);
+
+    /**
+     * Start a real-time listener on the users collection.
+     * Only called for management roles. Unsubscribes previous listener if any.
+     */
+    const subscribeUsers = React.useCallback(() => {
+        // Cancel any existing subscription first
+        if (usersUnsub.current) {
+            usersUnsub.current();
+            usersUnsub.current = null;
+        }
+        const unsub = onSnapshot(
+            collection(db, 'users'),
+            (snapshot) => {
+                const usersList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setUsers(usersList);
+            },
+            (error) => {
+                console.error('Error en listener de usuarios:', error);
+            }
+        );
+        usersUnsub.current = unsub;
+    }, []);
+
+    /**
+     * One-time fetch — kept for backward compatibility and for callers that
+     * need an immediate list (e.g. outside the subscription window).
+     */
     const fetchUsers = React.useCallback(async () => {
         try {
             const snapshot = await getDocs(collection(db, 'users'));
@@ -133,14 +163,15 @@ export const AuthProvider = ({ children }) => {
                         const profile = { id: profileDoc.id, ...profileDoc.data() };
                         setUser(profile);
 
-                        // Only load full user list for management roles — teacher/staff/printer
-                        // don't need it and loading 15k users on login doesn't scale.
+                        // Only subscribe to the full user list for management roles —
+                        // teacher/staff/printer don't need it and an extra onSnapshot
+                        // per non-management login doesn't scale.
                         const managementRoles = [
                             'super_admin', 'admin', 'director', 'utp_head',
                             'inspector', 'convivencia_head', 'convivencia',
                         ];
                         if (managementRoles.includes(profile.role)) {
-                            await fetchUsers();
+                            subscribeUsers();
                         }
                     } else {
                         // User exists in Auth but not in Firestore — unusual
@@ -152,13 +183,25 @@ export const AuthProvider = ({ children }) => {
                     setUser(null);
                 }
             } else {
+                // Tear down the users listener on logout
+                if (usersUnsub.current) {
+                    usersUnsub.current();
+                    usersUnsub.current = null;
+                }
                 setUser(null);
+                setUsers([]);
             }
             setLoading(false);
         });
 
-        return () => unsubscribe();
-    }, [fetchUsers]);
+        return () => {
+            unsubscribe();
+            if (usersUnsub.current) {
+                usersUnsub.current();
+                usersUnsub.current = null;
+            }
+        };
+    }, [subscribeUsers]);
 
     /**
      * Login with email and password
@@ -267,8 +310,7 @@ export const AuthProvider = ({ children }) => {
             await signOut(secondaryAuth);
             try { await deleteApp(secondaryApp); } catch (_) { }
 
-            // Refresh users list
-            await fetchUsers();
+            // No need to call fetchUsers — onSnapshot will update users state automatically
 
             return { id: uid, ...userDoc, tempPassword };
         } catch (error) {
@@ -330,7 +372,7 @@ export const AuthProvider = ({ children }) => {
                         });
                     } catch (_) { }
 
-                    await fetchUsers();
+                    // onSnapshot will update users state automatically
                     return { id: uid, ...userDoc, tempPassword: recoveredPwd };
                 } catch (recoverError) {
                     // If recovery fails and original error was rate-limit, surface the rate-limit message
@@ -343,7 +385,7 @@ export const AuthProvider = ({ children }) => {
 
             throw error;
         }
-    }, [fetchUsers, user]);
+    }, [user]);
 
     /**
      * Update existing user in Firestore.

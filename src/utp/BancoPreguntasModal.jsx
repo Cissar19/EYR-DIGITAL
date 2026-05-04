@@ -50,9 +50,9 @@ export default function BancoPreguntasModal({ onClose, onSelect, asignatura: asi
         setAddedIds(prev => new Set([...prev, pregunta.id]));
     };
 
-    const handleDelete = async (id) => {
-        await deleteQuestion(id);
+    const handleDelete = (id) => {
         setConfirmDeleteId(null);
+        deleteQuestion(id);
     };
 
     const SELECT_CLS = 'py-2 pl-3 pr-8 rounded-xl border border-slate-200 text-sm font-medium outline-none bg-white appearance-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all';

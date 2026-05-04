@@ -272,7 +272,10 @@ service cloud.firestore {
         isManagement() ||
         (getUserRole() == 'teacher' && teacherScheduleAllows(request.auth.uid, resource.data.curso, resource.data.asignatura))
       );
-      allow delete: if isAuthenticated() && isManagement();
+      allow delete: if isAuthenticated() && (
+        isManagement() ||
+        (getUserRole() == 'teacher' && resource.data.createdBy.id == request.auth.uid)
+      );
     }
 
     // ============================================
@@ -450,6 +453,24 @@ service cloud.firestore {
         resource.data.docenteId == request.auth.uid ||
         isAdmin() || isUTP()
       );
+    }
+
+    // ============================================
+    // INCENTIVO-EYR (banco de estrellas)
+    // ============================================
+    function isIncentivoUser() {
+      return isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher'];
+    }
+
+    match /incentivo_estrellas/{studentId} {
+      allow read: if isIncentivoUser();
+      allow write: if isIncentivoUser();
+    }
+
+    match /incentivo_transacciones/{txId} {
+      allow read: if isIncentivoUser();
+      allow create: if isIncentivoUser();
+      allow update, delete: if isAdmin();
     }
 
     // ============================================

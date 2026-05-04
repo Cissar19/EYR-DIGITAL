@@ -442,16 +442,13 @@ export default function FichaClap() {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!deleteConfirm) return;
-        try {
-            await removeDocument('ficha_clap', deleteConfirm.id);
-            toast.success('Ficha eliminada');
-        } catch (err) {
-            toast.error(err?.message || 'Error al eliminar');
-        } finally {
-            setDeleteConfirm(null);
-        }
+        const id = deleteConfirm.id;
+        setDeleteConfirm(null);
+        removeDocument('ficha_clap', id)
+            .then(() => toast.success('Ficha eliminada'))
+            .catch(err => toast.error(err?.message || 'Error al eliminar'));
     };
 
     const handleAddStudent = async () => {

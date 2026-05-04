@@ -2,16 +2,32 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X,
     Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle,
-    FileDown, Loader2, NotebookPen, Users, Layers,
+    FileDown, Loader2, NotebookPen, Users, Layers, Flag,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { useAuth, canEdit } from '../context/AuthContext';
+import { collection, query, where, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useAuth, canEdit, isAdmin } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
 import { AgendaSemanalModal } from './AgendaSemanal';
-import ModalContainer from '../components/ModalContainer';
 import { CURSOS } from '../data/objetivosAprendizaje';
-import { exportCalendarioPDF } from '../lib/pdfExport';
+import { exportCalendarioPDF, exportAgendaMensualCardPDF } from '../lib/pdfExport';
+import { CHILE_HOLIDAYS } from '../data/chileHolidays';
+import { toast } from 'sonner';
+import { useSchedule } from '../context/ScheduleContext';
+
+const DIA_TO_OFFSET = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4 };
+
+// "Juan Carlos García López" → "J. García"
+function shortName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    const initial = parts[0][0].toUpperCase() + '.';
+    const surname = parts.length >= 4 ? parts[2] : parts[1];
+    return `Prof. ${initial} ${surname}`;
+}
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -148,62 +164,123 @@ function AnimatedBg() {
     );
 }
 
+// ─── CalModal — modal chrome del nuevo diseño ─────────────────────────────────
+function CalModal({ onClose, width = 580, children }) {
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose]);
+
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 200,
+                background: 'rgba(31,42,46,.32)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                display: 'grid', placeItems: 'center',
+                padding: 24,
+                animation: 'calFadeIn .2s ease-out',
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width, maxWidth: '100%',
+                    background: '#fff',
+                    borderRadius: 22,
+                    border: `1px solid ${LINE}`,
+                    boxShadow: '0 24px 60px -20px rgba(31,42,46,.22), 0 8px 18px -10px rgba(31,42,46,.10)',
+                    display: 'flex', flexDirection: 'column',
+                    maxHeight: 'calc(100vh - 48px)',
+                    overflow: 'hidden',
+                    animation: 'calPopIn .25s cubic-bezier(.4,0,.2,1)',
+                }}
+            >
+                {/* Gradient stripe */}
+                <div style={{
+                    height: 6, flexShrink: 0,
+                    background: `linear-gradient(90deg, ${PRIMARY}, ${ACCENT}, ${HONEY})`,
+                }} />
+                {children}
+            </div>
+        </div>
+    );
+}
+
 // ─── EvalDetailModal ──────────────────────────────────────────────────────────
-function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onApprove, onReject }) {
+function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canEditEval, onApprove, onReject }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const pending = ev.pendingChanges;
+    const pending  = ev.pendingChanges;
+    const sc       = SUB_COLORS[ev.asignatura];
     const dateLabel = ev.date
         ? new Date(ev.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '—';
 
     return (
-        <ModalContainer onClose={onClose} maxWidth="max-w-lg">
-            <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
-                <div className="flex-1 pr-4">
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-2 ${ASIG_COLORS[ev.asignatura] || 'bg-slate-100 text-slate-600'}`}>
-                        {ASIG_FULL[ev.asignatura] || ev.asignatura}
-                    </div>
-                    <h2 className="text-xl font-headline font-extrabold text-eyr-on-surface tracking-tight leading-tight">{ev.name}</h2>
-                    <p className="text-sm text-inst-navy font-semibold mt-1 capitalize">{dateLabel}</p>
+        <CalModal onClose={onClose} width={520}>
+            {/* Head */}
+            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                <div style={{
+                    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                    background: sc?.soft || PRIMARY_SOFT, color: sc?.color || PRIMARY,
+                    display: 'grid', placeItems: 'center',
+                }}>
+                    <CalendarDays className="w-5 h-5" />
                 </div>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 text-eyr-on-variant hover:text-red-500 transition-all shrink-0">
-                    <X className="w-5 h-5" />
+                <div style={{ flex: 1 }}>
+                    <h2 className="font-headline" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>{ev.name}</h2>
+                    <p style={{ fontSize: 13, color: INK_2, marginTop: 3, textTransform: 'capitalize' }}>{dateLabel}</p>
+                </div>
+                <button onClick={onClose} className="transition-colors hover:bg-slate-100 rounded-lg"
+                    style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                    <X size={18} />
                 </button>
             </div>
 
-            <div className="px-8 py-4 overflow-y-auto space-y-4">
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-eyr-surface-low">
-                    <BookOpen className="w-4 h-4 text-inst-navy shrink-0" />
+            {/* Body */}
+            <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Asignatura + Curso */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: sc?.soft || PRIMARY_SOFT, borderRadius: 12, border: `1px solid ${LINE}` }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 9, background: sc?.color || PRIMARY, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                        <BookOpen className="w-4 h-4" />
+                    </div>
                     <div>
-                        <p className="text-xs font-bold text-eyr-on-variant">Curso</p>
-                        <p className="text-sm font-semibold text-eyr-on-surface">{ev.curso}</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: sc?.color || PRIMARY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            {ASIG_FULL[ev.asignatura] || ev.asignatura}
+                        </p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: INK, marginTop: 1 }}>{ev.curso}</p>
                     </div>
                 </div>
 
+                {/* Horario */}
                 {ev.slots && ev.slots.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-eyr-surface-low space-y-2">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Clock className="w-4 h-4 text-inst-navy shrink-0" />
-                            <p className="text-xs font-bold text-eyr-on-variant">Horario</p>
+                    <div style={{ padding: '14px 16px', background: '#FBF7F1', borderRadius: 12, border: `1px solid ${LINE}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                            <Clock className="w-4 h-4" style={{ color: INK_3 }} />
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Horario</p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {ev.slots.map((s, i) => (
-                                <div key={i} className="flex flex-col px-3 py-2 rounded-xl bg-white border border-eyr-outline-variant/20">
-                                    <span className="text-xs font-extrabold text-inst-navy">{s.day}</span>
-                                    <span className="text-xs font-semibold text-eyr-on-surface">{s.label}</span>
-                                    {s.startTime && <span className="text-[11px] text-eyr-on-variant/60">{s.startTime}{s.endTime ? `–${s.endTime}` : ''}</span>}
+                                <div key={i} style={{ padding: '8px 12px', borderRadius: 10, background: '#fff', border: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 800, color: PRIMARY }}>{s.day}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: INK }}>{s.label}</span>
+                                    {s.startTime && <span style={{ fontSize: 11, color: INK_3 }}>{s.startTime}{s.endTime ? `–${s.endTime}` : ''}</span>}
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
 
+                {/* OAs */}
                 {ev.oaCodes && ev.oaCodes.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-eyr-surface-low space-y-2">
-                        <p className="text-xs font-bold text-eyr-on-variant">OA a evaluar</p>
-                        <div className="flex flex-wrap gap-1.5">
+                    <div style={{ padding: '14px 16px', background: '#FBF7F1', borderRadius: 12, border: `1px solid ${LINE}` }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: INK_2, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>OA a evaluar</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {ev.oaCodes.map(code => (
-                                <span key={code} className="px-2.5 py-1 rounded-lg bg-inst-navy/10 text-inst-navy text-xs font-bold">
+                                <span key={code} style={{ padding: '4px 10px', borderRadius: 6, background: '#FBEDC9', color: '#6b4a06', fontSize: 11, fontWeight: 700 }}>
                                     {code.split('-').pop()}
                                 </span>
                             ))}
@@ -211,101 +288,89 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, onAppro
                     </div>
                 )}
 
+                {/* Creado por */}
                 {ev.createdBy?.name && (
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-eyr-surface-low">
-                        <User className="w-4 h-4 text-eyr-on-variant shrink-0" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#FBF7F1', borderRadius: 12, border: `1px solid ${LINE}` }}>
+                        <User className="w-4 h-4" style={{ color: INK_3, flexShrink: 0 }} />
                         <div>
-                            <p className="text-xs font-bold text-eyr-on-variant">Creado por</p>
-                            <p className="text-sm font-semibold text-eyr-on-surface">{ev.createdBy.name}</p>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Creado por</p>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: INK }}>{ev.createdBy.name}</p>
                         </div>
                     </div>
                 )}
 
+                {/* Cambios pendientes */}
                 {pending && (
-                    <div className="p-4 rounded-2xl border-2 border-amber-300 bg-amber-50 space-y-3">
-                        <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                            <p className="text-sm font-bold text-amber-700">Cambios pendientes de aprobación</p>
+                    <div style={{ padding: '14px 16px', borderRadius: 12, border: '2px solid #fcd34d', background: '#fffbeb' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <AlertCircle className="w-4 h-4" style={{ color: '#d97706', flexShrink: 0 }} />
+                            <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Cambios pendientes de aprobación</p>
                         </div>
                         {pending.name && pending.name !== ev.name && (
-                            <div>
-                                <p className="text-xs font-bold text-amber-600 mb-0.5">Nuevo título</p>
-                                <p className="text-sm font-semibold text-amber-900">{pending.name}</p>
+                            <div style={{ marginBottom: 8 }}>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 2 }}>Nuevo título</p>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>{pending.name}</p>
                             </div>
                         )}
                         {pending.oaCodes?.length > 0 && (
-                            <div>
-                                <p className="text-xs font-bold text-amber-600 mb-1">Nuevos OA</p>
-                                <div className="flex flex-wrap gap-1.5">
+                            <div style={{ marginBottom: 8 }}>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6 }}>Nuevos OA</p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                     {pending.oaCodes.map(code => (
-                                        <span key={code} className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-xs font-bold">
-                                            {code.split('-').pop()}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {pending.slots?.length > 0 && (
-                            <div>
-                                <p className="text-xs font-bold text-amber-600 mb-1">Nuevo horario</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {pending.slots.map((s, i) => (
-                                        <div key={i} className="px-3 py-1.5 rounded-xl bg-amber-200 text-amber-900 text-xs font-semibold">
-                                            {s.day} · {s.label}
-                                        </div>
+                                        <span key={code} style={{ padding: '4px 10px', borderRadius: 6, background: '#fde68a', color: '#92400e', fontSize: 11, fontWeight: 700 }}>{code.split('-').pop()}</span>
                                     ))}
                                 </div>
                             </div>
                         )}
                         {pending.submittedBy?.name && (
-                            <p className="text-xs text-amber-600">Propuesto por <strong>{pending.submittedBy.name}</strong></p>
+                            <p style={{ fontSize: 12, color: '#d97706' }}>Propuesto por <strong>{pending.submittedBy.name}</strong></p>
                         )}
                         {canCRUD && (
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={onApprove} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-all">
+                            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                <button onClick={onApprove} className="flex items-center gap-1.5 transition-colors hover:brightness-95"
+                                    style={{ padding: '8px 16px', borderRadius: 10, background: '#10b981', color: '#fff', fontSize: 12, fontWeight: 700 }}>
                                     <CheckCircle className="w-3.5 h-3.5" /> Aprobar
                                 </button>
-                                <button onClick={onReject} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-100 text-red-600 text-xs font-bold hover:bg-red-200 transition-all">
+                                <button onClick={onReject} className="flex items-center gap-1.5 transition-colors hover:bg-red-200"
+                                    style={{ padding: '8px 16px', borderRadius: 10, background: '#fee2e2', color: '#dc2626', fontSize: 12, fontWeight: 700 }}>
                                     <XCircle className="w-3.5 h-3.5" /> Rechazar
                                 </button>
                             </div>
                         )}
-                        {!canCRUD && (
-                            <p className="text-xs text-amber-500 italic">En revisión por la jefa UTP.</p>
-                        )}
+                        {!canCRUD && <p style={{ fontSize: 12, color: '#d97706', fontStyle: 'italic', marginTop: 8 }}>En revisión por la jefa UTP.</p>}
                     </div>
                 )}
             </div>
 
-            <div className="p-6 bg-eyr-surface-mid shrink-0 flex items-center gap-3">
-                {canCRUD && !confirmDelete && (
+            {/* Foot */}
+            <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                {(canCRUD || canEditEval) && !confirmDelete && (
                     <>
-                        <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-all">
+                        <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 transition-colors hover:bg-red-50 rounded-xl"
+                            style={{ padding: '8px 14px', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
                             <Trash2 className="w-4 h-4" /> Eliminar
                         </button>
-                        <button onClick={onEdit} className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-inst-navy hover:bg-inst-navy/10 transition-all">
+                        <button onClick={onEdit} className="flex items-center gap-1.5 transition-colors hover:bg-slate-100 rounded-xl"
+                            style={{ padding: '8px 14px', color: PRIMARY, fontSize: 13, fontWeight: 600 }}>
                             <Pencil className="w-4 h-4" /> Editar
                         </button>
                     </>
                 )}
                 {confirmDelete && (
-                    <div className="flex items-center gap-3 flex-1">
-                        <span className="text-sm font-semibold text-red-600 flex-1">¿Eliminar esta evaluación?</span>
-                        <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 rounded-xl text-sm font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all">
-                            Cancelar
-                        </button>
-                        <button onClick={onDelete} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-all">
-                            Sí, eliminar
-                        </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', flex: 1 }}>¿Eliminar esta evaluación?</span>
+                        <button onClick={() => setConfirmDelete(false)} className="transition-colors hover:bg-slate-100 rounded-xl"
+                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, color: INK_2 }}>Cancelar</button>
+                        <button onClick={onDelete} className="transition-colors hover:brightness-95 rounded-xl"
+                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, background: '#dc2626', color: '#fff' }}>Sí, eliminar</button>
                     </div>
                 )}
                 {!confirmDelete && (
-                    <button onClick={onClose} className="ml-auto px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all">
-                        Cerrar
-                    </button>
+                    <button onClick={onClose} className="ml-auto transition-colors hover:bg-slate-100 rounded-xl"
+                        style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, color: INK_2 }}>Cerrar</button>
                 )}
             </div>
-        </ModalContainer>
+        </CalModal>
     );
 }
 
@@ -316,45 +381,52 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
         : evaluaciones.filter(e => e.createdBy?.id === user.uid).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     return (
-        <ModalContainer onClose={onClose} maxWidth="max-w-xl">
-            <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
-                <div>
-                    <h2 className="text-2xl font-headline font-extrabold text-eyr-on-surface tracking-tight">Editar fechas</h2>
-                    <p className="text-sm text-eyr-on-variant mt-0.5">
+        <CalModal onClose={onClose} width={560}>
+            {/* Head */}
+            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center' }}>
+                    <Pencil className="w-5 h-5" />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <h2 className="font-headline" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>Editar fechas</h2>
+                    <p style={{ fontSize: 13, color: INK_2, marginTop: 3 }}>
                         {canCRUD ? 'Todas las evaluaciones programadas' : 'Tus evaluaciones programadas'}
                     </p>
                 </div>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-red-50 text-eyr-on-variant hover:text-red-500 transition-all">
-                    <X className="w-5 h-5" />
+                <button onClick={onClose} className="transition-colors hover:bg-slate-100 rounded-lg"
+                    style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                    <X size={18} />
                 </button>
             </div>
 
-            <div className="px-8 py-4 overflow-y-auto space-y-2">
+            {/* Body */}
+            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {myEvals.length === 0 && (
-                    <p className="text-sm text-eyr-on-variant text-center py-8">No hay evaluaciones programadas.</p>
+                    <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                        <div style={{ width: 56, height: 56, borderRadius: 16, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
+                            <CalendarDays className="w-6 h-6" />
+                        </div>
+                        <p style={{ fontSize: 14, color: INK_2, fontWeight: 500 }}>No hay evaluaciones programadas.</p>
+                    </div>
                 )}
                 {myEvals.map(ev => {
+                    const sc = SUB_COLORS[ev.asignatura];
                     const dateLabel = ev.date
                         ? new Date(ev.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
                         : '—';
                     return (
-                        <div key={ev.id} className="flex items-center gap-3 p-3 rounded-2xl bg-eyr-surface-low hover:bg-eyr-surface-high transition-colors">
-                            <div className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-extrabold ${ASIG_COLORS[ev.asignatura] || 'bg-slate-100 text-slate-600'}`}>
-                                {ev.curso}
+                        <div key={ev.id} className="flex items-center gap-3 transition-colors hover:bg-slate-50 rounded-2xl"
+                            style={{ padding: '10px 12px', border: `1px solid ${LINE}`, borderRadius: 12 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc?.color || INK_3, flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</p>
+                                <p style={{ fontSize: 11, color: INK_3, textTransform: 'capitalize', marginTop: 2 }}>
+                                    {dateLabel} · {ASIG_FULL[ev.asignatura] || ev.asignatura} · {ev.curso}
+                                </p>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-eyr-on-surface truncate">{ev.name}</p>
-                                <p className="text-xs text-eyr-on-variant capitalize">{dateLabel} · {ASIG_FULL[ev.asignatura] || ev.asignatura}</p>
-                            </div>
-                            {ev.pendingChanges && (
-                                <span title="Cambios pendientes">
-                                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                                </span>
-                            )}
-                            <button
-                                onClick={() => onEdit(ev)}
-                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-inst-navy hover:bg-inst-navy/10 transition-all"
-                            >
+                            {ev.pendingChanges && <AlertCircle size={15} style={{ color: '#d97706', flexShrink: 0 }} title="Cambios pendientes" />}
+                            <button onClick={() => onEdit(ev)} className="flex items-center gap-1.5 transition-colors hover:bg-slate-100 rounded-lg"
+                                style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: PRIMARY, flexShrink: 0 }}>
                                 <Pencil className="w-3.5 h-3.5" /> Editar
                             </button>
                         </div>
@@ -362,12 +434,197 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
                 })}
             </div>
 
-            <div className="p-6 bg-eyr-surface-mid shrink-0">
-                <button onClick={onClose} className="w-full px-6 py-3 rounded-2xl font-bold text-eyr-on-variant hover:bg-eyr-surface-high transition-all">
-                    Cerrar
+            {/* Foot */}
+            <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', flexShrink: 0 }}>
+                <button onClick={onClose} className="w-full transition-colors hover:bg-slate-100 rounded-xl"
+                    style={{ padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>Cerrar</button>
+            </div>
+        </CalModal>
+    );
+}
+
+// ─── DayModal — clic en una celda del calendario ──────────────────────────────
+function DayModal({ dateStr, events, agendaItems = [], onClose, onNew, onDetail, canCreate, onDeleteAgendaEntry, currentUserId, canCRUD }) {
+    const date      = new Date(dateStr + 'T12:00:00');
+    const dayNum    = date.getDate();
+    const monthName = MESES[date.getMonth()];
+    const weekDay   = date.toLocaleDateString('es-CL', { weekday: 'long' });
+    const hasContent = events.length > 0 || agendaItems.length > 0;
+
+    // Group agenda items by subject for cleaner display
+    const agendaByAsig = useMemo(() => {
+        const map = {};
+        agendaItems.forEach(item => {
+            const key = `${item.curso}__${item.asignatura}`;
+            if (!map[key]) map[key] = { curso: item.curso, asignatura: item.asignatura, docenteName: item.docenteName, items: [] };
+            map[key].items.push(item);
+        });
+        return Object.values(map);
+    }, [agendaItems]);
+
+    return (
+        <CalModal onClose={onClose} width={460}>
+            {/* Head */}
+            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#FBEDC9', color: HONEY, display: 'grid', placeItems: 'center' }}>
+                    <CalendarDays className="w-5 h-5" />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <h2 className="font-headline" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>
+                        {dayNum} de {monthName}
+                    </h2>
+                    <p style={{ fontSize: 13, color: INK_2, marginTop: 3, textTransform: 'capitalize' }}>
+                        {!hasContent
+                            ? `${weekDay} — sin actividad`
+                            : weekDay}
+                    </p>
+                </div>
+                <button onClick={onClose} className="transition-colors hover:bg-slate-100 rounded-lg"
+                    style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                    <X size={18} />
                 </button>
             </div>
-        </ModalContainer>
+
+            {/* Body */}
+            <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {!hasContent ? (
+                    /* Empty state */
+                    <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
+                        <div style={{
+                            width: 64, height: 64, borderRadius: 18, margin: '0 auto 14px',
+                            background: `linear-gradient(135deg, ${PRIMARY_SOFT}, #FBEDC9)`,
+                            display: 'grid', placeItems: 'center', color: PRIMARY,
+                        }}>
+                            <CalendarDays className="w-7 h-7" />
+                        </div>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: INK, marginBottom: 6 }}>Día libre</p>
+                        <p style={{ fontSize: 13, color: INK_2, marginBottom: 20 }}>No hay evaluaciones para este día. ¿Quieres programar una?</p>
+                        {canCreate && (
+                            <button onClick={onNew} className="inline-flex items-center gap-2 transition-all hover:-translate-y-px hover:brightness-95"
+                                style={{ padding: '10px 20px', borderRadius: 10, background: PRIMARY, color: '#fff', fontSize: 13, fontWeight: 700, boxShadow: `0 6px 14px -6px ${PRIMARY}` }}>
+                                <Plus className="w-4 h-4" /> Fijar una prueba
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* Evaluaciones */}
+                        {events.length > 0 && (
+                            <div>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                                    Evaluaciones · {events.length}
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {events.map(ev => {
+                                        const sc = SUB_COLORS[ev.asignatura];
+                                        return (
+                                            <button
+                                                key={ev.id}
+                                                onClick={() => onDetail(ev)}
+                                                className="w-full text-left transition-colors hover:brightness-95"
+                                                style={{
+                                                    padding: '12px 14px', borderRadius: 10,
+                                                    background: '#FAF6EE', border: `1px solid ${LINE}`,
+                                                    borderLeft: `4px solid ${sc?.color || INK_3}`,
+                                                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                                                }}
+                                            >
+                                                <div style={{ flex: 1 }}>
+                                                    <p style={{ fontSize: 14, fontWeight: 700, color: INK }}>{ev.name}</p>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
+                                                        <span style={{ padding: '2px 8px', borderRadius: 4, background: sc?.soft || '#f1f5f9', color: sc?.color || INK_3, fontSize: 11, fontWeight: 700 }}>
+                                                            {ASIG_FULL[ev.asignatura] || ev.asignatura}
+                                                        </span>
+                                                        <span style={{ fontSize: 12, color: INK_2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <Users className="w-3 h-3" /> {ev.curso}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {ev.pendingChanges && (
+                                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: HONEY, border: '2px solid #fff', flexShrink: 0, marginTop: 4 }} title="Cambios pendientes" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                    {canCreate && (
+                                        <button onClick={onNew} className="w-full flex items-center justify-center gap-2 transition-all hover:-translate-y-px"
+                                            style={{ padding: '10px', borderRadius: 10, background: PRIMARY_SOFT, color: PRIMARY, fontSize: 13, fontWeight: 600, border: `1px dashed ${PRIMARY}`, marginTop: 4 }}>
+                                            <Plus className="w-4 h-4" /> Agregar evaluación
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Agenda semanal */}
+                        {agendaByAsig.length > 0 && (
+                            <div>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <NotebookPen style={{ width: 11, height: 11 }} /> Agenda semanal
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {agendaByAsig.map((group, gi) => (
+                                        <div key={gi} style={{
+                                            padding: '10px 14px', borderRadius: 10,
+                                            background: '#EEF2FF',
+                                            border: '1px solid #C7D2FE',
+                                            borderLeft: '4px solid #818CF8',
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: '#4338CA', background: '#C7D2FE', padding: '2px 8px', borderRadius: 4 }}>
+                                                    {group.asignatura}
+                                                </span>
+                                                <span style={{ fontSize: 12, color: '#6366F1', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <Users style={{ width: 11, height: 11 }} /> {group.curso}
+                                                </span>
+                                                {group.docenteName && (
+                                                    <span style={{ fontSize: 11, color: '#818CF8', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                        <User style={{ width: 10, height: 10 }} /> {group.docenteName.split(' ')[0]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <ul style={{ margin: 0, padding: '0 0 0 14px', listStyle: 'disc' }}>
+                                                {group.items.map(item => {
+                                                    const canDel = onDeleteAgendaEntry && (canCRUD || item.docenteId === currentUserId);
+                                                    return (
+                                                        <li key={item.id} style={{ fontSize: 13, color: '#312E81', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span style={{ flex: 1 }}>{item.texto}</span>
+                                                            {canDel && (
+                                                                <button
+                                                                    onClick={() => onDeleteAgendaEntry(item.agendaDocId, item.id, item.agendaEntries)}
+                                                                    style={{
+                                                                        flexShrink: 0, width: 18, height: 18,
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        borderRadius: 4, border: 'none',
+                                                                        background: '#FEE2E2', color: '#DC2626',
+                                                                        cursor: 'pointer', padding: 0,
+                                                                    }}
+                                                                    title="Eliminar entrada"
+                                                                >
+                                                                    <Trash2 style={{ width: 10, height: 10 }} />
+                                                                </button>
+                                                            )}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Add eval button (when only agenda items, no evals) */}
+                        {events.length === 0 && canCreate && (
+                            <button onClick={onNew} className="w-full flex items-center justify-center gap-2 transition-all hover:-translate-y-px"
+                                style={{ padding: '10px', borderRadius: 10, background: PRIMARY_SOFT, color: PRIMARY, fontSize: 13, fontWeight: 600, border: `1px dashed ${PRIMARY}` }}>
+                                <Plus className="w-4 h-4" /> Agregar evaluación
+                            </button>
+                        )}
+                    </>
+                )}
+            </div>
+        </CalModal>
     );
 }
 
@@ -424,13 +681,15 @@ function PillSelector({ value, label, onPrev, onNext, canPrev, canNext, onOpen, 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CalendarioEvaluaciones() {
-    const { user } = useAuth();
+    const { user, getAllUsers } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
+    const { getSchedule } = useSchedule();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
-    const canCRUD = canEdit(user) || user?.role === 'utp_head';
+    const canCRUD = isAdmin(user) || user?.role === 'utp_head';
     const isTeacher = user?.role === 'teacher';
 
     const [selectedDate, setSelectedDate]         = useState(null);
+    const [dayModal, setDayModal]                 = useState(null);
     const [showFijar, setShowFijar]               = useState(false);
     const [showAgenda, setShowAgenda]             = useState(false);
     const [evalModal, setEvalModal]               = useState(null);
@@ -451,7 +710,51 @@ export default function CalendarioEvaluaciones() {
 
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [selectedCurso, setSelectedCurso] = useState(null);
-    const [exportingPdf, setExportingPdf]   = useState(false);
+    const [exportingPdf, setExportingPdf]         = useState(false);
+    const [exportingAgenda, setExportingAgenda]   = useState(false);
+    const [showAgendaExportModal, setShowAgendaExportModal] = useState(false);
+    const [agendaExportWeek, setAgendaExportWeek] = useState(() => {
+        const d = new Date();
+        const day = d.getDay();
+        d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString().slice(0, 10);
+    });
+    const [agendaExportCurso, setAgendaExportCurso] = useState(null);
+
+    const agendaExportWeekLabel = useMemo(() => {
+        const mon = new Date(agendaExportWeek + 'T12:00:00');
+        const fri = new Date(mon);
+        fri.setDate(fri.getDate() + 4);
+        const fmt = d => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+        return `${fmt(mon)} – ${fmt(fri)}`;
+    }, [agendaExportWeek]);
+
+    const agendaExportWeekDays = useMemo(() => {
+        const mon = new Date(agendaExportWeek + 'T12:00:00');
+        return ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'].map((label, i) => {
+            const d = new Date(mon);
+            d.setDate(d.getDate() + i);
+            const iso = d.toISOString().slice(0, 10);
+            return { label, date: d.getDate(), iso, isToday: iso === todayStr };
+        });
+    }, [agendaExportWeek, todayStr]);
+
+    const agendaExportWeekOfMonth = useMemo(() => {
+        const mon = new Date(agendaExportWeek + 'T12:00:00');
+        const monthName = mon.toLocaleDateString('es-CL', { month: 'long' });
+        const firstDow = new Date(mon.getFullYear(), mon.getMonth(), 1).getDay();
+        const firstMonday = firstDow === 0 ? 2 : firstDow === 1 ? 1 : 9 - firstDow;
+        const weekNum = Math.floor((mon.getDate() - firstMonday) / 7) + 1;
+        const ordinals = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta'];
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        return `${ordinals[Math.min(weekNum - 1, 4)]} semana de ${cap(monthName)}`;
+    }, [agendaExportWeek]);
+
+    const agendaExportProfesorJefe = useMemo(() => {
+        if (!agendaExportCurso) return null;
+        return getAllUsers().find(u => u.isHeadTeacher && u.headTeacherOf === agendaExportCurso) ?? null;
+    }, [getAllUsers, agendaExportCurso]);
 
     const weeks = useMemo(() => buildMonthGrid(currentYear, selectedMonth), [currentYear, selectedMonth]);
 
@@ -475,6 +778,65 @@ export default function CalendarioEvaluaciones() {
         });
         return map;
     }, [filteredEvals]);
+
+    // ── Agenda semanal items ──────────────────────────────────────────────────
+    const weekStarts = useMemo(() =>
+        [...new Set(weeks.map(w => w[0].dateStr))]
+    , [weeks]);
+
+    const [agendaDocs, setAgendaDocs] = useState([]);
+    useEffect(() => {
+        if (weekStarts.length === 0) { setAgendaDocs([]); return; }
+        const q = query(
+            collection(db, 'agenda_contenido'),
+            where('weekStart', 'in', weekStarts)
+        );
+        return onSnapshot(q,
+            snap => setAgendaDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+            err  => console.error('agenda_contenido calendar:', err)
+        );
+    }, [weekStarts.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const agendaItemsByDate = useMemo(() => {
+        const map = {};
+        agendaDocs.forEach(docData => {
+            if (!canCRUD && docData.docenteId !== user.uid) return;
+            if (selectedCurso && docData.curso !== selectedCurso) return;
+            (docData.entries ?? []).forEach(entry => {
+                const offset = DIA_TO_OFFSET[entry.dia];
+                if (offset === undefined) return;
+                const monday = new Date(docData.weekStart + 'T12:00:00');
+                monday.setDate(monday.getDate() + offset);
+                const dateStr = monday.toISOString().slice(0, 10);
+                if (!map[dateStr]) map[dateStr] = [];
+                map[dateStr].push({
+                    ...entry,
+                    curso:        docData.curso,
+                    docenteId:    docData.docenteId,
+                    docenteName:  docData.docenteName,
+                    agendaDocId:  docData.id,
+                    agendaEntries: docData.entries ?? [],
+                    dateStr,
+                });
+            });
+        });
+        return map;
+    }, [agendaDocs, canCRUD, user.uid, selectedCurso]);
+
+    // Próximo feriado
+    const nextHoliday = useMemo(() => {
+        const sorted = Object.entries(CHILE_HOLIDAYS)
+            .filter(([date]) => date > todayStr)
+            .sort(([a], [b]) => a.localeCompare(b));
+        if (sorted.length === 0) return null;
+        const [date, name] = sorted[0];
+        const d      = new Date(date + 'T12:00:00');
+        const t      = new Date(todayStr + 'T12:00:00');
+        const diffDays = Math.round((d - t) / 86400000);
+        const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
+        const countLabel = diffDays === 1 ? 'Mañana' : `En ${diffDays} días`;
+        return { date, name, diffDays, dateLabel, countLabel };
+    }, [todayStr]);
 
     // Stats for the selected month
     const stats = useMemo(() => {
@@ -500,12 +862,91 @@ export default function CalendarioEvaluaciones() {
     const canGoPrev = selectedMonth > currentMonth;
     const canGoNext = selectedMonth < 11;
 
-    const [dropdownOpen, setDropdownOpen]         = useState(false);
-    const [cursoDropdownOpen, setCursoDropdownOpen] = useState(false);
-    const dropdownRef     = useRef(null);
-    const cursoDropdownRef = useRef(null);
+    // Días de la semana en que el docente tiene clases para el curso filtrado
+    const teacherDaysForCurso = useMemo(() => {
+        if (!isTeacher || !selectedCurso) return null;
+        // El profesor jefe puede ver el calendario completo de su curso sin restricción de días
+        if (user?.isHeadTeacher && user?.headTeacherOf === selectedCurso) return null;
+        const blocks = getSchedule(user?.uid);
+        const days = new Set(blocks.filter(b => b.course === selectedCurso).map(b => b.day));
+        return days.size > 0 ? days : null;
+    }, [isTeacher, selectedCurso, getSchedule, user?.uid, user?.isHeadTeacher, user?.headTeacherOf]);
 
-    const cursoOptions = useMemo(() => [null, ...CURSOS], []);
+    const [hoveredAgendaId, setHoveredAgendaId] = useState(null);
+
+    const handleDeleteAgendaEntry = async (agendaDocId, entryId, allEntries) => {
+        const newEntries = allEntries.filter(e => e.id !== entryId);
+        try {
+            await updateDoc(doc(db, 'agenda_contenido', agendaDocId), { entries: newEntries });
+            toast.success('Entrada eliminada');
+        } catch {
+            toast.error('Error al eliminar');
+        }
+    };
+
+    const goAgendaExportWeek = (delta) => {
+        const d = new Date(agendaExportWeek + 'T12:00:00');
+        d.setDate(d.getDate() + delta * 7);
+        setAgendaExportWeek(d.toISOString().slice(0, 10));
+    };
+
+    const handleAgendaExportPDF = async () => {
+        setExportingAgenda(true);
+        try {
+            const constraints = [where('weekStart', '==', agendaExportWeek)];
+            if (agendaExportCurso) constraints.push(where('curso', '==', agendaExportCurso));
+            const snap = await getDocs(query(collection(db, 'agenda_contenido'), ...constraints));
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Calcular las 5 fechas de la semana para filtrar evaluaciones
+            const monDate = new Date(agendaExportWeek + 'T12:00:00');
+            const weekDates = Array.from({ length: 5 }, (_, i) => {
+                const d = new Date(monDate); d.setDate(monDate.getDate() + i);
+                return d.toISOString().slice(0, 10);
+            });
+            const weekEvals = relevantEvals.filter(ev =>
+                ev.date && weekDates.includes(ev.date) &&
+                (!agendaExportCurso || ev.curso === agendaExportCurso)
+            );
+
+            const ok = await exportAgendaMensualCardPDF({
+                agendaDocs: docs,
+                selectedCurso: agendaExportCurso,
+                mesLabel: agendaExportWeekLabel,
+                holidays: CHILE_HOLIDAYS,
+                evaluaciones: weekEvals,
+                weekStart: agendaExportWeek,
+                profesorJefeName: agendaExportProfesorJefe?.name || '',
+            });
+            if (!ok) toast.error('No hay nada agendado para esa semana');
+            else setShowAgendaExportModal(false);
+        } catch {
+            toast.error('Error al exportar');
+        } finally {
+            setExportingAgenda(false);
+        }
+    };
+
+    const [dropdownOpen, setDropdownOpen]             = useState(false);
+    const [cursoDropdownOpen, setCursoDropdownOpen]   = useState(false);
+    const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+    const dropdownRef      = useRef(null);
+    const cursoDropdownRef = useRef(null);
+    const exportDropdownRef = useRef(null);
+
+    const cursoOptions = useMemo(() => {
+        if (isTeacher) {
+            const blocks = getSchedule(user?.uid);
+            const teacherCursos = new Set(blocks.map(b => b.course).filter(c => CURSOS.includes(c)));
+            // El profesor jefe siempre puede ver su curso aunque no tenga bloques de horario
+            if (user?.isHeadTeacher && user?.headTeacherOf && CURSOS.includes(user.headTeacherOf)) {
+                teacherCursos.add(user.headTeacherOf);
+            }
+            const ordered = CURSOS.filter(c => teacherCursos.has(c));
+            return [null, ...ordered];
+        }
+        return [null, ...CURSOS];
+    }, [isTeacher, getSchedule, user?.uid, user?.isHeadTeacher, user?.headTeacherOf]);
     const cursoIdx     = cursoOptions.indexOf(selectedCurso);
     const canPrevCurso = cursoIdx > 0;
     const canNextCurso = cursoIdx < cursoOptions.length - 1;
@@ -514,6 +955,7 @@ export default function CalendarioEvaluaciones() {
         const handler = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
             if (cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target)) setCursoDropdownOpen(false);
+            if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) setExportDropdownOpen(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -555,28 +997,73 @@ export default function CalendarioEvaluaciones() {
                                 Agenda Semanal
                             </button>
                         )}
-                        <button
-                            onClick={async () => {
-                                setExportingPdf(true);
-                                try {
-                                    await exportCalendarioPDF({
-                                        evaluaciones: filteredEvals,
-                                        selectedCurso,
-                                        mesLabel: `${MESES[selectedMonth]} ${currentYear}`,
-                                        year: currentYear,
-                                        month: selectedMonth,
-                                    });
-                                } finally {
-                                    setExportingPdf(false);
-                                }
-                            }}
-                            disabled={exportingPdf}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px disabled:opacity-60"
-                            style={{ background: '#fff', border: `1px solid ${LINE}`, color: INK_2, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
-                        >
-                            {exportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-                            PDF
-                        </button>
+                        {/* Export dropdown */}
+                        <div className="relative" ref={exportDropdownRef}>
+                            <button
+                                onClick={() => setExportDropdownOpen(o => !o)}
+                                disabled={exportingPdf || exportingAgenda}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px disabled:opacity-60"
+                                style={{ background: '#fff', border: `1px solid ${LINE}`, color: INK_2, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
+                            >
+                                {(exportingPdf || exportingAgenda) ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                                Exportar
+                                <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${exportDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            <AnimatePresence>
+                                {exportDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border overflow-hidden z-50"
+                                        style={{ borderColor: LINE, minWidth: 220 }}
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                setExportDropdownOpen(false);
+                                                const d = new Date();
+                                                const day = d.getDay();
+                                                d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+                                                d.setHours(0, 0, 0, 0);
+                                                setAgendaExportWeek(d.toISOString().slice(0, 10));
+                                                setAgendaExportCurso(selectedCurso);
+                                                setShowAgendaExportModal(true);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50 text-left"
+                                            style={{ color: INK }}
+                                        >
+                                            <NotebookPen className="w-4 h-4 shrink-0" style={{ color: INK_3 }} />
+                                            Agenda semanal
+                                        </button>
+                                        <div style={{ height: 1, background: LINE, margin: '0 12px' }} />
+                                        <button
+                                            onClick={async () => {
+                                                setExportDropdownOpen(false);
+                                                setExportingPdf(true);
+                                                try {
+                                                    await exportCalendarioPDF({
+                                                        evaluaciones: filteredEvals,
+                                                        selectedCurso,
+                                                        mesLabel: `${MESES[selectedMonth]} ${currentYear}`,
+                                                        year: currentYear,
+                                                        month: selectedMonth,
+                                                        holidays: CHILE_HOLIDAYS,
+                                                    });
+                                                } finally {
+                                                    setExportingPdf(false);
+                                                }
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50 text-left"
+                                            style={{ color: INK }}
+                                        >
+                                            <CalendarDays className="w-4 h-4 shrink-0" style={{ color: INK_3 }} />
+                                            Calendario mensual
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                         {canCreateEval && (
                             <>
                                 <button
@@ -697,17 +1184,30 @@ export default function CalendarioEvaluaciones() {
                             style={wi < weeks.length - 1 ? { borderBottom: `1px solid ${LINE}` } : {}}
                         >
                             {week.map(({ dateStr, inMonth }, di) => {
-                                const isPast    = dateStr < todayStr;
-                                const isToday   = dateStr === todayStr;
-                                const evals     = evalsByDate[dateStr] || [];
-                                const dayNum    = parseInt(dateStr.split('-')[2]);
-                                const clickable = inMonth && !isPast && canCreateEval;
-                                const dimmed    = !inMonth;
+                                const isPast     = dateStr < todayStr;
+                                const isToday    = dateStr === todayStr;
+                                const evals      = evalsByDate[dateStr] || [];
+                                const agendaItems = agendaItemsByDate[dateStr] || [];
+                                const dayNum     = parseInt(dateStr.split('-')[2]);
+                                const clickable  = inMonth;
+                                const canAdd     = inMonth && !isPast && canCreateEval;
+                                const dimmed     = !inMonth;
+                                const holiday    = inMonth ? CHILE_HOLIDAYS[dateStr] : null;
+                                const noClass    = inMonth && teacherDaysForCurso != null && !teacherDaysForCurso.has(DIAS[di]);
 
                                 return (
                                     <div
                                         key={dateStr}
-                                        onClick={() => clickable && setSelectedDate(dateStr)}
+                                        onClick={() => {
+                                            if (!inMonth) return;
+                                            const evs    = evalsByDate[dateStr] || [];
+                                            const agenda = agendaItemsByDate[dateStr] || [];
+                                            if (canAdd && evs.length === 0 && agenda.length === 0) {
+                                                setSelectedDate(dateStr);
+                                            } else {
+                                                setDayModal({ dateStr, events: evs, agendaItems: agenda });
+                                            }
+                                        }}
                                         className="group transition-colors flex flex-col"
                                         style={{
                                             minHeight: 118,
@@ -716,33 +1216,73 @@ export default function CalendarioEvaluaciones() {
                                             cursor: clickable ? 'pointer' : 'default',
                                             background: dimmed
                                                 ? 'rgba(244,236,223,0.7)'
-                                                : isPast
-                                                    ? 'rgba(251,247,241,0.5)'
-                                                    : isToday
-                                                        ? 'rgba(220,237,235,0.55)'
-                                                        : 'rgba(255,255,255,0.35)',
+                                                : noClass
+                                                    ? 'rgba(230,230,230,0.55)'
+                                                    : holiday
+                                                        ? 'rgba(254,226,226,0.45)'
+                                                        : isPast
+                                                            ? 'rgba(251,247,241,0.5)'
+                                                            : isToday
+                                                                ? 'rgba(220,237,235,0.55)'
+                                                                : 'rgba(255,255,255,0.35)',
                                         }}
                                     >
                                         {/* Day number */}
                                         <div
-                                            className="mb-1.5 shrink-0"
-                                            style={
+                                            className="mb-1 shrink-0 flex items-center gap-1.5"
+                                        >
+                                        <span style={
                                                 isToday
                                                     ? {
                                                         width: 26, height: 26, borderRadius: '50%',
                                                         background: PRIMARY, color: '#fff',
                                                         display: 'grid', placeItems: 'center',
-                                                        fontSize: 13, fontWeight: 700, marginLeft: -3,
+                                                        fontSize: 13, fontWeight: 700,
+                                                        flexShrink: 0,
                                                     }
                                                     : {
                                                         fontSize: 13,
-                                                        fontWeight: dimmed ? 400 : 600,
-                                                        color: dimmed || isPast ? INK_3 : INK_2,
+                                                        fontWeight: dimmed || noClass ? 400 : 600,
+                                                        color: holiday ? '#DC2626' : dimmed || isPast || noClass ? INK_3 : INK_2,
                                                     }
                                             }
                                         >
                                             {dayNum}
+                                        </span>
                                         </div>
+                                        {holiday && (
+                                            <div style={{
+                                                fontSize: 10, fontWeight: 700, color: '#DC2626',
+                                                marginBottom: 6, lineHeight: 1.2,
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                            }}>
+                                                {holiday}
+                                            </div>
+                                        )}
+
+                                        {/* Sin clases — mensaje explicativo */}
+                                        {noClass && (
+                                            <div style={{
+                                                flex: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                textAlign: 'center',
+                                                padding: '4px 6px',
+                                            }}>
+                                                <span style={{
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    color: INK_2,
+                                                    lineHeight: 1.4,
+                                                }}>
+                                                    {selectedAsignatura
+                                                        ? `Sin clases de ${ASIG_FULL[selectedAsignatura] || selectedAsignatura} en ${selectedCurso}`
+                                                        : `Sin clases de ${selectedCurso}`
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {/* Event chips */}
                                         <div className="flex flex-col gap-1 flex-1">
@@ -753,30 +1293,39 @@ export default function CalendarioEvaluaciones() {
                                                         key={e.id}
                                                         type="button"
                                                         onClick={(ev) => { ev.stopPropagation(); setEvalModal({ type: 'detail', data: e }); }}
-                                                        className="w-full flex items-center gap-1.5 text-left transition-transform hover:translate-x-0.5 active:scale-95"
+                                                        className="w-full text-left transition-transform hover:translate-x-0.5 active:scale-95"
                                                         title={`${e.curso} · ${e.name}`}
                                                         style={{
+                                                            flex: 1,
                                                             padding: '5px 8px',
                                                             borderRadius: 7,
-                                                            fontSize: 11.5,
-                                                            fontWeight: 600,
-                                                            lineHeight: 1.2,
                                                             background: sc?.soft || '#f1f5f9',
                                                             color: sc?.color || '#475569',
                                                             borderLeft: `3px solid ${sc?.color || '#94a3b8'}`,
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: 2,
+                                                            overflow: 'hidden',
                                                         }}
                                                     >
-                                                        <span
-                                                            className="rounded-full shrink-0"
-                                                            style={{ width: 6, height: 6, background: sc?.color || '#94a3b8', flexShrink: 0 }}
-                                                        />
-                                                        <span className="truncate">{e.name}</span>
-                                                        {e.pendingChanges && (
-                                                            <span
-                                                                className="ml-auto shrink-0"
-                                                                title="Cambios pendientes"
-                                                                style={{ width: 6, height: 6, borderRadius: '50%', background: HONEY, border: '1.5px solid rgba(255,255,255,0.8)', flexShrink: 0 }}
-                                                            />
+                                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                                            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {e.curso} · {e.asignatura}
+                                                            </span>
+                                                            {e.pendingChanges && (
+                                                                <span
+                                                                    title="Cambios pendientes"
+                                                                    style={{ width: 6, height: 6, borderRadius: '50%', background: HONEY, border: '1.5px solid rgba(255,255,255,0.8)', flexShrink: 0 }}
+                                                                />
+                                                            )}
+                                                        </span>
+                                                        <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                            {e.name}
+                                                        </span>
+                                                        {e.createdBy?.name && (
+                                                            <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {shortName(e.createdBy.name)}
+                                                            </span>
                                                         )}
                                                     </button>
                                                 );
@@ -786,10 +1335,79 @@ export default function CalendarioEvaluaciones() {
                                                     +{evals.length - 3} más
                                                 </span>
                                             )}
-                                            {clickable && evals.length === 0 && (
-                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-xs" style={{ color: PRIMARY }}>
-                                                    <Plus className="w-3 h-3" /> Agregar
+                                            {/* Agenda items */}
+                                            {agendaItems.slice(0, 2).map(item => {
+                                                const canDeleteEntry = canCRUD || item.docenteId === user?.uid;
+                                                const isHovered = hoveredAgendaId === item.id;
+                                                return (
+                                                <div
+                                                    key={item.id}
+                                                    title={`${item.curso} · ${item.asignatura}: ${item.texto}`}
+                                                    onMouseEnter={() => canDeleteEntry && setHoveredAgendaId(item.id)}
+                                                    onMouseLeave={() => setHoveredAgendaId(null)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '5px 7px',
+                                                        borderRadius: 7,
+                                                        background: '#EEF2FF',
+                                                        color: '#4338CA',
+                                                        borderLeft: '3px solid #818CF8',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: 2,
+                                                        overflow: 'hidden',
+                                                        position: 'relative',
+                                                    }}
+                                                >
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        <NotebookPen style={{ width: 9, height: 9, flexShrink: 0 }} />
+                                                        {item.asignatura} · {item.curso}
+                                                        {canDeleteEntry && isHovered && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteAgendaEntry(item.agendaDocId, item.id, item.agendaEntries);
+                                                                }}
+                                                                style={{
+                                                                    marginLeft: 'auto',
+                                                                    flexShrink: 0,
+                                                                    width: 14, height: 14,
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    borderRadius: 3, border: 'none',
+                                                                    background: '#FEE2E2', color: '#DC2626',
+                                                                    cursor: 'pointer', padding: 0,
+                                                                }}
+                                                            >
+                                                                <Trash2 style={{ width: 9, height: 9 }} />
+                                                            </button>
+                                                        )}
+                                                    </span>
+                                                    <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                        {item.texto}
+                                                    </span>
+                                                    {item.docenteName && (
+                                                        <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {shortName(item.docenteName)}
+                                                        </span>
+                                                    )}
                                                 </div>
+                                                );
+                                            })}
+                                            {agendaItems.length > 2 && (
+                                                <span style={{ fontSize: 11, color: '#818CF8', fontWeight: 600, padding: '2px 4px' }}>
+                                                    +{agendaItems.length - 2} agenda
+                                                </span>
+                                            )}
+                                            {canAdd && evals.length === 0 && agendaItems.length === 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedDate(dateStr); }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-xs hover:underline"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    <Plus className="w-3 h-3" /> Agregar
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -833,7 +1451,7 @@ export default function CalendarioEvaluaciones() {
                 </div>
 
                 {/* ── Stats strip ────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {[
                         { num: stats.total,       label: 'Evaluaciones este mes', bg: PRIMARY_SOFT,  color: PRIMARY,    icon: <CalendarDays className="w-5 h-5" /> },
                         { num: stats.semana,      label: 'Esta semana',           bg: '#FBE4DB',     color: ACCENT,     icon: <Clock className="w-5 h-5" /> },
@@ -863,10 +1481,61 @@ export default function CalendarioEvaluaciones() {
                             </div>
                         </div>
                     ))}
+
+                    {/* Próximo feriado */}
+                    {nextHoliday && (
+                        <div
+                            className="flex items-center gap-3 rounded-2xl p-4"
+                            style={{
+                                background: nextHoliday.diffDays <= 7
+                                    ? 'rgba(254,226,226,0.85)'
+                                    : 'rgba(255,255,255,0.72)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                border: nextHoliday.diffDays <= 7
+                                    ? '1px solid #FECACA'
+                                    : `1px solid ${LINE}`,
+                                boxShadow: '0 1px 2px rgba(31,42,46,.04)',
+                            }}
+                        >
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{
+                                    background: nextHoliday.diffDays <= 7 ? '#FEE2E2' : '#FEF3C7',
+                                    color:      nextHoliday.diffDays <= 7 ? '#DC2626' : '#B45309',
+                                }}
+                            >
+                                <Flag className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="font-bold text-sm leading-tight truncate" style={{ color: INK }}>
+                                    {nextHoliday.name}
+                                </div>
+                                <div className="text-xs mt-0.5" style={{ color: nextHoliday.diffDays <= 7 ? '#DC2626' : INK_2 }}>
+                                    {nextHoliday.countLabel} · {nextHoliday.dateLabel}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* ── Modals ─────────────────────────────────────────────────── */}
+            {dayModal && (
+                <DayModal
+                    dateStr={dayModal.dateStr}
+                    events={dayModal.events}
+                    agendaItems={dayModal.agendaItems}
+                    onClose={() => setDayModal(null)}
+                    canCreate={dayModal.dateStr >= todayStr && canCreateEval}
+                    onNew={() => { setSelectedDate(dayModal.dateStr); setDayModal(null); }}
+                    onDetail={(ev) => { setEvalModal({ type: 'detail', data: ev }); setDayModal(null); }}
+                    onDeleteAgendaEntry={handleDeleteAgendaEntry}
+                    currentUserId={user?.uid}
+                    canCRUD={canCRUD}
+                />
+            )}
+
             <AnimatePresence>
                 {showAgenda && (
                     <AgendaSemanalModal user={user} onClose={() => setShowAgenda(false)} />
@@ -901,8 +1570,9 @@ export default function CalendarioEvaluaciones() {
                         eval={evalModal.data}
                         onClose={() => setEvalModal(null)}
                         canCRUD={canCRUD}
+                        canEditEval={canCRUD || (canCreateEval && evalModal.data?.createdBy?.id === user?.uid)}
                         onEdit={() => setEvalModal({ type: 'edit', data: evalModal.data })}
-                        onDelete={async () => { await deleteEvaluacion(evalModal.data.id); setEvalModal(null); }}
+                        onDelete={() => { setEvalModal(null); deleteEvaluacion(evalModal.data.id); }}
                         onApprove={async () => { await approvePendingChanges(evalModal.data.id, evalModal.data.pendingChanges); setEvalModal(null); }}
                         onReject={async () => { await rejectPendingChanges(evalModal.data.id); setEvalModal(null); }}
                     />
@@ -926,6 +1596,109 @@ export default function CalendarioEvaluaciones() {
                     />
                 ) : null}
             </AnimatePresence>
+
+            {/* ── Modal selector de semana — exportar agenda ── */}
+            {showAgendaExportModal && (
+                <CalModal onClose={() => setShowAgendaExportModal(false)} width={460}>
+                    {/* Head */}
+                    <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center' }}>
+                            <NotebookPen className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h2 className="font-headline" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>Exportar agenda semanal</h2>
+                            <p style={{ fontSize: 13, color: INK_2, marginTop: 3 }}>{agendaExportWeekOfMonth}</p>
+                        </div>
+                        <button onClick={() => setShowAgendaExportModal(false)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                            style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                        {/* Curso dropdown */}
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Curso</p>
+                            <select
+                                value={agendaExportCurso ?? ''}
+                                onChange={e => setAgendaExportCurso(e.target.value || null)}
+                                style={{
+                                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                                    border: `1.5px solid ${LINE}`, background: '#fff',
+                                    fontSize: 13, fontWeight: 600, color: INK,
+                                    cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                                    appearance: 'auto',
+                                }}
+                            >
+                                <option value="">Todos los cursos</option>
+                                {cursoOptions.filter(c => c !== null).map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Semana */}
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Semana</p>
+
+                            {/* Navegador */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <button onClick={() => goAgendaExportWeek(-1)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                                    style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', color: PRIMARY, flexShrink: 0, border: `1px solid ${LINE}`, background: '#fff' }}>
+                                    <ChevronLeft size={15} />
+                                </button>
+                                <div style={{ flex: 1, textAlign: 'center', padding: '6px 0' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{agendaExportWeekLabel}</div>
+                                    <div style={{ fontSize: 11, color: INK_3, marginTop: 2 }}>{agendaExportWeekOfMonth}</div>
+                                </div>
+                                <button onClick={() => goAgendaExportWeek(1)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                                    style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', color: PRIMARY, flexShrink: 0, border: `1px solid ${LINE}`, background: '#fff' }}>
+                                    <ChevronRight size={15} />
+                                </button>
+                            </div>
+
+                            {/* Mini grilla de días */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                                {agendaExportWeekDays.map(day => (
+                                    <div key={day.iso} style={{
+                                        textAlign: 'center', padding: '8px 4px', borderRadius: 10,
+                                        background: day.isToday ? PRIMARY_SOFT : '#FAF6EE',
+                                        border: day.isToday ? `1.5px solid ${PRIMARY}` : `1px solid ${LINE}`,
+                                    }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: day.isToday ? PRIMARY : INK_3 }}>
+                                            {day.label}
+                                        </div>
+                                        <div style={{ fontSize: 16, fontWeight: day.isToday ? 800 : 600, color: day.isToday ? PRIMARY : INK, marginTop: 2, lineHeight: 1 }}>
+                                            {day.date}
+                                        </div>
+                                        {day.isToday && (
+                                            <div style={{ fontSize: 9, fontWeight: 800, color: PRIMARY, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                Hoy
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Foot */}
+                    <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', gap: 10, flexShrink: 0 }}>
+                        <button onClick={() => setShowAgendaExportModal(false)} className="transition-colors hover:bg-slate-100 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>
+                            Cancelar
+                        </button>
+                        <button onClick={handleAgendaExportPDF} disabled={exportingAgenda}
+                            className="flex items-center justify-center gap-2 transition-all hover:brightness-95 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: PRIMARY, color: '#fff', opacity: exportingAgenda ? 0.7 : 1 }}>
+                            {exportingAgenda ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                            {exportingAgenda ? 'Exportando…' : 'Exportar PDF'}
+                        </button>
+                    </div>
+                </CalModal>
+            )}
         </div>
     );
 }

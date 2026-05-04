@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     collection, query, where, onSnapshot,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
-    setDoc, getDoc,
+    setDoc, getDoc, getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, isAdmin, ROLES } from '../context/AuthContext';
@@ -10,14 +10,35 @@ import {
     ChevronLeft, ChevronRight, Plus, X,
     Megaphone, Package, Calendar, MessageCircle,
     CalendarRange, User, Pencil, Trash2,
-    FileDown, Save, BookOpen,
+    Save, BookOpen, Loader2, FileDown,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { COURSES_LIST, useSchedule } from '../context/ScheduleContext';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import ModalContainer from '../components/ModalContainer';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { CHILE_HOLIDAYS } from '../data/chileHolidays';
+import { exportAgendaSemanalCardPDF } from '../lib/pdfExport';
+
+// ── Design tokens V3 (agenda modal) ──────────────────────────────────────────
+const V3_PRIMARY    = '#7B5BE0';
+const V3_PINK       = '#EC5BA1';
+const V3_TEXT_DARK  = '#2a1a3a';
+const V3_TEXT_MED   = '#3a2a44';
+const V3_TEXT_MUTED = '#7a6a8a';
+const V3_TEXT_SOFT  = '#9a8aaa';
+const V3_BG_FIELD   = '#FAFAFD';
+const V3_ACT_BG     = '#F1ECFF';
+const V3_ACT_TEXT   = '#5028B8';
+
+const V3_DAY_COLOR = { lunes:'#FF7A4D', martes:'#FF7A4D', miercoles:'#26B7BB', jueves:'#7B5BE0', viernes:'#26B7BB' };
+const V3_DAY_SHORT = { lunes:'LUN', martes:'MAR', miercoles:'MIÉ', jueves:'JUE', viernes:'VIE' };
+
+const V3SumLine = ({ k, v }) => (
+    <div style={{ marginBottom:7 }}>
+        <div style={{ fontSize:11, fontWeight:800, opacity:0.7, letterSpacing:0.8, textTransform:'uppercase', marginBottom:1 }}>{k}</div>
+        <div style={{ fontSize:14, fontWeight:700, lineHeight:1.3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v}</div>
+    </div>
+);
 
 // ─── Permisos ────────────────────────────────────────────────────────────────
 const canManageAssignments = (user) =>
@@ -70,6 +91,11 @@ const DIA_LABELS = {
     lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles',
     jueves: 'Jueves', viernes: 'Viernes',
 };
+// Mapeo del campo `day` del horario (con tilde/mayúscula) → clave interna
+const SCHEDULE_DAY_TO_DIA = {
+    'Lunes': 'lunes', 'Martes': 'martes', 'Miércoles': 'miercoles',
+    'Jueves': 'jueves', 'Viernes': 'viernes',
+};
 
 function makeAgendaDocId(weekStart, docenteId, curso) {
     return `${weekStart}__${docenteId}__${curso.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -93,12 +119,15 @@ function formatWeekLabel(weekStart) {
     const fmt = d => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
     return `${fmt(mon)} – ${fmt(fri)}`;
 }
-function formatWeekLabelLong(weekStart) {
+const WEEK_ORDINALS = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta'];
+function getWeekOfMonthLabel(weekStart) {
     const mon = new Date(weekStart + 'T12:00:00');
-    const fri = addDays(mon, 4);
-    const fmtL = d => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
-    const year = mon.getFullYear();
-    return `${fmtL(mon)} al ${fmtL(fri)} de ${year}`;
+    const dow = new Date(mon.getFullYear(), mon.getMonth(), 1).getDay();
+    const firstMonday = dow === 0 ? 2 : dow === 1 ? 1 : 9 - dow;
+    const weekNum = Math.floor((mon.getDate() - firstMonday) / 7) + 1;
+    const monthName = mon.toLocaleDateString('es-CL', { month: 'long' });
+    const month = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    return `${WEEK_ORDINALS[Math.min(weekNum - 1, 4)]} semana de ${month}`;
 }
 
 // ─── Vista de gestión (módulo principal) ──────────────────────────────────────
@@ -154,14 +183,13 @@ function ManagementAgendaView({ user }) {
         setWeekStart(toISO(getMondayOf(d)));
     };
 
-    const handleDeleteAssignment = async id => {
-        try { await deleteDoc(doc(db, 'agenda_semanal', id)); }
-        catch { toast.error('Error al eliminar'); }
+    const handleDeleteAssignment = (id) => {
+        deleteDoc(doc(db, 'agenda_semanal', id)).catch(() => toast.error('Error al eliminar'));
     };
 
-    const handleDeleteNoticia = async id => {
-        try { await deleteDoc(doc(db, 'agenda_noticias', id)); toast.success('Noticia eliminada'); }
-        catch { toast.error('Error al eliminar'); }
+    const handleDeleteNoticia = (id) => {
+        toast.success('Noticia eliminada');
+        deleteDoc(doc(db, 'agenda_noticias', id)).catch(() => toast.error('Error al eliminar'));
     };
 
     const openNoticiaModal = assignment => {
@@ -249,13 +277,27 @@ function ManagementAgendaView({ user }) {
 // ─── Modal de agenda semanal (para profesores, desde CalendarioEvaluaciones) ──
 export function AgendaSemanalModal({ user, onClose }) {
     const { getSchedule } = useSchedule();
+    const { getAllUsers } = useAuth();
 
     const [weekStart,      setWeekStart]      = useState(() => toISO(getMondayOf(new Date())));
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [localEntries,   setLocalEntries]   = useState([]);
-    const [isDirty,        setIsDirty]        = useState(false);
+    const [saveStatus,     setSaveStatus]     = useState('idle'); // 'idle' | 'pending' | 'saving' | 'saved'
     const [loading,        setLoading]        = useState(false);
-    const [saving,         setSaving]         = useState(false);
+    const [focusedDay,     setFocusedDay]     = useState(null);
+    const [exporting,        setExporting]        = useState(false);
+    const [deleteAgendaState, setDeleteAgendaState] = useState('idle'); // 'idle' | 'confirm' | 'deleting'
+    const [showExportModal,  setShowExportModal]  = useState(false);
+    const [exportWeekStart,  setExportWeekStart]  = useState(() => toISO(getMondayOf(new Date())));
+    const autoSaveTimer     = useRef(null);
+    const savedTimer        = useRef(null);
+    const selectedCourseRef = useRef(selectedCourse);
+    useEffect(() => { selectedCourseRef.current = selectedCourse; }, [selectedCourse]);
+
+    const profesorJefe = useMemo(() => {
+        if (!selectedCourse) return null;
+        return getAllUsers().find(u => u.isHeadTeacher && u.headTeacherOf === selectedCourse) ?? null;
+    }, [getAllUsers, selectedCourse]);
 
     const teacherBlocks  = useMemo(() => getSchedule(user.uid), [user.uid, getSchedule]);
     const teacherCourses = useMemo(() =>
@@ -271,6 +313,17 @@ export function AgendaSemanalModal({ user, onClose }) {
         return map;
     }, [teacherBlocks, teacherCourses]);
 
+    // Días en que el docente tiene clases para el curso seleccionado
+    const courseDays = useMemo(() => {
+        if (!selectedCourse) return new Set();
+        return new Set(
+            teacherBlocks
+                .filter(b => b.course === selectedCourse && b.day)
+                .map(b => SCHEDULE_DAY_TO_DIA[b.day])
+                .filter(Boolean)
+        );
+    }, [teacherBlocks, selectedCourse]);
+
     // Seleccionar el primer curso por defecto
     useEffect(() => {
         if (teacherCourses.length > 0 && !teacherCourses.includes(selectedCourse)) {
@@ -278,13 +331,17 @@ export function AgendaSemanalModal({ user, onClose }) {
         }
     }, [teacherCourses]); // eslint-disable-line
 
+    // Resetear día enfocado al cambiar semana o curso
+    useEffect(() => { setFocusedDay(null); setDeleteAgendaState('idle'); }, [weekStart, selectedCourse]);
+
     // Cargar agenda guardada desde Firestore
     useEffect(() => {
         if (!selectedCourse) return;
         let cancelled = false;
+        clearTimeout(autoSaveTimer.current);
         setLoading(true);
         setLocalEntries([]);
-        setIsDirty(false);
+        setSaveStatus('idle');
         const docId = makeAgendaDocId(weekStart, user.uid, selectedCourse);
         getDoc(doc(db, 'agenda_contenido', docId))
             .then(snap => {
@@ -297,6 +354,28 @@ export function AgendaSemanalModal({ user, onClose }) {
         return () => { cancelled = true; };
     }, [weekStart, selectedCourse, user.uid]);
 
+    const doSave = useCallback(async (entries, course) => {
+        if (!course) return;
+        setSaveStatus('saving');
+        try {
+            const docId = makeAgendaDocId(weekStart, user.uid, course);
+            await setDoc(doc(db, 'agenda_contenido', docId), {
+                weekStart,
+                curso: course,
+                docenteId: user.uid,
+                docenteName: user.name || user.displayName || user.email,
+                entries,
+                updatedAt: serverTimestamp(),
+            });
+            setSaveStatus('saved');
+            clearTimeout(savedTimer.current);
+            savedTimer.current = setTimeout(() => setSaveStatus('idle'), 2500);
+        } catch {
+            toast.error('Error al guardar');
+            setSaveStatus('pending');
+        }
+    }, [weekStart, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const goWeek = delta => {
         const d = new Date(weekStart + 'T12:00:00');
         d.setDate(d.getDate() + delta * 7);
@@ -304,49 +383,82 @@ export function AgendaSemanalModal({ user, onClose }) {
     };
 
     const addEntry = (dia, asignatura, texto) => {
-        const id = typeof crypto !== 'undefined' && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        setLocalEntries(prev => [...prev, { id, dia, asignatura, texto }]);
-        setIsDirty(true);
+        const id = crypto.randomUUID();
+        setLocalEntries(prev => {
+            const next = [...prev, { id, dia, asignatura, texto }];
+            scheduleAutoSave(next);
+            return next;
+        });
     };
 
     const removeEntry = id => {
-        setLocalEntries(prev => prev.filter(e => e.id !== id));
-        setIsDirty(true);
+        setLocalEntries(prev => {
+            const next = prev.filter(e => e.id !== id);
+            scheduleAutoSave(next);
+            return next;
+        });
     };
 
-    const handleSave = async () => {
-        if (!selectedCourse || saving) return;
-        setSaving(true);
+    const handleDeleteAgenda = async () => {
+        setDeleteAgendaState('deleting');
         try {
+            clearTimeout(autoSaveTimer.current);
             const docId = makeAgendaDocId(weekStart, user.uid, selectedCourse);
-            await setDoc(doc(db, 'agenda_contenido', docId), {
-                weekStart,
-                curso: selectedCourse,
-                docenteId: user.uid,
-                docenteName: user.name || user.displayName || user.email,
-                entries: localEntries,
-                updatedAt: serverTimestamp(),
-            });
-            setIsDirty(false);
-            toast.success('Agenda guardada');
+            await deleteDoc(doc(db, 'agenda_contenido', docId));
+            setLocalEntries([]);
+            setSaveStatus('idle');
+            toast.success('Agenda eliminada');
         } catch {
-            toast.error('Error al guardar');
+            toast.error('Error al eliminar');
         } finally {
-            setSaving(false);
+            setDeleteAgendaState('idle');
         }
     };
 
-    const handleExportPDF = () => {
-        if (!selectedCourse) return;
-        exportAgendaPDF({
-            weekStart,
-            curso: selectedCourse,
-            docenteName: user.name || user.displayName || user.email,
-            entries: localEntries,
-        });
+    const goExportWeek = delta => {
+        const d = new Date(exportWeekStart + 'T12:00:00');
+        d.setDate(d.getDate() + delta * 7);
+        setExportWeekStart(toISO(getMondayOf(d)));
     };
+
+    const handleExportPDF = async () => {
+        if (!selectedCourse) return;
+        setExporting(true);
+        try {
+            const snap = await getDocs(query(
+                collection(db, 'agenda_contenido'),
+                where('weekStart', '==', exportWeekStart),
+                where('curso', '==', selectedCourse),
+            ));
+            const allEntries = snap.docs.flatMap(d => d.data().entries ?? []);
+            if (allEntries.length === 0) {
+                toast.error('No hay agenda registrada para esa semana');
+                return;
+            }
+            await exportAgendaSemanalCardPDF({
+                weekStart:   exportWeekStart,
+                curso:       selectedCourse,
+                docenteName: profesorJefe?.name || user.name || user.displayName || '',
+                entries:     allEntries,
+                holidays:    CHILE_HOLIDAYS,
+            });
+            setShowExportModal(false);
+        } catch {
+            toast.error('Error al exportar');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const scheduleAutoSave = (entries) => {
+        setSaveStatus('pending');
+        clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(() => {
+            // usar ref para acceder al curso actual sin stale closure
+            doSave(entries, selectedCourseRef.current);
+        }, 1200);
+    };
+
 
     const dayDates = useMemo(() => {
         const mon = new Date(weekStart + 'T12:00:00');
@@ -358,136 +470,576 @@ export function AgendaSemanalModal({ user, onClose }) {
         );
     }, [weekStart]);
 
-    const col = selectedCourse ? (COURSE_COLORS[selectedCourse] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
+    const dayISO = useMemo(() => {
+        const mon = new Date(weekStart + 'T12:00:00');
+        return Object.fromEntries(DIAS.map((dia, i) => [dia, toISO(addDays(mon, i))]));
+    }, [weekStart]);
+
+    const totalEntries = localEntries.length;
 
     return (
-        <ModalContainer onClose={onClose} maxWidth="max-w-5xl">
-            {/* Cabecera */}
-            <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex flex-wrap items-center gap-3 shrink-0">
-                <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-bold text-slate-800">Agenda Semanal</h2>
-                    <p className="text-xs text-slate-500">Completa lo que los alumnos deben traer o hacer cada día</p>
+        <>
+        <div onClick={onClose} style={{
+            position:'fixed', inset:0, zIndex:200,
+            background:'rgba(28,18,50,0.45)',
+            backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            padding:24,
+        }}>
+            <div onClick={e => e.stopPropagation()} style={{
+                width:960, maxWidth:'calc(100vw - 48px)',
+                maxHeight:'calc(100vh - 48px)',
+                background:'#FFFFFF',
+                borderRadius:24,
+                boxShadow:'0 30px 80px -20px rgba(40,20,80,0.5), 0 12px 30px -12px rgba(40,20,80,0.3)',
+                overflow:'hidden',
+                border:'1px solid rgba(20,10,40,0.05)',
+                display:'grid',
+                gridTemplateColumns:'220px 1fr',
+            }}>
+
+                {/* ── Sidebar ── */}
+                <div style={{
+                    position:'relative',
+                    background:'linear-gradient(160deg, #7B5BE0 0%, #EC5BA1 100%)',
+                    color:'white', padding:'24px 20px',
+                    overflow:'hidden', display:'flex', flexDirection:'column',
+                }}>
+                    {/* orbe de fondo */}
+                    <div style={{ position:'absolute', top:-60, right:-60, width:220, height:220, borderRadius:'50%', background:'rgba(255,255,255,0.10)', animation:'calFloatA 9s ease-in-out infinite', pointerEvents:'none' }}/>
+                    <div style={{ position:'absolute', bottom:-80, left:-60, width:260, height:260, borderRadius:'50%', background:'rgba(255,255,255,0.07)', animation:'calFloatB 11s ease-in-out infinite', animationDelay:'-4s', pointerEvents:'none' }}/>
+                    {/* símbolos flotantes */}
+                    {[
+                      { sym:'π',  top:  6, left: 12, size:52, op:0.18, anim:'calSymA', dur:'8s',  del:'-1s'   },
+                      { sym:'∑',  top: 18, right:12, size:44, op:0.16, anim:'calSymB', dur:'10s', del:'-3s'   },
+                      { sym:'√',  top: 68, left: 24, size:36, op:0.15, anim:'calSymC', dur:'7s',  del:'-5s'   },
+                      { sym:'×',  top: 95, right: 6, size:42, op:0.16, anim:'calSymD', dur:'9s',  del:'-2s'   },
+                      { sym:'∞',  top:145, left:  6, size:34, op:0.14, anim:'calSymA', dur:'12s', del:'-7s'   },
+                      { sym:'÷',  top:175, right:22, size:30, op:0.15, anim:'calSymB', dur:'6s',  del:'-1.5s' },
+                      { sym:'²',  top:200, left: 48, size:28, op:0.13, anim:'calSymC', dur:'11s', del:'-8s'   },
+                      { sym:'A',  top:225, right:10, size:46, op:0.13, anim:'calSymD', dur:'8s',  del:'-4s'   },
+                      { sym:'¿',  top:265, left: 12, size:38, op:0.14, anim:'calSymA', dur:'9s',  del:'-6s'   },
+                      { sym:'⚛',  top:295, right:16, size:36, op:0.15, anim:'calSymB', dur:'13s', del:'-3s'   },
+                      { sym:'∆',  top:330, left: 32, size:30, op:0.13, anim:'calSymC', dur:'7s',  del:'-9s'   },
+                      { sym:'«»', top:360, right: 4, size:28, op:0.14, anim:'calSymD', dur:'10s', del:'-5s'   },
+                      { sym:'ñ',  top:390, left:  8, size:34, op:0.12, anim:'calSymA', dur:'8s',  del:'-2s'   },
+                      { sym:'=',  top:420, right:28, size:30, op:0.14, anim:'calSymB', dur:'6s',  del:'-7s'   },
+                    ].map(({ sym, top, left, right, size, op, anim, dur, del }) => (
+                      <div key={sym+top} style={{
+                        position:'absolute', top, left, right,
+                        fontSize:size, fontWeight:900, color:'white', opacity:op,
+                        animation:`${anim} ${dur} ease-in-out infinite`,
+                        animationDelay:del,
+                        pointerEvents:'none', userSelect:'none', lineHeight:1,
+                        fontFamily:'ui-monospace, "Plus Jakarta Sans", system-ui',
+                        textShadow:'0 2px 12px rgba(0,0,0,0.25)',
+                      }}>
+                        {sym}
+                      </div>
+                    ))}
+
+                    <div style={{ position:'relative', flex:1, display:'flex', flexDirection:'column' }}>
+                        {/* icon */}
+                        <div style={{
+                            width:44, height:44, borderRadius:13,
+                            background:'rgba(255,255,255,0.22)',
+                            border:'1px solid rgba(255,255,255,0.4)',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            marginBottom:18,
+                        }}>
+                            <CalendarRange size={20} color="white"/>
+                        </div>
+
+                        <div style={{ fontSize:13, fontWeight:800, opacity:1, letterSpacing:1.4, textTransform:'uppercase', marginBottom:8, textShadow:'0 1px 6px rgba(0,0,0,0.25)' }}>
+                            UTP · Docentes
+                        </div>
+                        <div style={{ fontSize:28, fontWeight:900, lineHeight:1.15, letterSpacing:-0.5, marginBottom:10, whiteSpace:'pre-line', textShadow:'0 2px 10px rgba(0,0,0,0.3)' }}>
+                            {'Agenda\nSemanal'}
+                        </div>
+                        <div style={{ fontSize:14, opacity:1, lineHeight:1.6, marginBottom:20, textShadow:'0 1px 6px rgba(0,0,0,0.2)' }}>
+                            Registra lo que los alumnos deben traer o hacer cada día.
+                        </div>
+
+                        {/* Week label (solo referencia) */}
+                        <div style={{
+                            background:'rgba(255,255,255,0.15)',
+                            border:'1px solid rgba(255,255,255,0.25)',
+                            borderRadius:10, padding:'7px 12px',
+                            textAlign:'center', lineHeight:1.4,
+                            marginBottom:12,
+                        }}>
+                            <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.8)', letterSpacing:0.3, marginBottom:2 }}>
+                                {getWeekOfMonthLabel(weekStart)}
+                            </div>
+                            <div style={{ fontSize:13, fontWeight:700, color:'white' }}>
+                                {formatWeekLabel(weekStart)}
+                            </div>
+                        </div>
+
+                        {/* Summary card */}
+                        <div style={{
+                            background:'rgba(255,255,255,0.16)',
+                            border:'1px solid rgba(255,255,255,0.25)',
+                            borderRadius:14, padding:'12px 14px',
+                            fontSize:12,
+                        }}>
+                            <div style={{ fontSize:11, fontWeight:800, opacity:1, letterSpacing:0.8, textTransform:'uppercase', marginBottom:8, textShadow:'0 1px 4px rgba(0,0,0,0.2)' }}>
+                                Resumen
+                            </div>
+                            <V3SumLine k="Curso" v={selectedCourse || '—'}/>
+                            <V3SumLine k="Profesor Jefe" v={profesorJefe?.name || '—'}/>
+                            <V3SumLine k="Entradas" v={totalEntries > 0 ? `${totalEntries} entrada${totalEntries !== 1 ? 's' : ''}` : '—'}/>
+                            {saveStatus === 'pending' && (
+                                <div style={{ marginTop:8, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:0.4 }}>
+                                    ● Guardando pronto…
+                                </div>
+                            )}
+                            {saveStatus === 'saving' && (
+                                <div style={{ marginTop:8, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.85)', letterSpacing:0.4 }}>
+                                    ↑ Guardando…
+                                </div>
+                            )}
+                            {saveStatus === 'saved' && (
+                                <div style={{ marginTop:8, fontSize:12, fontWeight:700, color:'rgba(180,255,180,0.95)', letterSpacing:0.4 }}>
+                                    ✓ Guardado
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Navegación semana */}
-                <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1">
-                    <button onClick={() => goWeek(-1)} className="p-1.5 hover:bg-white rounded-lg transition-colors text-slate-500">
-                        <ChevronLeft size={15} />
-                    </button>
-                    <span className="text-sm font-medium text-slate-700 min-w-[165px] text-center">
-                        {formatWeekLabel(weekStart)}
-                    </span>
-                    <button onClick={() => goWeek(1)} className="p-1.5 hover:bg-white rounded-lg transition-colors text-slate-500">
-                        <ChevronRight size={15} />
-                    </button>
-                </div>
+                {/* ── Right side ── */}
+                <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
 
-                {/* Guardar */}
-                <button
-                    onClick={handleSave}
-                    disabled={saving || !isDirty}
-                    className={cn(
-                        'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all',
-                        isDirty
-                            ? 'bg-eyr-primary text-white hover:opacity-90'
-                            : 'bg-slate-100 text-slate-400 cursor-default'
-                    )}
-                >
-                    <Save size={14} />
-                    {saving ? 'Guardando…' : 'Guardar'}
-                </button>
+                    {/* Top bar */}
+                    <div style={{
+                        padding:'14px 20px',
+                        display:'flex', alignItems:'center', justifyContent:'space-between',
+                        borderBottom:'1px solid rgba(20,10,40,0.06)',
+                        flexShrink:0, gap:8,
+                    }}>
+                        {/* Course dropdown */}
+                        <div style={{ flex:1, minWidth:0 }}>
+                            {teacherCourses.length > 0 ? (
+                                <select
+                                    value={selectedCourse || ''}
+                                    onChange={e => setSelectedCourse(e.target.value)}
+                                    style={{
+                                        width:'100%', maxWidth:220,
+                                        padding:'8px 12px', borderRadius:10,
+                                        border:`1.5px solid ${V3_PRIMARY}30`,
+                                        background:V3_ACT_BG, color:V3_ACT_TEXT,
+                                        fontSize:14, fontWeight:700,
+                                        cursor:'pointer', fontFamily:'inherit',
+                                        outline:'none', appearance:'auto',
+                                    }}
+                                >
+                                    {teacherCourses.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            ) : null}
+                        </div>
 
-                {/* PDF */}
-                <button
-                    onClick={handleExportPDF}
-                    disabled={!selectedCourse || localEntries.length === 0}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-default"
-                >
-                    <FileDown size={14} />
-                    PDF
-                </button>
+                        {/* Week nav */}
+                        <div style={{
+                            display:'flex', alignItems:'center', gap:2,
+                            background:'rgba(0,0,0,0.04)', borderRadius:10,
+                            padding:'4px', flexShrink:0,
+                        }}>
+                            <button onClick={() => goWeek(-1)} style={{
+                                width:28, height:28, borderRadius:7, border:'none',
+                                background:'transparent', color:V3_TEXT_MUTED,
+                                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                                transition:'background .12s, color .12s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background='white'; e.currentTarget.style.color=V3_TEXT_DARK; }}
+                            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color=V3_TEXT_MUTED; }}
+                            >
+                                <ChevronLeft size={14}/>
+                            </button>
+                            <div style={{ textAlign:'center', padding:'0 8px' }}>
+                                <div style={{ fontSize:13, fontWeight:700, color:V3_TEXT_DARK, whiteSpace:'nowrap' }}>
+                                    {formatWeekLabel(weekStart)}
+                                </div>
+                                <div style={{ fontSize:10, fontWeight:600, color:V3_TEXT_SOFT, marginTop:1, whiteSpace:'nowrap' }}>
+                                    {getWeekOfMonthLabel(weekStart)}
+                                </div>
+                            </div>
+                            <button onClick={() => goWeek(1)} style={{
+                                width:28, height:28, borderRadius:7, border:'none',
+                                background:'transparent', color:V3_TEXT_MUTED,
+                                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                                transition:'background .12s, color .12s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background='white'; e.currentTarget.style.color=V3_TEXT_DARK; }}
+                            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color=V3_TEXT_MUTED; }}
+                            >
+                                <ChevronRight size={14}/>
+                            </button>
+                        </div>
 
-                {/* Cerrar */}
-                <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
-                    <X size={16} />
-                </button>
-            </div>
+                        {/* Actions */}
+                        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
 
-            {/* Cuerpo */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {teacherCourses.length === 0 ? (
-                    <EmptyNoCourses />
-                ) : (
-                    <>
-                        {/* Selector de curso (si hay varios) */}
-                        {teacherCourses.length > 1 && (
-                            <div className="flex flex-wrap gap-2">
-                                {teacherCourses.map(c => {
-                                    const cc = COURSE_COLORS[c] ?? DEFAULT_COLOR;
-                                    const active = selectedCourse === c;
-                                    return (
+                            {/* Eliminar agenda */}
+                            {localEntries.length > 0 && (
+                                deleteAgendaState === 'confirm' ? (
+                                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                                        <span style={{ fontSize:11, fontWeight:700, color:'#EF4444', whiteSpace:'nowrap' }}>¿Eliminar agenda?</span>
                                         <button
-                                            key={c}
-                                            onClick={() => setSelectedCourse(c)}
-                                            className={cn(
-                                                'px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all',
-                                                active
-                                                    ? cn(cc.pill, 'text-white border-transparent shadow-sm')
-                                                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                                            )}
+                                            onClick={handleDeleteAgenda}
+                                            style={{
+                                                padding:'4px 10px', borderRadius:7, border:'none',
+                                                background:'#EF4444', color:'white',
+                                                fontSize:11, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+                                            }}
                                         >
-                                            {c}
+                                            Sí
                                         </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        <button
+                                            onClick={() => setDeleteAgendaState('idle')}
+                                            style={{
+                                                padding:'4px 10px', borderRadius:7, border:'1px solid rgba(0,0,0,0.1)',
+                                                background:'white', color:V3_TEXT_MUTED,
+                                                fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                                            }}
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                ) : deleteAgendaState === 'deleting' ? (
+                                    <Loader2 size={13} style={{ animation:'spin 1s linear infinite', color:'#EF4444' }}/>
+                                ) : (
+                                    <button
+                                        onClick={() => setDeleteAgendaState('confirm')}
+                                        title="Eliminar agenda de esta semana"
+                                        style={{
+                                            height:32, padding:'0 10px', borderRadius:10,
+                                            border:'1px solid rgba(239,68,68,0.25)',
+                                            background:'rgba(254,242,242,0.8)', color:'#EF4444',
+                                            cursor:'pointer', display:'flex', alignItems:'center', gap:5,
+                                            fontSize:12, fontWeight:700, flexShrink:0,
+                                            transition:'all .15s',
+                                        }}
+                                    >
+                                        <Trash2 size={12}/> Eliminar
+                                    </button>
+                                )
+                            )}
 
-                        {/* Badge si hay un solo curso */}
-                        {teacherCourses.length === 1 && selectedCourse && (
-                            <div className="flex items-center gap-2">
-                                <span className={cn('inline-flex items-center justify-center rounded-lg text-xs font-bold text-white w-9 h-7', col.pill)}>
-                                    {courseAbbrev(selectedCourse)}
-                                </span>
-                                <span className={cn('text-sm font-bold', col.text)}>{selectedCourse}</span>
+                            {/* Indicador de auto-guardado */}
+                            <div style={{
+                                display:'flex', alignItems:'center', gap:5,
+                                padding:'6px 12px', borderRadius:10,
+                                background: saveStatus === 'saved' ? 'rgba(34,197,94,0.1)' : saveStatus === 'saving' ? 'rgba(123,91,224,0.08)' : 'transparent',
+                                transition:'all .3s',
+                                fontSize:12, fontWeight:700,
+                                color: saveStatus === 'saved' ? '#16a34a' : saveStatus === 'saving' ? V3_TEXT_MUTED : 'transparent',
+                                minWidth:110,
+                            }}>
+                                {saveStatus === 'saving' && <Loader2 size={12} style={{ animation:'spin 1s linear infinite', flexShrink:0 }}/>}
+                                {saveStatus === 'saved'  && <Save size={12} style={{ flexShrink:0 }}/>}
+                                {saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'saved' ? 'Guardado' : ''}
                             </div>
-                        )}
 
-                        {/* Grilla de días */}
-                        {loading ? (
+                            <button
+                                disabled={!selectedCourse}
+                                onClick={() => {
+                                    setExportWeekStart(weekStart);
+                                    setShowExportModal(true);
+                                }}
+                                title="Exportar PDF"
+                                style={{
+                                    height:32, padding:'0 12px', borderRadius:10,
+                                    border:'1px solid rgba(123,91,224,0.25)',
+                                    background: !selectedCourse ? V3_BG_FIELD : V3_ACT_BG,
+                                    color: V3_ACT_TEXT,
+                                    cursor: !selectedCourse ? 'not-allowed' : 'pointer',
+                                    display:'flex', alignItems:'center', gap:5,
+                                    fontSize:12, fontWeight:700, flexShrink:0,
+                                    opacity: !selectedCourse ? 0.5 : 1,
+                                    transition:'all .15s',
+                                }}
+                            >
+                                <FileDown size={12}/>
+                                PDF
+                            </button>
+
+                            <button onClick={onClose} style={{
+                                width:32, height:32, borderRadius:10,
+                                border:'1px solid rgba(0,0,0,0.06)',
+                                background:V3_BG_FIELD, color:V3_TEXT_MUTED,
+                                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                            }}>
+                                <X size={14} strokeWidth={2.4}/>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{
+                        padding:'16px 20px', overflowY:'auto', flex:1,
+                        scrollbarWidth:'thin', scrollbarColor:'rgba(123,91,224,0.25) transparent',
+                        overflowX:'clip',
+                    }}>
+                        {teacherCourses.length === 0 ? (
+                            <EmptyNoCourses />
+                        ) : loading ? (
                             <SkeletonDays />
                         ) : selectedCourse ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                {DIAS.map(dia => (
-                                    <DayCard
-                                        key={dia}
-                                        dia={dia}
-                                        dateLabel={dayDates[dia]}
-                                        entries={localEntries.filter(e => e.dia === dia)}
-                                        asignaturas={courseSubjects[selectedCourse] ?? []}
-                                        onAdd={(asig, txt) => addEntry(dia, asig, txt)}
-                                        onRemove={removeEntry}
-                                    />
-                                ))}
-                            </div>
+                            <LayoutGroup>
+                                <AnimatePresence initial={false}>
+                                    {focusedDay ? (
+                                        <motion.div
+                                            key={`focused-${focusedDay}`}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.12 }}
+                                            style={{ display:'flex', flexDirection:'column', gap:10 }}
+                                        >
+                                            <motion.button
+                                                initial={{ opacity: 0, y: -6 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.1, duration: 0.15 }}
+                                                onClick={() => setFocusedDay(null)}
+                                                style={{
+                                                    alignSelf:'flex-start',
+                                                    display:'flex', alignItems:'center', gap:6,
+                                                    padding:'5px 12px', borderRadius:8, border:'none',
+                                                    background:'rgba(0,0,0,0.05)', color:V3_TEXT_MUTED,
+                                                    fontSize:12, fontWeight:700, cursor:'pointer',
+                                                    fontFamily:'inherit',
+                                                }}
+                                            >
+                                                <ChevronLeft size={13}/> Todos los días
+                                            </motion.button>
+                                            <motion.div
+                                                layoutId={`dc-${focusedDay}`}
+                                                layout
+                                                transition={{ type:'spring', stiffness:380, damping:32 }}
+                                                style={{ borderRadius:14 }}
+                                            >
+                                                <DayCard
+                                                    dia={focusedDay}
+                                                    dateLabel={dayDates[focusedDay]}
+                                                    dateISO={dayISO[focusedDay]}
+                                                    entries={localEntries.filter(e => e.dia === focusedDay)}
+                                                    asignaturas={courseSubjects[selectedCourse] ?? []}
+                                                    onAdd={(asig, txt) => addEntry(focusedDay, asig, txt)}
+                                                    onRemove={removeEntry}
+                                                    isActive={courseDays.size === 0 || courseDays.has(focusedDay)}
+                                                    focused
+                                                />
+                                            </motion.div>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key="grid"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.12 }}
+                                            style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}
+                                        >
+                                            {DIAS.map(dia => (
+                                                <motion.div
+                                                    key={dia}
+                                                    layoutId={`dc-${dia}`}
+                                                    layout
+                                                    transition={{ type:'spring', stiffness:380, damping:32 }}
+                                                    style={{ borderRadius:14 }}
+                                                >
+                                                    <DayCard
+                                                        dia={dia}
+                                                        dateLabel={dayDates[dia]}
+                                                        dateISO={dayISO[dia]}
+                                                        entries={localEntries.filter(e => e.dia === dia)}
+                                                        asignaturas={courseSubjects[selectedCourse] ?? []}
+                                                        onAdd={(asig, txt) => addEntry(dia, asig, txt)}
+                                                        onRemove={removeEntry}
+                                                        isActive={courseDays.size === 0 || courseDays.has(dia)}
+                                                        onFocus={() => setFocusedDay(dia)}
+                                                    />
+                                                </motion.div>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </LayoutGroup>
                         ) : null}
-
-                        {isDirty && (
-                            <p className="text-xs text-amber-600 text-right">Hay cambios sin guardar</p>
-                        )}
-                    </>
-                )}
+                    </div>
+                </div>
             </div>
-        </ModalContainer>
+        </div>
+
+        {/* ── Modal selector de semana para exportar ── */}
+        {showExportModal && (
+            <div
+                onClick={() => setShowExportModal(false)}
+                style={{
+                    position:'fixed', inset:0, zIndex:300,
+                    background:'rgba(28,18,50,0.55)',
+                    backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    padding:24,
+                }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        width:380, maxWidth:'calc(100vw - 48px)',
+                        background:'#fff',
+                        borderRadius:20,
+                        boxShadow:'0 24px 60px -16px rgba(40,20,80,0.4)',
+                        overflow:'hidden',
+                        border:'1px solid rgba(123,91,224,0.12)',
+                    }}
+                >
+                    {/* Banda superior degradado */}
+                    <div style={{ height:5, background:'linear-gradient(90deg, #7B5BE0, #EC5BA1)' }} />
+
+                    {/* Cabecera */}
+                    <div style={{ padding:'20px 22px 16px', borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <div style={{
+                                width:36, height:36, borderRadius:10, flexShrink:0,
+                                background:'linear-gradient(135deg, #7B5BE0, #EC5BA1)',
+                                display:'flex', alignItems:'center', justifyContent:'center',
+                            }}>
+                                <FileDown size={16} color="white" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize:15, fontWeight:800, color:V3_TEXT_DARK }}>Exportar agenda en PDF</div>
+                                <div style={{ fontSize:12, color:V3_TEXT_MUTED, marginTop:1 }}>Selecciona la semana a exportar</div>
+                            </div>
+                            <button
+                                onClick={() => setShowExportModal(false)}
+                                style={{
+                                    marginLeft:'auto', width:28, height:28, borderRadius:8,
+                                    border:'1px solid rgba(0,0,0,0.08)', background:V3_BG_FIELD,
+                                    color:V3_TEXT_MUTED, cursor:'pointer',
+                                    display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                                }}
+                            >
+                                <X size={13} strokeWidth={2.4} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Selector de semana */}
+                    <div style={{ padding:'20px 22px' }}>
+                        {/* Curso (solo lectura) */}
+                        <div style={{
+                            marginBottom:16, padding:'10px 14px', borderRadius:10,
+                            background:V3_ACT_BG, border:'1px solid rgba(123,91,224,0.18)',
+                            fontSize:13, fontWeight:700, color:V3_ACT_TEXT,
+                            display:'flex', alignItems:'center', gap:6,
+                        }}>
+                            <span style={{ fontSize:11, fontWeight:600, color:'#8B7ACA', textTransform:'uppercase', letterSpacing:0.5 }}>Curso</span>
+                            <span style={{ marginLeft:4 }}>{selectedCourse}</span>
+                        </div>
+
+                        {/* Navegador de semana */}
+                        <div style={{
+                            display:'flex', alignItems:'center', gap:8,
+                            padding:'12px 14px', borderRadius:12,
+                            border:'1.5px solid rgba(123,91,224,0.2)',
+                            background:'white',
+                        }}>
+                            <button
+                                onClick={() => goExportWeek(-1)}
+                                style={{
+                                    width:30, height:30, borderRadius:8, border:'none',
+                                    background:'rgba(123,91,224,0.08)', color:V3_PRIMARY,
+                                    cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                                    flexShrink:0,
+                                }}
+                            >
+                                <ChevronLeft size={15} />
+                            </button>
+                            <div style={{ flex:1, textAlign:'center' }}>
+                                <div style={{ fontSize:13, fontWeight:800, color:V3_TEXT_DARK }}>
+                                    {formatWeekLabel(exportWeekStart)}
+                                </div>
+                                <div style={{ fontSize:11, color:V3_TEXT_MUTED, marginTop:2 }}>
+                                    {getWeekOfMonthLabel(exportWeekStart)}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => goExportWeek(1)}
+                                style={{
+                                    width:30, height:30, borderRadius:8, border:'none',
+                                    background:'rgba(123,91,224,0.08)', color:V3_PRIMARY,
+                                    cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                                    flexShrink:0,
+                                }}
+                            >
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Botones */}
+                    <div style={{ padding:'0 22px 20px', display:'flex', gap:8 }}>
+                        <button
+                            onClick={() => setShowExportModal(false)}
+                            style={{
+                                flex:1, padding:'10px', borderRadius:10,
+                                border:'1px solid rgba(0,0,0,0.1)', background:'white',
+                                color:V3_TEXT_MUTED, fontSize:13, fontWeight:700,
+                                cursor:'pointer', fontFamily:'inherit',
+                            }}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={exporting}
+                            style={{
+                                flex:1, padding:'10px', borderRadius:10, border:'none',
+                                background:'linear-gradient(135deg, #7B5BE0, #EC5BA1)',
+                                color:'white', fontSize:13, fontWeight:800,
+                                cursor: exporting ? 'not-allowed' : 'pointer',
+                                fontFamily:'inherit', display:'flex', alignItems:'center',
+                                justifyContent:'center', gap:6,
+                                opacity: exporting ? 0.7 : 1,
+                            }}
+                        >
+                            {exporting
+                                ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }} />
+                                : <FileDown size={13} />
+                            }
+                            {exporting ? 'Exportando…' : 'Exportar PDF'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
 
-// ─── Tarjeta de día ───────────────────────────────────────────────────────────
-function DayCard({ dia, dateLabel, entries, asignaturas, onAdd, onRemove }) {
-    const [showForm, setShowForm] = useState(false);
-    const [form, setForm]         = useState({ asignatura: '', texto: '' });
+// ─── Tarjeta de día (V3) ──────────────────────────────────────────────────────
+function DayCard({ dia, dateLabel, dateISO, entries, asignaturas, onAdd, onRemove, onFocus, focused, isActive = true }) {
+    const holiday = dateISO ? CHILE_HOLIDAYS[dateISO] : null;
+    const c = isActive ? (V3_DAY_COLOR[dia] || V3_PRIMARY) : '#CBD5E1';
+    // En modo enfocado el formulario arranca abierto
+    const [showForm, setShowForm] = useState(() => !!focused && isActive && !holiday);
+    const [form, setForm]         = useState({ asignatura: asignaturas[0] ?? '', texto: '' });
+    const textareaRef = React.useRef(null);
+
+    // Auto-resize del textarea
+    useEffect(() => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.style.height = 'auto';
+        ta.style.height = `${ta.scrollHeight}px`;
+    }, [form.texto]);
 
     const handleToggleForm = () => {
+        if (!isActive || holiday) return;
         if (!showForm) setForm({ asignatura: asignaturas[0] ?? '', texto: '' });
         setShowForm(s => !s);
     };
@@ -495,45 +1047,94 @@ function DayCard({ dia, dateLabel, entries, asignaturas, onAdd, onRemove }) {
     const handleAdd = () => {
         if (!form.texto.trim()) { toast.error('Escribe qué deben traer'); return; }
         onAdd(form.asignatura.trim() || 'General', form.texto.trim());
-        setForm(f => ({ ...f, texto: '' }));
-        setShowForm(false);
+        // En modo enfocado mantener el formulario abierto para seguir agregando
+        if (focused) {
+            setForm(f => ({ ...f, texto: '' }));
+            setTimeout(() => textareaRef.current?.focus(), 0);
+        } else {
+            setForm(f => ({ ...f, texto: '' }));
+            setShowForm(false);
+        }
     };
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-card flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border-b border-slate-100">
-                <div>
-                    <p className="text-xs font-bold text-slate-700">{DIA_LABELS[dia]}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{dateLabel}</p>
-                </div>
-                <button
-                    onClick={handleToggleForm}
-                    className={cn(
-                        'p-1 rounded-lg transition-colors',
-                        showForm ? 'bg-slate-200 text-slate-600' : 'text-slate-400 hover:bg-slate-200 hover:text-slate-700'
-                    )}
-                    title={showForm ? 'Cancelar' : 'Agregar'}
+        <div style={{
+            background: holiday ? '#FFF5F5' : isActive ? 'white' : '#F8FAFC',
+            borderRadius:14,
+            border: holiday ? '1.5px solid #FECACA' : !isActive ? '1.5px solid rgba(0,0,0,0.04)' : showForm ? `1.5px solid ${c}40` : '1.5px solid rgba(0,0,0,0.06)',
+            display:'flex', flexDirection:'column', overflow:'hidden',
+            boxShadow: isActive && showForm ? `0 6px 18px -6px ${c}40` : '0 1px 4px rgba(0,0,0,0.04)',
+            transition:'all .15s',
+            opacity: isActive ? 1 : 0.5,
+            ...(focused ? { minHeight:320 } : {}),
+        }}>
+            {/* Header */}
+            <div style={{
+                position:'relative', padding:'10px 12px 10px 16px',
+                background: holiday ? '#FEE2E220' : isActive ? `${c}08` : 'transparent',
+                borderBottom:'1px solid rgba(0,0,0,0.05)',
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+            }}>
+                <div style={{ position:'absolute', left:0, top:6, bottom:6, width:3, borderRadius:2, background: holiday ? '#EF4444' : c }}/>
+                <div
+                    onClick={isActive && !holiday ? onFocus : undefined}
+                    style={{ cursor: isActive && !holiday && onFocus ? 'pointer' : 'default' }}
                 >
-                    {showForm ? <X size={13} /> : <Plus size={13} />}
-                </button>
+                    <div style={{ fontSize:13, fontWeight:800, color: holiday ? '#DC2626' : c, letterSpacing:0.6, textTransform:'uppercase' }}>
+                        {focused ? DIA_LABELS[dia] : (V3_DAY_SHORT[dia] || DIA_LABELS[dia])}
+                    </div>
+                    {holiday ? (
+                        <div style={{ fontSize:11, fontWeight:700, color:'#DC2626', marginTop:1, lineHeight:1.2 }}>{holiday}</div>
+                    ) : (
+                        <div style={{ fontSize:12, color:V3_TEXT_MUTED, marginTop:1 }}>{dateLabel}</div>
+                    )}
+                </div>
+                {isActive && !holiday ? (
+                    <button onClick={handleToggleForm} style={{
+                        width:24, height:24, borderRadius:7, border:'none',
+                        background: showForm ? `${c}20` : 'rgba(0,0,0,0.04)',
+                        color: showForm ? c : V3_TEXT_SOFT,
+                        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                        transition:'all .15s',
+                    }}>
+                        {showForm ? <X size={12}/> : <Plus size={12}/>}
+                    </button>
+                ) : null}
             </div>
 
-            <div className="flex-1 p-3 space-y-2">
-                {entries.length === 0 && !showForm && (
-                    <p className="text-[11px] text-slate-300 text-center py-4">Sin entradas</p>
+            {/* Entries / empty state */}
+            <div style={{ flex:1, padding:'8px 10px', minHeight:40 }}>
+                {holiday ? (
+                    <p style={{ fontSize:11, color:'#FCA5A5', textAlign:'center', padding:'10px 0' }}>Feriado</p>
+                ) : !isActive ? (
+                    <p style={{ fontSize:11, color:'rgba(0,0,0,0.25)', textAlign:'center', padding:'10px 0' }}>Sin clases</p>
+                ) : entries.length === 0 && !showForm ? (
+                    <p style={{ fontSize:12, color:'rgba(0,0,0,0.18)', textAlign:'center', padding:'10px 0' }}>Sin entradas</p>
+                ) : (
+                    entries.map(e => (
+                        <EntryItem key={e.id} entry={e} color={c} onRemove={() => onRemove(e.id)} />
+                    ))
                 )}
-                {entries.map(e => (
-                    <EntryItem key={e.id} entry={e} onRemove={() => onRemove(e.id)} />
-                ))}
             </div>
 
-            {showForm && (
-                <div className="border-t border-slate-100 p-3 space-y-2 bg-slate-50/60">
+            {/* Add form */}
+            {isActive && !holiday && showForm && (
+                <div style={{
+                    borderTop:'1px solid rgba(0,0,0,0.05)',
+                    padding:'8px 10px',
+                    background:`${c}05`,
+                    display:'flex', flexDirection:'column', gap:6,
+                }}>
                     {asignaturas.length > 0 ? (
                         <select
                             value={form.asignatura}
                             onChange={e => setForm(f => ({ ...f, asignatura: e.target.value }))}
-                            className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-eyr-primary/40"
+                            style={{
+                                width:'100%', padding:'7px 9px', borderRadius:8,
+                                border:'1px solid rgba(0,0,0,0.1)', background:'white',
+                                fontSize:13, color:V3_TEXT_MED, outline:'none',
+                                fontFamily:'inherit',
+                            }}
                         >
                             {asignaturas.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
@@ -542,21 +1143,39 @@ function DayCard({ dia, dateLabel, entries, asignaturas, onAdd, onRemove }) {
                             value={form.asignatura}
                             onChange={e => setForm(f => ({ ...f, asignatura: e.target.value }))}
                             placeholder="Asignatura…"
-                            className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-eyr-primary/40"
+                            style={{
+                                width:'100%', padding:'7px 9px', borderRadius:8,
+                                border:'1px solid rgba(0,0,0,0.1)', background:'white',
+                                fontSize:13, color:V3_TEXT_MED, outline:'none',
+                                fontFamily:'inherit', boxSizing:'border-box',
+                            }}
                         />
                     )}
-                    <input
+                    <textarea
+                        ref={textareaRef}
                         value={form.texto}
                         onChange={e => setForm(f => ({ ...f, texto: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                        placeholder="Qué deben traer o hacer…"
-                        className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-eyr-primary/40"
-                        autoFocus
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); }
+                        }}
+                        placeholder="Qué deben traer o hacer… (Enter para agregar, Shift+Enter nueva línea)"
+                        autoFocus={focused}
+                        rows={2}
+                        style={{
+                            width:'100%', padding:'7px 9px', borderRadius:8,
+                            border:`1px solid ${c}40`, background:'white',
+                            fontSize:13, color:V3_TEXT_MED, outline:'none',
+                            fontFamily:'inherit', boxSizing:'border-box',
+                            resize:'none', overflow:'hidden', lineHeight:1.5,
+                            minHeight:56,
+                        }}
                     />
-                    <button
-                        onClick={handleAdd}
-                        className="w-full py-1.5 rounded-lg bg-eyr-primary text-white text-xs font-semibold hover:opacity-90 transition-all"
-                    >
+                    <button onClick={handleAdd} style={{
+                        width:'100%', padding:'7px', borderRadius:8, border:'none',
+                        background:c, color:'white',
+                        fontSize:13, fontWeight:800, cursor:'pointer',
+                        fontFamily:'inherit',
+                    }}>
                         Agregar
                     </button>
                 </div>
@@ -565,94 +1184,38 @@ function DayCard({ dia, dateLabel, entries, asignaturas, onAdd, onRemove }) {
     );
 }
 
-// ─── Ítem de entrada ──────────────────────────────────────────────────────────
-function EntryItem({ entry, onRemove }) {
+// ─── Ítem de entrada (V3) ─────────────────────────────────────────────────────
+function EntryItem({ entry, color, onRemove }) {
+    const [hover, setHover] = useState(false);
     return (
-        <div className="flex items-start gap-2 group rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
-            <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide truncate leading-tight">
+        <div
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            style={{
+                display:'flex', alignItems:'flex-start', gap:6,
+                padding:'5px 6px', borderRadius:8, marginBottom:3,
+                background: hover ? 'rgba(0,0,0,0.03)' : 'transparent',
+                transition:'background .12s',
+            }}>
+            <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:11, fontWeight:800, color: color || V3_PRIMARY, textTransform:'uppercase', letterSpacing:0.6, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {entry.asignatura}
-                </p>
-                <p className="text-xs text-slate-700 leading-snug mt-0.5">{entry.texto}</p>
+                </div>
+                <div style={{ fontSize:13, color:V3_TEXT_DARK, lineHeight:1.4 }}>{entry.texto}</div>
             </div>
-            <button
-                onClick={onRemove}
-                className="p-0.5 rounded text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-50 transition-all shrink-0 mt-1"
-            >
-                <X size={11} />
+            <button onClick={onRemove} style={{
+                padding:2, borderRadius:5, border:'none',
+                background:'transparent', color:'transparent',
+                cursor:'pointer', flexShrink:0, marginTop:2,
+                ...(hover ? { color:'#EF4444', background:'#FEF2F2' } : {}),
+                transition:'all .12s',
+            }}>
+                <X size={10}/>
             </button>
         </div>
     );
 }
 
-// ─── Exportar PDF ─────────────────────────────────────────────────────────────
-function exportAgendaPDF({ weekStart, curso, docenteName, entries }) {
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.width;
-
-    pdf.setFillColor(59, 130, 246);
-    pdf.rect(0, 0, pageW, 30, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(16);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('AGENDA SEMANAL', pageW / 2, 13, { align: 'center' });
-    pdf.setFontSize(9);
-    pdf.setFont(undefined, 'normal');
-    pdf.text('Centro Educacional Ernesto Yañez Rivera · Huechuraba', pageW / 2, 22, { align: 'center' });
-
-    pdf.setTextColor(30, 30, 30);
-    pdf.setFontSize(10);
-    pdf.setFont(undefined, 'bold');
-    pdf.text(`Semana del ${formatWeekLabelLong(weekStart)}`, 14, 40);
-    pdf.setFont(undefined, 'normal');
-    pdf.setFontSize(9);
-    pdf.text(`Curso: ${curso}`, 14, 48);
-    pdf.text(`Docente: ${docenteName}`, 14, 54);
-    pdf.setDrawColor(220, 220, 220);
-    pdf.setLineWidth(0.3);
-    pdf.line(14, 58, pageW - 14, 58);
-
-    const mon = new Date(weekStart + 'T12:00:00');
-    const body = DIAS.map((dia, i) => {
-        const d = addDays(mon, i);
-        const dateStr = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
-        const diaEntries = entries.filter(e => e.dia === dia);
-        const content = diaEntries.length > 0
-            ? diaEntries.map(e => `\u2022 ${e.asignatura}: ${e.texto}`).join('\n')
-            : '\u2014';
-        return [
-            { content: `${DIA_LABELS[dia]}\n${dateStr}`, styles: { fontStyle: 'bold', valign: 'top' } },
-            { content, styles: { valign: 'top' } },
-        ];
-    });
-
-    autoTable(pdf, {
-        startY: 62,
-        head: [['Día', 'Qué deben traer / Actividad']],
-        body,
-        columnStyles: { 0: { cellWidth: 38 }, 1: { cellWidth: 'auto' } },
-        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
-        bodyStyles: { fontSize: 9, cellPadding: 4, lineColor: [220, 220, 220] },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        styles: { lineWidth: 0.2 },
-        didDrawPage: () => {
-            const h = pdf.internal.pageSize.height;
-            pdf.setFontSize(7);
-            pdf.setTextColor(160, 160, 160);
-            pdf.text(`${curso} · Semana ${formatWeekLabel(weekStart)}`, 14, h - 8);
-        },
-    });
-
-    const finalY = pdf.lastAutoTable?.finalY ?? 200;
-    if (finalY < 240) {
-        pdf.setFontSize(8);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text('Firma del apoderado: _______________________________', 14, finalY + 18);
-        pdf.text('Firma del alumno/a:   _______________________________', 14, finalY + 30);
-    }
-
-    pdf.save(`Agenda ${curso} - semana ${weekStart}.pdf`);
-}
 
 // ─── Card por curso (vista gestión) ──────────────────────────────────────────
 function CourseCard({ curso, count, hasNoticia, onClick }) {

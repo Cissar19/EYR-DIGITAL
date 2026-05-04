@@ -35,6 +35,7 @@ import UTPView from './utp/UTPView';
 import EditorFormato from './utp/EditorFormato';
 import CalendarioEvaluaciones from './utp/CalendarioEvaluaciones';
 import AgendaSemanal from './utp/AgendaSemanal';
+import TemarioView from './utp/TemarioView';
 import ControlSanoView from './views/ControlSanoView';
 import FichaClap from './views/FichaClap';
 import AtencionDiariaView from './views/AtencionDiariaView';
@@ -52,6 +53,7 @@ import CoberturaTeacherView from './views/cobertura/CoberturaTeacherView';
 import CoberturaAdminList from './views/cobertura/admin/CoberturaAdminList';
 import CoberturaEditor from './views/cobertura/admin/CoberturaEditor';
 import CoberturaMigrar from './views/cobertura/admin/CoberturaMigrar';
+import IncentivoEYRView from './views/IncentivoEYRView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -282,6 +284,7 @@ export default function App() {
             <Route path="/admin/teacher-hours" element={<PermissionGate moduleKey="teacher_hours"><TeacherHoursView /></PermissionGate>} />
             <Route path="/admin/attendance" element={<PermissionGate moduleKey="attendance_monitor"><AttendanceMonitorView /></PermissionGate>} />
             <Route path="/convivencia" element={<PermissionGate moduleKey="convivencia"><ConvivenciaReservation /></PermissionGate>} />
+            <Route path="/incentivo-eyr" element={<PermissionGate moduleKey="incentivo_eyr"><IncentivoEYRView /></PermissionGate>} />
             <Route path="/corrida-escolar" element={<PermissionGate moduleKey="corrida_escolar"><CorridaEscolarView /></PermissionGate>} />
             <Route path="/retos" element={<PermissionGate moduleKey="retos_admin"><RetosAdminView /></PermissionGate>} />
             <Route path="/retos/sesion" element={<PermissionGate moduleKey="no_pierde_clases"><RetosSesionView /></PermissionGate>} />
@@ -290,6 +293,7 @@ export default function App() {
             <Route path="/inspectoria/entrevistas" element={<PermissionGate moduleKey="entrevistas"><EntrevistasView /></PermissionGate>} />
             <Route path="/utp" element={<PermissionGate moduleKey="utp_evaluaciones"><UTPView /></PermissionGate>} />
             <Route path="/utp/formatos" element={<PermissionGate moduleKey="utp_formatos"><EditorFormato /></PermissionGate>} />
+            <Route path="/utp/temario" element={<PermissionGate moduleKey="utp_temario"><TemarioView /></PermissionGate>} />
             {/* utp/calendario moved to full-bleed above */}
             <Route path="/pie" element={<PermissionGate moduleKey="pie"><PlaceholderView title="PIE" /></PermissionGate>} />
             <Route path="/enfermeria/control-sano" element={<PermissionGate moduleKey="control_sano"><ControlSanoView /></PermissionGate>} />

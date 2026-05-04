@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Monitor, LifeBuoy, Users, CalendarClock,
     CalendarCheck, HeartPulse, Shuffle, Shield, BarChart3, Settings as SettingsIcon, Clock,
-    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare, CalendarDays, BookMarked, CalendarRange
+    FileCheck, MessageSquare, GraduationCap, HeartHandshake, Stethoscope, ClipboardCheck, Heart, BookOpen, PieChart, LayoutTemplate, Flag, BookCheck, Zap, ListChecks, CheckSquare, CalendarDays, BookMarked, CalendarRange, Scroll, Award
 } from 'lucide-react';
 
 /**
@@ -189,6 +189,15 @@ export const MODULE_REGISTRY = [
         defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
     },
     {
+        key: 'utp_temario',
+        name: 'Temario',
+        icon: Scroll,
+        path: '/utp/temario',
+        category: 'role_specific',
+        group: 'utp',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+    },
+    {
         key: 'cobertura',
         name: 'Cobertura Curricular',
         icon: BookMarked,
@@ -267,6 +276,14 @@ export const MODULE_REGISTRY = [
         category: 'role_specific',
         group: 'administracion',
         defaultRoles: ['super_admin', 'admin', 'director', 'inspector', 'staff'],
+    },
+    {
+        key: 'incentivo_eyr',
+        name: 'Incentivo-EYR',
+        icon: Award,
+        path: '/incentivo-eyr',
+        category: 'role_specific',
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher'],
     },
     {
         key: 'corrida_escolar',

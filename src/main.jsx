@@ -27,6 +27,7 @@ import { TasksProvider } from './context/TasksContext.jsx'
 import { WorkshopsProvider } from './context/WorkshopsContext.jsx'
 import { TodoProvider } from './context/TodoContext.jsx'
 import { AcademicYearProvider } from './context/AcademicYearContext.jsx'
+import { IncentivoEYRProvider } from './context/IncentivoEYRContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -60,7 +61,9 @@ const DataProviders = ({ children }) => {
                                       <TasksProvider>
                                         <WorkshopsProvider>
                                           <TodoProvider>
-                                            {children}
+                                            <IncentivoEYRProvider>
+                                              {children}
+                                            </IncentivoEYRProvider>
                                           </TodoProvider>
                                         </WorkshopsProvider>
                                       </TasksProvider>

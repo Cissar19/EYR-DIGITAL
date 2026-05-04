@@ -452,16 +452,13 @@ export default function AtencionDiariaView() {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!deleteConfirm) return;
-        try {
-            await removeDocument('atenciones_diarias', deleteConfirm.id);
-            toast.success('Atención eliminada');
-        } catch (err) {
-            toast.error(err?.message || 'Error al eliminar');
-        } finally {
-            setDeleteConfirm(null);
-        }
+        const id = deleteConfirm.id;
+        setDeleteConfirm(null);
+        removeDocument('atenciones_diarias', id)
+            .then(() => toast.success('Atención eliminada'))
+            .catch(err => toast.error(err?.message || 'Error al eliminar'));
     };
 
     const inputCls = 'w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-200 focus:border-teal-400 outline-none';

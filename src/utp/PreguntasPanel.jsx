@@ -238,10 +238,41 @@ function PreguntaCard({
     pregunta, editMode,
     onSetCorrect, onSetPauta, onSetEnunciado, onSetAlternativa, onFieldFocus, onSetImagen, onDelete,
     onSetInstruccionItems, onAddItem, onUpdateItem, onDeleteItem, onMoveUp, onMoveDown, onSetPuntaje,
-    onSaveToBanco, onSetHabilidad,
+    onSaveToBanco, onSetHabilidad, onSetAlternativaImagen, onSetTipo,
 }) {
     const [open, setOpen] = useState(true);
+    const [tipoDropdownOpen, setTipoDropdownOpen] = useState(false);
     const imageInputRef = useRef(null);
+    const altImageInputRef = useRef(null);
+    const activeAltLetterRef = useRef(null);
+    const tipoRef = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (tipoRef.current && !tipoRef.current.contains(e.target)) setTipoDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const handleAltImageClick = (letra) => {
+        activeAltLetterRef.current = letra;
+        altImageInputRef.current?.click();
+    };
+    const handleAltImageSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const letra = activeAltLetterRef.current;
+        if (!letra) return;
+        const previewUrl = URL.createObjectURL(file);
+        onSetAlternativaImagen?.(pregunta.number, letra, { file, previewUrl });
+        e.target.value = '';
+    };
+    const handleRemoveAltImage = (letra) => {
+        const img = pregunta.alternativasImagenes?.[letra];
+        if (img?.previewUrl) URL.revokeObjectURL(img.previewUrl);
+        onSetAlternativaImagen?.(pregunta.number, letra, null);
+    };
     const esSM = pregunta.tipo === 'seleccion_multiple';
     const esDesarrollo = pregunta.tipo === 'desarrollo';
     const esConItems = TIPOS_CON_ITEMS.includes(pregunta.tipo);
@@ -264,19 +295,40 @@ function PreguntaCard({
 
     const imagenSrc = pregunta.imagen?.previewUrl || pregunta.imagen?.url || null;
 
+    const TIPO_COLORS = {
+        seleccion_multiple: '#3B8FE5',
+        desarrollo: '#FF7A4D',
+        verdadero_falso: '#26B7BB',
+        unir: '#EC5BA1',
+        completar: '#F4B400',
+    };
+    const tipoColor = TIPO_COLORS[pregunta.tipo] || '#7B5BE0';
+
     return (
-        <div className={`border rounded-xl overflow-hidden transition-colors
-            ${editMode ? 'border-indigo-200' : 'border-slate-200'}`}
-        >
+        <div style={{
+            background:'white', borderRadius:14,
+            border:'1px solid rgba(20,10,40,0.06)',
+            borderLeft:`4px solid ${tipoColor}`,
+            overflow:'hidden',
+        }}>
             {/* Header */}
             <div
                 className={`flex items-start gap-3 px-4 py-3
                     ${!editMode ? 'cursor-pointer hover:bg-slate-50 transition-colors' : 'bg-white'}`}
                 onClick={!editMode ? () => setOpen(o => !o) : undefined}
             >
-                <span className="font-mono text-sm font-semibold text-slate-400 shrink-0 mt-0.5 w-7 text-right">
-                    {pregunta.number}.
-                </span>
+                <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: `linear-gradient(135deg, ${tipoColor}18, ${tipoColor}32)`,
+                    color: tipoColor,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 800,
+                    border: `1.5px solid ${tipoColor}30`,
+                    flexShrink: 0, alignSelf: 'flex-start', marginTop: 2,
+                    fontVariantNumeric: 'tabular-nums',
+                }}>
+                    {String(pregunta.number).padStart(2, '0')}
+                </div>
 
                 {/* Enunciado */}
                 {editMode ? (
@@ -316,10 +368,73 @@ function PreguntaCard({
                             {pregunta.puntaje ?? 1} pt
                         </span>
                     )}
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 ${tipoConf.classes}`}>
-                        <tipoConf.Icon className="w-3 h-3" />
-                        {tipoConf.label}
-                    </span>
+                    {editMode && onSetTipo ? (
+                        <div ref={tipoRef} style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={() => setTipoDropdownOpen(o => !o)}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    padding: '5px 7px 5px 6px', borderRadius: 9,
+                                    border: `1.5px solid ${tipoColor}40`,
+                                    background: `${tipoColor}10`, color: tipoColor,
+                                    fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                }}
+                            >
+                                <span style={{
+                                    width: 20, height: 20, borderRadius: 5,
+                                    background: tipoColor, color: 'white',
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 8.5, fontWeight: 800,
+                                }}>{tipoConf.label}</span>
+                                <ChevronDown className="w-2.5 h-2.5" />
+                            </button>
+                            {tipoDropdownOpen && (
+                                <div style={{
+                                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30,
+                                    background: 'white', borderRadius: 12, padding: 6,
+                                    border: '1px solid rgba(20,10,40,0.06)',
+                                    boxShadow: '0 12px 32px -10px rgba(40,20,80,0.25)',
+                                    minWidth: 200,
+                                }}>
+                                    {[
+                                        { tipo: 'seleccion_multiple', label: 'Selección múltiple', color: '#3B8FE5', abbr: 'SM' },
+                                        { tipo: 'desarrollo',         label: 'Desarrollo',         color: '#FF7A4D', abbr: 'D' },
+                                        { tipo: 'verdadero_falso',    label: 'Verdadero / Falso',  color: '#26B7BB', abbr: 'V/F' },
+                                        { tipo: 'unir',               label: 'Unir',               color: '#EC5BA1', abbr: 'UN' },
+                                        { tipo: 'completar',          label: 'Completar',          color: '#F4B400', abbr: 'CO' },
+                                    ].map(t => (
+                                        <button
+                                            key={t.tipo}
+                                            type="button"
+                                            onClick={() => { onSetTipo(pregunta.number, t.tipo); setTipoDropdownOpen(false); }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                                                padding: '7px 9px', borderRadius: 8, border: 'none',
+                                                background: pregunta.tipo === t.tipo ? `${t.color}12` : 'transparent',
+                                                color: '#2a1a3a', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                                                textAlign: 'left', fontFamily: 'inherit',
+                                            }}
+                                        >
+                                            <span style={{
+                                                width: 22, height: 22, borderRadius: 6,
+                                                background: t.color, color: 'white',
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 9, fontWeight: 800,
+                                            }}>{t.abbr}</span>
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 ${tipoConf.classes}`}>
+                            <tipoConf.Icon className="w-3 h-3" />
+                            {tipoConf.label}
+                        </span>
+                    )}
                     {!editMode && (esSM || esDesarrollo) && correcta && (
                         <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700">
                             <Check className="w-3 h-3" />
@@ -428,10 +543,12 @@ function PreguntaCard({
                         <div className="grid grid-cols-1 gap-1.5">
                             {altKeys.map(letra => {
                                 const esCorrecta = correcta === letra;
+                                const altImg = pregunta.alternativasImagenes?.[letra];
+                                const altImgSrc = altImg?.previewUrl || altImg?.url || null;
                                 return (
                                     <div
                                         key={letra}
-                                        className={`flex items-center gap-2 py-1.5 px-2 rounded-lg transition-all
+                                        className={`flex items-start gap-2 py-1.5 px-2 rounded-lg transition-all
                                             ${esCorrecta ? 'bg-emerald-50 border border-emerald-200' : 'bg-white border border-transparent'}`}
                                     >
                                         <button
@@ -439,7 +556,7 @@ function PreguntaCard({
                                             disabled={!editMode}
                                             onClick={() => editMode && onSetCorrect(pregunta.number, esCorrecta ? '' : letra)}
                                             title={editMode ? (esCorrecta ? 'Quitar como correcta' : 'Marcar como correcta') : ''}
-                                            className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold transition-all
+                                            className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold transition-all mt-0.5
                                                 ${editMode ? 'cursor-pointer hover:scale-110' : 'cursor-default'}
                                                 ${esCorrecta
                                                     ? 'bg-emerald-500 text-white'
@@ -450,23 +567,60 @@ function PreguntaCard({
                                         </button>
 
                                         {editMode ? (
-                                            <input
-                                                type="text"
-                                                value={pregunta.alternativas[letra] || ''}
-                                                onChange={e => onSetAlternativa(pregunta.number, letra, e.target.value)}
-                                                onFocus={e => onFieldFocus?.(e.target, pregunta.number, `alt_${letra}`)}
-                                                className={`flex-1 px-2 py-1 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors
-                                                    ${esCorrecta
-                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                                                        : 'border-slate-200 bg-white text-slate-700'
-                                                    }`}
-                                            />
+                                            <div className="flex-1 space-y-1 min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="text"
+                                                        value={pregunta.alternativas[letra] || ''}
+                                                        onChange={e => onSetAlternativa(pregunta.number, letra, e.target.value)}
+                                                        onFocus={e => onFieldFocus?.(e.target, pregunta.number, `alt_${letra}`)}
+                                                        className={`flex-1 px-2 py-1 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors
+                                                            ${esCorrecta
+                                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                                                : 'border-slate-200 bg-white text-slate-700'
+                                                            }`}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAltImageClick(letra)}
+                                                        className="p-1 text-slate-300 hover:text-indigo-500 rounded transition-colors shrink-0"
+                                                        title="Agregar imagen a esta alternativa"
+                                                    >
+                                                        <ImageIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                {altImgSrc && (
+                                                    <div className="relative inline-block">
+                                                        <img
+                                                            src={altImgSrc}
+                                                            alt={`imagen alt ${letra}`}
+                                                            className="max-h-24 rounded-lg border border-slate-200 bg-white object-contain"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveAltImage(letra)}
+                                                            className="absolute top-0.5 right-0.5 p-0.5 bg-white/90 border border-slate-200 rounded-md text-slate-400 hover:text-red-500 shadow-sm"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <span className={`text-sm leading-snug
-                                                ${esCorrecta ? 'text-emerald-800 font-medium' : 'text-slate-600'}`}
-                                            >
-                                                {pregunta.alternativas[letra]}
-                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <span className={`text-sm leading-snug
+                                                    ${esCorrecta ? 'text-emerald-800 font-medium' : 'text-slate-600'}`}
+                                                >
+                                                    {pregunta.alternativas[letra]}
+                                                </span>
+                                                {altImgSrc && (
+                                                    <img
+                                                        src={altImgSrc}
+                                                        alt={`imagen alt ${letra}`}
+                                                        className="mt-1 max-h-24 rounded-lg border border-slate-100 bg-white object-contain block"
+                                                    />
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 );
@@ -560,6 +714,13 @@ function PreguntaCard({
                                 className="hidden"
                                 onChange={handleImageSelect}
                             />
+                            <input
+                                ref={altImageInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleAltImageSelect}
+                            />
                         </div>
                     )}
                 </div>
@@ -641,6 +802,9 @@ export default function PreguntasPanel({ evaluacion }) {
         const qs = evaluacion.questions.map(q => ({
             ...q,
             alternativas: { ...(q.alternativas || {}) },
+            alternativasImagenes: q.alternativasImagenes
+                ? { ...q.alternativasImagenes }
+                : (q.tipo === 'seleccion_multiple' ? { a: null, b: null, c: null, d: null } : undefined),
             imagen: q.imagen ? { ...q.imagen } : null,
             items: q.items ? q.items.map(item => ({ ...item })) : (TIPOS_CON_ITEMS.includes(q.tipo) ? [] : undefined),
         }));
@@ -654,6 +818,11 @@ export default function PreguntasPanel({ evaluacion }) {
         if (localQuestions) {
             for (const q of localQuestions) {
                 if (q.imagen?.previewUrl) URL.revokeObjectURL(q.imagen.previewUrl);
+                if (q.alternativasImagenes) {
+                    for (const img of Object.values(q.alternativasImagenes)) {
+                        if (img?.previewUrl) URL.revokeObjectURL(img.previewUrl);
+                    }
+                }
             }
         }
         setLocalQuestions(null);
@@ -722,6 +891,7 @@ export default function PreguntasPanel({ evaluacion }) {
                 tipo,
                 enunciado: '',
                 alternativas: tipo === 'seleccion_multiple' ? { a: '', b: '', c: '', d: '' } : {},
+                alternativasImagenes: tipo === 'seleccion_multiple' ? { a: null, b: null, c: null, d: null } : undefined,
                 respuestaCorrecta: '',
                 ...(esConItems && { instruccionItems: '', items: [] }),
                 oaCode: '',
@@ -734,6 +904,11 @@ export default function PreguntasPanel({ evaluacion }) {
         setLocalQuestions(prev => {
             const q = prev.find(x => x.number === questionNumber);
             if (q?.imagen?.previewUrl) URL.revokeObjectURL(q.imagen.previewUrl);
+            if (q?.alternativasImagenes) {
+                for (const img of Object.values(q.alternativasImagenes)) {
+                    if (img?.previewUrl) URL.revokeObjectURL(img.previewUrl);
+                }
+            }
             return prev
                 .filter(x => x.number !== questionNumber)
                 .map((x, i) => ({ ...x, number: i + 1 }));
@@ -746,6 +921,29 @@ export default function PreguntasPanel({ evaluacion }) {
 
     const handleSetHabilidad = (questionNumber, value) =>
         updateQuestion(questionNumber, q => ({ ...q, habilidad: value }));
+
+    const handleSetTipo = (questionNumber, newTipo) => {
+        updateQuestion(questionNumber, q => {
+            const esConItemsNuevo = TIPOS_CON_ITEMS.includes(newTipo);
+            const esConItemsActual = TIPOS_CON_ITEMS.includes(q.tipo);
+            const next = { ...q, tipo: newTipo, respuestaCorrecta: '' };
+            if (newTipo === 'seleccion_multiple') {
+                next.alternativas = { a: '', b: '', c: '', d: '' };
+                next.alternativasImagenes = { a: null, b: null, c: null, d: null };
+            } else if (q.tipo === 'seleccion_multiple') {
+                next.alternativas = {};
+                next.alternativasImagenes = undefined;
+            }
+            if (esConItemsNuevo && !esConItemsActual) {
+                next.instruccionItems = '';
+                next.items = [];
+            } else if (!esConItemsNuevo && esConItemsActual) {
+                delete next.instruccionItems;
+                delete next.items;
+            }
+            return next;
+        });
+    };
 
     const handleMoveUp = (questionNumber) => {
         setLocalQuestions(prev => {
@@ -771,6 +969,17 @@ export default function PreguntasPanel({ evaluacion }) {
         updateQuestion(questionNumber, q => {
             if (q.imagen?.previewUrl) URL.revokeObjectURL(q.imagen.previewUrl);
             return { ...q, imagen: value };
+        });
+    };
+
+    const handleSetAlternativaImagen = (questionNumber, letra, value) => {
+        updateQuestion(questionNumber, q => {
+            const prev = q.alternativasImagenes?.[letra];
+            if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+            return {
+                ...q,
+                alternativasImagenes: { ...(q.alternativasImagenes || {}), [letra]: value },
+            };
         });
     };
 
@@ -812,6 +1021,24 @@ export default function PreguntasPanel({ evaluacion }) {
                         finalQuestions[i] = { ...finalQuestions[i], imagen: original?.imagen || null };
                     }
                 }
+
+                if (q.alternativasImagenes) {
+                    const updatedAltImgs = { ...q.alternativasImagenes };
+                    for (const letra of LETRAS) {
+                        const altImg = q.alternativasImagenes[letra];
+                        if (altImg?.file) {
+                            try {
+                                const { url, storagePath, aspectRatio } = await uploadPreguntaImagen(evaluacion.id, q.number, altImg.file);
+                                updatedAltImgs[letra] = { url, storagePath, aspectRatio };
+                                URL.revokeObjectURL(altImg.previewUrl);
+                            } catch (err) {
+                                toast.error(`Error al procesar imagen alt ${letra.toUpperCase()}: ${err.message}`);
+                                updatedAltImgs[letra] = original?.alternativasImagenes?.[letra] || null;
+                            }
+                        }
+                    }
+                    finalQuestions[i] = { ...finalQuestions[i], alternativasImagenes: updatedAltImgs };
+                }
             }
 
             await updateEvaluacion(evaluacion.id, { questions: finalQuestions, instrucciones: localInstrucciones });
@@ -833,73 +1060,78 @@ export default function PreguntasPanel({ evaluacion }) {
     const conImg        = preguntas.filter(q => q.imagen?.url).length;
     const totalPts      = displayQuestions.reduce((s, q) => s + (q.puntaje ?? 1), 0);
 
-    return (
-        <div className="space-y-3">
-            {/* Barra superior */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
-                    <span className="font-semibold text-slate-700">{preguntas.length} preguntas</span>
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full font-semibold">
-                        {totalPts} pts totales
-                    </span>
-                    {smCount > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">
-                            <CheckSquare className="w-3 h-3" /> {smCount} SM
-                        </span>
-                    )}
-                    {devCount > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full font-medium">
-                            <AlignLeft className="w-3 h-3" /> {devCount} D
-                        </span>
-                    )}
-                    {vfCount > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-600 rounded-full font-medium">
-                            <ToggleLeft className="w-3 h-3" /> {vfCount} V/F
-                        </span>
-                    )}
-                    {unirCount > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-600 rounded-full font-medium">
-                            <Link2 className="w-3 h-3" /> {unirCount} Unir
-                        </span>
-                    )}
-                    {completarCount > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full font-medium">
-                            <Type className="w-3 h-3" /> {completarCount} Completar
-                        </span>
-                    )}
-                    {!editMode && conClave > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-medium">
-                            <Check className="w-3 h-3" /> {conClave} con clave
-                        </span>
-                    )}
-                    {!editMode && conImg > 0 && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full font-medium">
-                            <ImageIcon className="w-3 h-3" /> {conImg} con imagen
-                        </span>
-                    )}
-                </div>
+    const DT = {
+        primary:'#7B5BE0', primaryDark:'#5028B8', pink:'#EC5BA1',
+        coral:'#FF7A4D', sky:'#3B8FE5', bgSoft:'#F4F1FB',
+        ink:'#2a1a3a', muted:'#7a6a8a', line:'rgba(20,10,40,0.06)',
+    };
 
+    return (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {/* ActionBar */}
+            <div style={{
+                display:'flex', alignItems:'center', gap:14,
+                padding:'14px 16px', background:'white',
+                border:`1px solid ${DT.line}`, borderRadius:14,
+            }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{
+                        padding:'6px 12px', borderRadius:9,
+                        background:DT.bgSoft, color:DT.primaryDark,
+                        fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums',
+                    }}>{preguntas.length} preguntas</span>
+                    <span style={{
+                        padding:'6px 12px', borderRadius:9,
+                        background:`${DT.coral}12`, color:DT.coral,
+                        fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums',
+                    }}>{totalPts} pts totales</span>
+                    {smCount > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:'#EEF2FF', color:'#4338CA', fontSize:12, fontWeight:600 }}>{smCount} SM</span>}
+                    {devCount > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:'#FFF7ED', color:'#C2410C', fontSize:12, fontWeight:600 }}>{devCount} D</span>}
+                    {vfCount > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:`${DT.primary}10`, color:DT.primaryDark, fontSize:12, fontWeight:600 }}>{vfCount} V/F</span>}
+                    {unirCount > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:`${DT.pink}10`, color:'#9C2160', fontSize:12, fontWeight:600 }}>{unirCount} Unir</span>}
+                    {completarCount > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:'#FFFBEB', color:'#B45309', fontSize:12, fontWeight:600 }}>{completarCount} Completar</span>}
+                    {!editMode && conClave > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:'#F0FDF4', color:'#166534', fontSize:12, fontWeight:600 }}>{conClave} con clave</span>}
+                    {!editMode && conImg > 0 && <span style={{ padding:'4px 10px', borderRadius:8, background:DT.bgSoft, color:DT.muted, fontSize:12, fontWeight:600 }}>{conImg} con imagen</span>}
+                </div>
+                <div style={{ flex:1 }}/>
                 {puedeEditar && !editMode && (
                     <button
                         onClick={handleStartEdit}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:6,
+                            padding:'9px 16px', borderRadius:10, border:`1.5px solid ${DT.line}`,
+                            background:'white', color:DT.muted, fontSize:12.5, fontWeight:600,
+                            cursor:'pointer', fontFamily:'inherit',
+                        }}
                     >
                         <Pencil className="w-3.5 h-3.5" /> Editar preguntas
                     </button>
                 )}
-
                 {editMode && (
-                    <div className="flex items-center gap-2">
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <button
                             onClick={handleCancelEdit}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                            style={{
+                                display:'inline-flex', alignItems:'center', gap:6,
+                                padding:'9px 14px', borderRadius:10, border:`1.5px solid ${DT.line}`,
+                                background:'white', color:DT.muted, fontSize:12.5, fontWeight:600,
+                                cursor:'pointer', fontFamily:'inherit',
+                            }}
                         >
                             <X className="w-3.5 h-3.5" /> Cancelar
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            style={{
+                                display:'inline-flex', alignItems:'center', gap:7,
+                                padding:'9px 16px', borderRadius:10, border:'none',
+                                background:`linear-gradient(90deg, ${DT.primary}, ${DT.pink})`,
+                                color:'white', fontSize:12.5, fontWeight:700,
+                                cursor:'pointer', fontFamily:'inherit',
+                                boxShadow:'0 6px 14px -6px rgba(123,91,224,0.5)',
+                                opacity: saving ? 0.7 : 1,
+                            }}
                         >
                             <Save className="w-3.5 h-3.5" />
                             {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -909,9 +1141,15 @@ export default function PreguntasPanel({ evaluacion }) {
             </div>
 
             {editMode && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700">
-                    <Pencil className="w-3.5 h-3.5 shrink-0" />
-                    Edita el texto, alternativas e imágenes directamente. Para preguntas con ítems, agrega los enunciados uno a uno.
+                <div style={{
+                    background:`${DT.sky}10`, border:`1.5px solid ${DT.sky}30`,
+                    borderRadius:12, padding:'10px 14px',
+                    display:'flex', alignItems:'center', gap:10,
+                }}>
+                    <Pencil className="w-3.5 h-3.5 shrink-0" style={{ color:DT.sky }} />
+                    <span style={{ fontSize:12.5, color:'#1456A8', fontWeight:600, lineHeight:1.5 }}>
+                        Edita el texto, alternativas e imágenes directamente. Para preguntas con ítems, agrega los enunciados uno a uno.
+                    </span>
                 </div>
             )}
 
@@ -921,29 +1159,42 @@ export default function PreguntasPanel({ evaluacion }) {
 
             {/* Instrucciones generales */}
             {editMode ? (
-                <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                        Instrucciones generales de la prueba
-                    </label>
+                <div>
+                    <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
+                        <label style={{ fontSize:11.5, fontWeight:600, color:DT.muted, letterSpacing:0.5, textTransform:'uppercase' }}>
+                            Instrucciones generales de la prueba
+                        </label>
+                        <span style={{ fontSize:11, color:DT.muted, fontWeight:600 }}>{(localInstrucciones||'').length}/500</span>
+                    </div>
                     <textarea
                         rows={3}
+                        maxLength={500}
                         value={localInstrucciones}
                         onChange={e => setLocalInstrucciones(e.target.value)}
                         placeholder="Ej: Lee atentamente cada pregunta. Responde con letra clara y ordenada. Está prohibido el uso de lápiz grafito..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none resize-none bg-white"
+                        style={{
+                            width:'100%', padding:'14px 16px', borderRadius:14,
+                            border:`1.5px solid ${DT.line}`, background:'white',
+                            fontSize:13.5, color:DT.ink, lineHeight:1.5,
+                            outline:'none', resize:'vertical', fontFamily:'inherit', boxSizing:'border-box',
+                        }}
+                        onFocus={e => { e.target.style.borderColor = DT.primary; e.target.style.boxShadow = `0 0 0 4px ${DT.primary}20`; }}
+                        onBlur={e => { e.target.style.borderColor = DT.line; e.target.style.boxShadow = 'none'; }}
                     />
-                    <p className="text-[11px] text-slate-400">Se mostrará al inicio de la prueba, sobre las preguntas.</p>
+                    <div style={{ fontSize:11, color:DT.muted, marginTop:6, fontWeight:600 }}>
+                        Se mostrará al inicio de la prueba, sobre las preguntas.
+                    </div>
                 </div>
             ) : evaluacion.instrucciones ? (
-                <div className="px-3 py-2 bg-blue-50/60 border border-blue-100 rounded-xl">
-                    <p className="text-[11px] font-semibold text-blue-700 mb-0.5 uppercase tracking-wide">Instrucciones</p>
-                    <p className="text-sm text-slate-600 italic">{evaluacion.instrucciones}</p>
+                <div style={{ padding:'12px 16px', background:`${DT.sky}08`, border:`1px solid ${DT.sky}25`, borderRadius:12 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:DT.sky, marginBottom:4, textTransform:'uppercase', letterSpacing:0.4 }}>Instrucciones</p>
+                    <p style={{ fontSize:13, color:DT.ink, fontStyle:'italic', margin:0 }}>{evaluacion.instrucciones}</p>
                 </div>
             ) : null}
 
             {/* Lista de preguntas */}
             {displayQuestions.length > 0 ? (
-                <div className="space-y-2">
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                     {displayQuestions.map((p, idx) => (
                         <PreguntaCard
                             key={p.number}
@@ -965,76 +1216,91 @@ export default function PreguntasPanel({ evaluacion }) {
                             onSetPuntaje={editMode ? handleSetPuntaje : undefined}
                             onSaveToBanco={!editMode && puedeEditar ? handleSaveToBanco : undefined}
                             onSetHabilidad={editMode ? handleSetHabilidad : undefined}
+                            onSetAlternativaImagen={editMode ? handleSetAlternativaImagen : undefined}
+                            onSetTipo={editMode ? handleSetTipo : undefined}
                         />
                     ))}
                 </div>
             ) : (
                 !editMode && (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-                        <AlignLeft className="w-10 h-10" />
-                        <p className="text-sm">Esta evaluación no tiene preguntas cargadas.</p>
+                    <div style={{
+                        display:'flex', flexDirection:'column', alignItems:'center',
+                        justifyContent:'center', padding:'48px 24px',
+                        background:'white', borderRadius:14, border:`1px solid ${DT.line}`,
+                        gap:12,
+                    }}>
+                        <div style={{
+                            width:48, height:48, borderRadius:14, background:DT.bgSoft,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                        }}>
+                            <AlignLeft className="w-6 h-6" style={{ color:DT.muted }} />
+                        </div>
+                        <p style={{ fontSize:13, color:DT.muted, fontWeight:600, margin:0 }}>Esta evaluación no tiene preguntas cargadas.</p>
                     </div>
                 )
             )}
 
-            {/* Botones agregar pregunta (solo en edición) */}
+            {/* Agregar pregunta (solo en edición) */}
             {editMode && (
-                <div className="space-y-2 pt-1">
-                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Agregar pregunta</p>
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setShowBancoModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                        >
-                            <Archive className="w-3.5 h-3.5" />
-                            Desde banco
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleAddQuestion('seleccion_multiple')}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-indigo-200 rounded-xl text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <CheckSquare className="w-3.5 h-3.5" />
-                            Selección múltiple
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleAddQuestion('desarrollo')}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-amber-200 rounded-xl text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <AlignLeft className="w-3.5 h-3.5" />
-                            Desarrollo
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleAddQuestion('verdadero_falso')}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-violet-200 rounded-xl text-xs font-medium text-violet-600 hover:bg-violet-50 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <ToggleLeft className="w-3.5 h-3.5" />
-                            Verdadero / Falso
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleAddQuestion('unir')}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-sky-200 rounded-xl text-xs font-medium text-sky-600 hover:bg-sky-50 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <Link2 className="w-3.5 h-3.5" />
-                            Unir
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleAddQuestion('completar')}
-                            className="flex items-center gap-1.5 px-3 py-2 border border-rose-200 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <Type className="w-3.5 h-3.5" />
-                            Completar
-                        </button>
+                <div>
+                    <div style={{ fontSize:11.5, fontWeight:600, color:DT.muted, letterSpacing:0.5, textTransform:'uppercase', marginBottom:10 }}>
+                        Agregar pregunta
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:10 }}>
+                        {[
+                            { tipo: null,               label:'Desde banco',        subtitulo:'Reutilizar preguntas',   color:'#7B5BE0', Icon: Archive },
+                            { tipo:'seleccion_multiple', label:'Selección múltiple', subtitulo:'Una respuesta correcta', color:'#3B8FE5', Icon: CheckSquare },
+                            { tipo:'desarrollo',         label:'Desarrollo',         subtitulo:'Respuesta abierta',      color:'#FF7A4D', Icon: AlignLeft },
+                            { tipo:'verdadero_falso',    label:'Verdadero / Falso',  subtitulo:'Verdadero o falso',      color:'#26B7BB', Icon: ToggleLeft },
+                            { tipo:'unir',               label:'Unir',               subtitulo:'Asociar conceptos',      color:'#EC5BA1', Icon: Link2 },
+                            { tipo:'completar',          label:'Completar',          subtitulo:'Llenar espacios',        color:'#F4B400', Icon: Type },
+                        ].map((btn) => {
+                            const BtnIcon = btn.Icon;
+                            const c = btn.color;
+                            return (
+                                <button
+                                    key={btn.label}
+                                    type="button"
+                                    onClick={() => btn.tipo ? handleAddQuestion(btn.tipo) : setShowBancoModal(true)}
+                                    style={{
+                                        padding:'14px', borderRadius:14,
+                                        border:`1.5px solid ${c}30`,
+                                        background:`${c}08`,
+                                        display:'flex', alignItems:'center', gap:10,
+                                        cursor:'pointer', textAlign:'left',
+                                        transition:'all .15s', fontFamily:'inherit',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = `${c}15`;
+                                        e.currentTarget.style.borderColor = c;
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = `0 8px 18px -8px ${c}60`;
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = `${c}08`;
+                                        e.currentTarget.style.borderColor = `${c}30`;
+                                        e.currentTarget.style.transform = 'none';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{
+                                        width:36, height:36, borderRadius:10,
+                                        background:c, color:'white',
+                                        display:'flex', alignItems:'center', justifyContent:'center',
+                                        flexShrink:0,
+                                    }}>
+                                        <BtnIcon className="w-4 h-4" />
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                                            <Plus className="w-3 h-3" style={{ color:c, strokeWidth:3 }} />
+                                            <span style={{ fontSize:13, fontWeight:600, color:DT.ink }}>{btn.label}</span>
+                                        </div>
+                                        <div style={{ fontSize:10.5, color:DT.muted, fontWeight:600, marginTop:2 }}>{btn.subtitulo}</div>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}

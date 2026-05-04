@@ -238,52 +238,95 @@ export default function VistaPrevia({ evaluacion }) {
     };
 
     return (
-        <div className="space-y-4">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-slate-400" />
-                    <p className="text-sm text-slate-500">Vista previa del documento para estudiantes</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {/* Barra de acciones */}
+            <div style={{
+                display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
+                padding:'14px 16px', background:'white',
+                border:'1px solid rgba(20,10,40,0.06)', borderRadius:14,
+            }}>
+                {/* Métricas */}
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{
+                        padding:'6px 12px', borderRadius:9,
+                        background:'#F4F1FB', color:'#5028B8',
+                        fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums',
+                    }}>{preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''}</span>
+                    <span style={{
+                        padding:'6px 12px', borderRadius:9,
+                        background:'rgba(255,122,77,0.12)', color:'#FF7A4D',
+                        fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums',
+                    }}>{totalPuntos} pt{totalPuntos !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div style={{ flex:1 }} />
+                {/* Botones */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                     <button
                         onClick={() => setShowAnswers(v => !v)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-xl transition-colors ${
-                            showAnswers
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:6,
+                            padding:'8px 13px', borderRadius:10, cursor:'pointer',
+                            border: showAnswers ? '1.5px solid rgba(43,182,115,0.5)' : '1.5px solid rgba(20,10,40,0.08)',
+                            background: showAnswers ? 'rgba(43,182,115,0.08)' : 'white',
+                            color: showAnswers ? '#1A7A4A' : '#7a6a8a',
+                            fontSize:12.5, fontWeight:600, fontFamily:'inherit',
+                        }}
                     >
                         {showAnswers ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                         {showAnswers ? 'Ocultar respuestas' : 'Ver clave'}
                     </button>
                     <button
                         onClick={() => window.print()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors"
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:6,
+                            padding:'8px 13px', borderRadius:10, cursor:'pointer',
+                            border:'1.5px solid rgba(20,10,40,0.08)', background:'white',
+                            color:'#7a6a8a', fontSize:12.5, fontWeight:600, fontFamily:'inherit',
+                        }}
                     >
                         <Printer className="w-3.5 h-3.5" /> Imprimir
                     </button>
                     <button
                         onClick={handleExportPDF}
                         disabled={exportingPdf}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-rose-200 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:6,
+                            padding:'8px 13px', borderRadius:10, cursor:'pointer',
+                            border:'1.5px solid rgba(255,122,77,0.35)',
+                            background:'rgba(255,122,77,0.08)', color:'#CC4D1A',
+                            fontSize:12.5, fontWeight:600, fontFamily:'inherit',
+                            opacity: exportingPdf ? 0.6 : 1,
+                        }}
                     >
                         <FileDown className="w-3.5 h-3.5" />
-                        {exportingPdf ? 'Generando…' : 'Descargar PDF'}
+                        {exportingPdf ? 'Generando…' : 'PDF'}
                     </button>
                     <button
                         onClick={handleExportPauta}
                         disabled={exportingPauta}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:6,
+                            padding:'8px 13px', borderRadius:10, cursor:'pointer',
+                            border:'1.5px solid rgba(20,10,40,0.08)', background:'white',
+                            color:'#7a6a8a', fontSize:12.5, fontWeight:600, fontFamily:'inherit',
+                            opacity: exportingPauta ? 0.6 : 1,
+                        }}
                     >
                         <FileText className="w-3.5 h-3.5" />
-                        {exportingPauta ? 'Generando…' : 'Pauta (.docx)'}
+                        {exportingPauta ? 'Generando…' : 'Pauta'}
                     </button>
                     {preguntas.some(p => p.tipo === 'seleccion_multiple') && (
                         <button
                             onClick={handleExportVersionB}
                             disabled={exportingVB}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-violet-200 rounded-xl text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                            style={{
+                                display:'inline-flex', alignItems:'center', gap:6,
+                                padding:'8px 13px', borderRadius:10, cursor:'pointer',
+                                border:'1.5px solid rgba(123,91,224,0.35)',
+                                background:'rgba(123,91,224,0.08)', color:'#5028B8',
+                                fontSize:12.5, fontWeight:600, fontFamily:'inherit',
+                                opacity: exportingVB ? 0.6 : 1,
+                            }}
                         >
                             <Shuffle className="w-3.5 h-3.5" />
                             {exportingVB ? 'Generando…' : 'Versión B'}
@@ -292,12 +335,33 @@ export default function VistaPrevia({ evaluacion }) {
                     <button
                         onClick={handleExport}
                         disabled={exporting}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        style={{
+                            display:'inline-flex', alignItems:'center', gap:7,
+                            padding:'9px 16px', borderRadius:10, border:'none',
+                            background: exporting ? 'rgba(123,91,224,0.4)' : 'linear-gradient(90deg, #7B5BE0, #EC5BA1)',
+                            color:'white', fontSize:12.5, fontWeight:700,
+                            cursor: exporting ? 'not-allowed' : 'pointer',
+                            boxShadow: exporting ? 'none' : '0 6px 14px -6px rgba(123,91,224,0.5)',
+                            fontFamily:'inherit',
+                        }}
                     >
                         <Download className="w-3.5 h-3.5" />
                         {exporting ? 'Exportando…' : 'Descargar .docx'}
                     </button>
                 </div>
+            </div>
+
+            {/* Info hint */}
+            <div style={{
+                background:'rgba(59,143,229,0.08)',
+                border:'1.5px solid rgba(59,143,229,0.25)',
+                borderRadius:12, padding:'10px 14px',
+                display:'flex', alignItems:'center', gap:10,
+            }}>
+                <Eye className="w-3.5 h-3.5 shrink-0" style={{ color:'#3B8FE5' }} />
+                <span style={{ fontSize:12.5, color:'#1456A8', fontWeight:600, lineHeight:1.5 }}>
+                    Vista previa del documento para estudiantes. Activa <em>Ver clave</em> para mostrar las respuestas correctas.
+                </span>
             </div>
 
             {/* Hoja de prueba */}
@@ -460,16 +524,20 @@ export default function VistaPrevia({ evaluacion }) {
                                                 <p className="text-xs font-medium text-slate-800">
                                                     {qi + 1}.&nbsp;&nbsp;{p.enunciado}
                                                 </p>
-                                                {p.imagen?.url && (
-                                                    <img src={p.imagen.url} alt="" className="max-h-32 my-1 object-contain" />
+                                                {(p.imagen?.previewUrl || p.imagen?.url) && (
+                                                    <img src={p.imagen.previewUrl || p.imagen.url} alt="" className="max-h-32 my-1 object-contain" />
                                                 )}
-                                                <div className="ml-5 mt-1 space-y-0.5">
-                                                    {['a','b','c','d'].filter(l => p.alternativas?.[l]).map(l => {
+                                                <div className="ml-5 mt-1 space-y-1">
+                                                    {['a','b','c','d'].filter(l => p.alternativas?.[l] || p.alternativasImagenes?.[l]?.previewUrl || p.alternativasImagenes?.[l]?.url).map(l => {
                                                         const isCorrect = showAnswers && p.respuestaCorrecta === l;
+                                                        const altImgSrc = p.alternativasImagenes?.[l]?.previewUrl || p.alternativasImagenes?.[l]?.url || null;
                                                         return (
-                                                            <p key={l} className={`text-xs ${isCorrect ? 'font-bold text-emerald-700' : 'text-slate-700'}`}>
-                                                                {isCorrect && '✓ '}{l})&nbsp;&nbsp;{p.alternativas[l]}
-                                                            </p>
+                                                            <div key={l} className={`text-xs ${isCorrect ? 'font-bold text-emerald-700' : 'text-slate-700'}`}>
+                                                                <span>{isCorrect && '✓ '}{l})&nbsp;&nbsp;{p.alternativas[l]}</span>
+                                                                {altImgSrc && (
+                                                                    <img src={altImgSrc} alt={`alt ${l}`} className="max-h-20 mt-0.5 ml-5 object-contain" />
+                                                                )}
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
@@ -486,8 +554,8 @@ export default function VistaPrevia({ evaluacion }) {
                                                 <p className="text-xs font-medium text-slate-800">
                                                     {qi + 1}.&nbsp;&nbsp;{p.enunciado}
                                                 </p>
-                                                {p.imagen?.url && (
-                                                    <img src={p.imagen.url} alt="" className="max-h-32 my-1 object-contain" />
+                                                {(p.imagen?.previewUrl || p.imagen?.url) && (
+                                                    <img src={p.imagen.previewUrl || p.imagen.url} alt="" className="max-h-32 my-1 object-contain" />
                                                 )}
                                                 {showAnswers && p.respuestaCorrecta ? (
                                                     <p className="ml-5 mt-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-2 py-1">

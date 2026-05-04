@@ -128,9 +128,9 @@ export default function JustificativesView() {
         setShowModal(true);
     }, []);
 
-    const handleDelete = async (id) => {
-        await deleteJustificative(id);
+    const handleDelete = (id) => {
         setDeleteConfirm(null);
+        deleteJustificative(id);
     };
 
     return (

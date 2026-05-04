@@ -324,15 +324,11 @@ export default function TeacherHoursView() {
         }
     };
 
-    const handleDelete = async (docId, name) => {
-        try {
-            await removeDocument('teacher_hours', docId);
-            toast.info('Funcionario eliminado', { description: name });
-            setEditingTeacher(null);
-        } catch (err) {
-            console.error(err);
-            toast.error('Error al eliminar');
-        }
+    const handleDelete = (docId, name) => {
+        setEditingTeacher(null);
+        removeDocument('teacher_hours', docId)
+            .then(() => toast.info('Funcionario eliminado', { description: name }))
+            .catch(err => { console.error(err); toast.error('Error al eliminar'); });
     };
 
     if (loading) {
