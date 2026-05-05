@@ -189,7 +189,7 @@ export default function KioskoAlumnoView() {
             setStudent({ id: studentId, ...snapStudent.data() });
 
             // Cargar config
-            const snapCfg = await getDoc(doc(db, 'incentivo_config', 'default'));
+            const snapCfg = await getDoc(doc(db, 'incentivo_config', 'reglas'));
             setConfig(snapCfg.exists() ? snapCfg.data() : {
                 tiers: [
                     { id:3, label:'Excelencia', minCoins:80 },
@@ -204,7 +204,7 @@ export default function KioskoAlumnoView() {
 
             // Saldo en tiempo real
             unsubSaldo = onSnapshot(doc(db, 'incentivo_estrellas', studentId), snap => {
-                setSaldo(snap.exists() ? (snap.data().saldo ?? 0) : 0);
+                setSaldo(snap.exists() ? (snap.data().estrellas ?? 0) : 0);
             });
 
             setReady(true);
@@ -225,7 +225,7 @@ export default function KioskoAlumnoView() {
             const batch = writeBatch(db);
             // Descontar estrellas
             const estrellasRef = doc(db, 'incentivo_estrellas', studentId);
-            batch.set(estrellasRef, { saldo: increment(-precio) }, { merge: true });
+            batch.set(estrellasRef, { estrellas: increment(-precio) }, { merge: true });
             // Registrar transacción
             const txRef = doc(collection(db, 'incentivo_transacciones'));
             batch.set(txRef, {

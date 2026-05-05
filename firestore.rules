@@ -470,10 +470,10 @@ service cloud.firestore {
     match /incentivo_estrellas/{studentId} {
       allow read: if isKiosko();
       allow write: if isIncentivoUser();
-      // Kiosko solo puede descontar (saldo decrece) y solo el campo saldo
+      // Kiosko solo puede descontar (estrellas decrece) y solo el campo estrellas
       allow update: if isKiosko()
-        && request.resource.data.saldo < resource.data.saldo
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saldo']);
+        && request.resource.data.estrellas < resource.data.estrellas
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estrellas']);
     }
 
     match /incentivo_transacciones/{txId} {
