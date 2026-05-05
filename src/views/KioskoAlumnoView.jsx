@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { signInAnonymously } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import {
-    doc, getDoc, onSnapshot, writeBatch, collection,
-    serverTimestamp, increment,
+    doc, getDoc, getDocs, onSnapshot, writeBatch, collection,
+    query, where, serverTimestamp, increment,
 } from 'firebase/firestore';
 import { Star, ShoppingBag, Trophy, Award, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 
@@ -199,8 +199,7 @@ export default function KioskoAlumnoView() {
             });
 
             // Cargar productos
-            const { getDocs, collection: col, query: q, where } = await import('firebase/firestore');
-            const snapProd = await getDocs(q(col(db, 'incentivo_productos'), where('activo', '==', true)));
+            const snapProd = await getDocs(query(collection(db, 'incentivo_productos'), where('activo', '==', true)));
             setProductos(snapProd.docs.map(d => ({ id: d.id, ...d.data() })));
 
             // Saldo en tiempo real
