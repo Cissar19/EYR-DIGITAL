@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -139,8 +139,19 @@ function TierBadge({ coins }) {
 }
 
 // ── Modal QR alumno ───────────────────────────────────────────────────────────
+const CARD_W = 272;
+const CARD_H = 380;
+
 function QrModal({ student, coins, onClose }) {
     const url = `${window.location.origin}/kiosko/${student.id}`;
+    const [flipped, setFlipped] = useState(false);
+
+    // Auto-regresa al QR tras 2 segundos
+    useEffect(() => {
+        if (!flipped) return;
+        const t = setTimeout(() => setFlipped(false), 2000);
+        return () => clearTimeout(t);
+    }, [flipped]);
 
     function handleDownload() {
         const svg = document.getElementById('qr-svg-export');
@@ -172,47 +183,114 @@ function QrModal({ student, coins, onClose }) {
     }
 
     return createPortal(
-        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:EYR.overlay, backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:22, border:`1px solid ${EYR.line}`, boxShadow:EYR.shadowLg, width:320, overflow:'hidden' }}>
-                <div style={{ height:6, background:EYR.stripe }} />
-                <div style={{ padding:'20px 24px 16px', display:'flex', alignItems:'center', gap:12, borderBottom:`1px solid ${EYR.line}` }}>
-                    <div style={{ width:40, height:40, borderRadius:11, background:EYR.priS, display:'grid', placeItems:'center', flexShrink:0 }}>
-                        <QrCode size={20} color={EYR.pri} />
-                    </div>
-                    <div style={{ flex:1 }}>
-                        <div style={{ fontSize:15, fontWeight:700, color:EYR.ink }}>Código QR</div>
-                        <div style={{ fontSize:12, color:EYR.ink2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {student.fullName}
+        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:EYR.overlay, backdropFilter:'blur(6px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, padding:16 }}>
+
+            {/* Botón cerrar */}
+            <button onClick={onClose} style={{ alignSelf:'flex-end', marginRight: `calc(50% - ${CARD_W/2}px)`, width:32, height:32, display:'grid', placeItems:'center', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', cursor:'pointer', borderRadius:10, backdropFilter:'blur(4px)' }}>
+                <X size={16} />
+            </button>
+
+            {/* Flip card */}
+            <div
+                onClick={e => { e.stopPropagation(); setFlipped(f => !f); }}
+                style={{ perspective:1000, width:CARD_W, height:CARD_H, cursor:'pointer', flexShrink:0 }}
+            >
+                <div style={{
+                    width:'100%', height:'100%',
+                    position:'relative',
+                    transformStyle:'preserve-3d',
+                    transition:'transform 0.65s cubic-bezier(.4,0,.2,1)',
+                    transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                }}>
+
+                    {/* ── CARA FRONTAL — QR ─────────────────────────────── */}
+                    <div style={{
+                        position:'absolute', inset:0,
+                        backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
+                        background:'#fff',
+                        borderRadius:24,
+                        boxShadow:EYR.shadowLg,
+                        overflow:'hidden',
+                        display:'flex', flexDirection:'column', alignItems:'center',
+                    }}>
+                        <div style={{ height:6, width:'100%', background:EYR.stripe, flexShrink:0 }} />
+                        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px 24px', gap:12 }}>
+                            <div style={{ background:'#fff', padding:10, borderRadius:16, border:`1.5px solid ${EYR.line}` }}>
+                                <QRCodeSVG id="qr-svg-export" value={url} size={168} level="M" />
+                            </div>
+                            <div style={{ textAlign:'center' }}>
+                                <div style={{ fontSize:14, fontWeight:800, color:EYR.ink }}>{student.fullName}</div>
+                                {student.curso && <div style={{ fontSize:11, color:EYR.ink3, marginTop:2 }}>{student.curso}</div>}
+                            </div>
+                            <div style={{ display:'flex', alignItems:'center', gap:4, background:EYR.amberS, borderRadius:99, padding:'4px 12px' }}>
+                                <Star size={12} fill="#f5a524" color="#f5a524" />
+                                <span style={{ fontSize:13, fontWeight:900, color:EYR.ink }}>{coins}</span>
+                                <span style={{ fontSize:11, color:EYR.ink3 }}>estrellas</span>
+                            </div>
+                        </div>
+                        <div style={{ padding:'0 0 14px', display:'flex', alignItems:'center', gap:4 }}>
+                            <span style={{ fontSize:11, color:EYR.ink3 }}>Toca para ver tarjeta</span>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ width:30, height:30, display:'grid', placeItems:'center', background:'none', border:'none', color:EYR.ink2, cursor:'pointer', borderRadius:8 }}>
-                        <X size={16} />
-                    </button>
-                </div>
 
-                <div style={{ padding:'24px', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-                    {/* QR */}
-                    <div style={{ background:'#fff', padding:12, borderRadius:14, border:`1.5px solid ${EYR.line}`, display:'inline-flex' }}>
-                        <QRCodeSVG id="qr-svg-export" value={url} size={200} level="M" />
-                    </div>
+                    {/* ── CARA TRASERA — Tarjeta alumno ─────────────────── */}
+                    <div style={{
+                        position:'absolute', inset:0,
+                        backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
+                        transform:'rotateY(180deg)',
+                        background:`linear-gradient(145deg, ${EYR.pri} 0%, #742fe5 55%, ${EYR.accent} 100%)`,
+                        borderRadius:24,
+                        boxShadow:EYR.shadowLg,
+                        overflow:'hidden',
+                        display:'flex', flexDirection:'column',
+                        padding:24,
+                        color:'#fff',
+                    }}>
+                        {/* Círculos decorativos */}
+                        <div style={{ position:'absolute', top:-50, right:-50, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.07)', pointerEvents:'none' }} />
+                        <div style={{ position:'absolute', bottom:-40, left:-40, width:150, height:150, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
+                        <div style={{ position:'absolute', top:'40%', left:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }} />
 
-                    {/* Info */}
-                    <div style={{ textAlign:'center' }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:EYR.ink }}>{student.fullName}</div>
-                        {student.curso && <div style={{ fontSize:12, color:EYR.ink3 }}>{student.curso}</div>}
-                        <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center', marginTop:6 }}>
-                            <Star size={13} fill="#f5a524" color="#f5a524" />
-                            <span style={{ fontSize:14, fontWeight:900, color:EYR.ink }}>{coins}</span>
-                            <span style={{ fontSize:12, color:EYR.ink3 }}>estrellas</span>
+                        <div style={{ position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                            {/* Branding top */}
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                <span style={{ fontSize:10, fontWeight:900, letterSpacing:2, opacity:0.65, textTransform:'uppercase' }}>EYR Digital</span>
+                                <div style={{ display:'flex', gap:3 }}>
+                                    {[0,1,2].map(i => <Star key={i} size={10} fill="rgba(255,255,255,0.5)" color="rgba(255,255,255,0.5)" />)}
+                                </div>
+                            </div>
+
+                            {/* Avatar + nombre */}
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+                                <div style={{ width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.18)', border:'2.5px solid rgba(255,255,255,0.35)', display:'grid', placeItems:'center', fontSize:32, fontWeight:900, letterSpacing:-1 }}>
+                                    {(student.fullName || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ textAlign:'center' }}>
+                                    <div style={{ fontSize:17, fontWeight:900, letterSpacing:-0.3 }}>{student.fullName}</div>
+                                    {student.curso && <div style={{ fontSize:12, opacity:0.7, marginTop:3 }}>{student.curso}</div>}
+                                </div>
+                            </div>
+
+                            {/* Saldo */}
+                            <div style={{ background:'rgba(255,255,255,0.14)', borderRadius:16, padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', backdropFilter:'blur(8px)' }}>
+                                <span style={{ fontSize:12, fontWeight:700, opacity:0.85 }}>Saldo de estrellas</span>
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                    <Star size={16} fill="#fde68a" color="#fde68a" />
+                                    <span style={{ fontSize:24, fontWeight:900, lineHeight:1 }}>{coins}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    {/* Descargar */}
-                    <button onClick={handleDownload} style={{ display:'flex', alignItems:'center', gap:6, background:EYR.priS, border:'none', borderRadius:10, padding:'9px 18px', cursor:'pointer', fontSize:13, fontWeight:700, color:EYR.pri, fontFamily:'inherit' }}>
-                        <Download size={14} /> Descargar PNG
-                    </button>
                 </div>
             </div>
+
+            {/* Descargar */}
+            <button
+                onClick={e => { e.stopPropagation(); handleDownload(); }}
+                style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.14)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:10, padding:'9px 20px', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff', fontFamily:'inherit', backdropFilter:'blur(4px)' }}
+            >
+                <Download size={14} /> Descargar PNG
+            </button>
         </div>
     , document.body);
 }
