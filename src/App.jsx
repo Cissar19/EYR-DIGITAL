@@ -54,6 +54,7 @@ import CoberturaAdminList from './views/cobertura/admin/CoberturaAdminList';
 import CoberturaEditor from './views/cobertura/admin/CoberturaEditor';
 import CoberturaMigrar from './views/cobertura/admin/CoberturaMigrar';
 import IncentivoEYRView from './views/IncentivoEYRView';
+import KioskoAlumnoView from './views/KioskoAlumnoView';
 
 // --- TEMPORARY PLACEHOLDER COMPONENT ---
 const PlaceholderView = ({ title }) => (
@@ -246,6 +247,9 @@ export default function App() {
       <Routes>
         {/* Public — student reto (no auth required) */}
         <Route path="/reto/:sesionId" element={<RetoAlumnoView />} />
+
+        {/* Public — kiosko alumno (QR scan) */}
+        <Route path="/kiosko/:studentId" element={<KioskoAlumnoView />} />
 
         {/* Public */}
         <Route path="/login" element={<Login />} />

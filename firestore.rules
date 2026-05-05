@@ -462,15 +462,39 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher'];
     }
 
+    // Usuarios anónimos autenticados (kiosko de canje via QR)
+    function isKiosko() {
+      return request.auth != null;
+    }
+
     match /incentivo_estrellas/{studentId} {
-      allow read: if isIncentivoUser();
+      allow read: if isKiosko();
       allow write: if isIncentivoUser();
+      // Kiosko solo puede descontar (saldo decrece) y solo el campo saldo
+      allow update: if isKiosko()
+        && request.resource.data.saldo < resource.data.saldo
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saldo']);
     }
 
     match /incentivo_transacciones/{txId} {
       allow read: if isIncentivoUser();
-      allow create: if isIncentivoUser();
+      allow create: if isIncentivoUser() || isKiosko();
       allow update, delete: if isAdmin();
+    }
+
+    match /incentivo_config/{docId} {
+      allow read: if isKiosko();
+      allow write: if isManagement();
+    }
+
+    match /incentivo_productos/{docId} {
+      allow read: if isKiosko();
+      allow create, delete: if isManagement();
+      // Gestión completa para management; kiosko solo puede decrementar stock en 1
+      allow update: if isManagement()
+        || (isKiosko()
+          && request.resource.data.stock == resource.data.stock - 1
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
     }
 
     // ============================================
