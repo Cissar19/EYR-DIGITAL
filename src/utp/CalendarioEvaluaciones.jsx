@@ -175,18 +175,18 @@ function CalModal({ onClose, width = 580, children }) {
     return (
         <div
             onClick={onClose}
+            className="cal-modal-overlay"
             style={{
                 position: 'fixed', inset: 0, zIndex: 200,
                 background: 'rgba(31,42,46,.32)',
                 backdropFilter: 'blur(4px)',
                 WebkitBackdropFilter: 'blur(4px)',
-                display: 'grid', placeItems: 'center',
-                padding: 24,
                 animation: 'calFadeIn .2s ease-out',
             }}
         >
             <div
                 onClick={e => e.stopPropagation()}
+                className="cal-modal-inner"
                 style={{
                     width, maxWidth: '100%',
                     background: '#fff',
@@ -199,6 +199,8 @@ function CalModal({ onClose, width = 580, children }) {
                     animation: 'calPopIn .25s cubic-bezier(.4,0,.2,1)',
                 }}
             >
+                {/* Pull indicator — visible only on mobile */}
+                <div className="cal-modal-pull" aria-hidden />
                 {/* Gradient stripe */}
                 <div style={{
                     height: 6, flexShrink: 0,
@@ -222,7 +224,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canEdit
     return (
         <CalModal onClose={onClose} width={520}>
             {/* Head */}
-            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+            <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
                 <div style={{
                     width: 44, height: 44, borderRadius: 12, flexShrink: 0,
                     background: sc?.soft || PRIMARY_SOFT, color: sc?.color || PRIMARY,
@@ -241,7 +243,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canEdit
             </div>
 
             {/* Body */}
-            <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="cal-modal-body" style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Asignatura + Curso */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: sc?.soft || PRIMARY_SOFT, borderRadius: 12, border: `1px solid ${LINE}` }}>
                     <div style={{ width: 36, height: 36, borderRadius: 9, background: sc?.color || PRIMARY, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -343,7 +345,7 @@ function EvalDetailModal({ eval: ev, onClose, onEdit, onDelete, canCRUD, canEdit
             </div>
 
             {/* Foot */}
-            <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div className="cal-modal-foot" style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 {(canCRUD || canEditEval) && !confirmDelete && (
                     <>
                         <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 transition-colors hover:bg-red-50 rounded-xl"
@@ -383,7 +385,7 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
     return (
         <CalModal onClose={onClose} width={560}>
             {/* Head */}
-            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+            <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center' }}>
                     <Pencil className="w-5 h-5" />
                 </div>
@@ -400,7 +402,7 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
             </div>
 
             {/* Body */}
-            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="cal-modal-body" style={{ padding: '16px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {myEvals.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '32px 16px' }}>
                         <div style={{ width: 56, height: 56, borderRadius: 16, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
@@ -435,7 +437,7 @@ function EditarFechasModal({ evaluaciones, user, canCRUD, onEdit, onClose }) {
             </div>
 
             {/* Foot */}
-            <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', flexShrink: 0 }}>
+            <div className="cal-modal-foot" style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', flexShrink: 0 }}>
                 <button onClick={onClose} className="w-full transition-colors hover:bg-slate-100 rounded-xl"
                     style={{ padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>Cerrar</button>
             </div>
@@ -465,7 +467,7 @@ function DayModal({ dateStr, events, agendaItems = [], onClose, onNew, onDetail,
     return (
         <CalModal onClose={onClose} width={460}>
             {/* Head */}
-            <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+            <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#FBEDC9', color: HONEY, display: 'grid', placeItems: 'center' }}>
                     <CalendarDays className="w-5 h-5" />
                 </div>
@@ -486,7 +488,7 @@ function DayModal({ dateStr, events, agendaItems = [], onClose, onNew, onDetail,
             </div>
 
             {/* Body */}
-            <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="cal-modal-body" style={{ padding: '22px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {!hasContent ? (
                     /* Empty state */
                     <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
@@ -647,7 +649,7 @@ function PillSelector({ value, label, onPrev, onNext, canPrev, canNext, onOpen, 
                 <button
                     onClick={onOpen}
                     className="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-white/15 transition-colors"
-                    style={{ color: '#fff', fontWeight: 600, fontSize: 13, minWidth: label === 'mes' ? 160 : 130 }}
+                    style={{ color: '#fff', fontWeight: 600, fontSize: 13, minWidth: label === 'mes' ? 130 : 110 }}
                 >
                     <span className="flex-1 text-center">{value}</span>
                     <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -683,7 +685,7 @@ function PillSelector({ value, label, onPrev, onNext, canPrev, canNext, onOpen, 
 export default function CalendarioEvaluaciones() {
     const { user, getAllUsers } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
-    const { getSchedule } = useSchedule();
+    const { getSchedule, getAllSchedules } = useSchedule();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const canCRUD = isAdmin(user) || user?.role === 'utp_head';
     const isTeacher = user?.role === 'teacher';
@@ -909,6 +911,35 @@ export default function CalendarioEvaluaciones() {
                 (!agendaExportCurso || ev.curso === agendaExportCurso)
             );
 
+            // Próxima semana — evaluaciones y contenido agendado
+            const nextWeekDates = weekDates.map(iso => {
+                const d = new Date(iso + 'T12:00:00');
+                d.setDate(d.getDate() + 7);
+                return d.toISOString().slice(0, 10);
+            });
+            const nextWeekStart = nextWeekDates[0];
+            const nextWeekEvals = relevantEvals.filter(ev =>
+                ev.date && nextWeekDates.includes(ev.date) &&
+                (!agendaExportCurso || ev.curso === agendaExportCurso)
+            );
+            const nextConstraints = [where('weekStart', '==', nextWeekStart)];
+            if (agendaExportCurso) nextConstraints.push(where('curso', '==', agendaExportCurso));
+            const nextSnap = await getDocs(query(collection(db, 'agenda_contenido'), ...nextConstraints));
+            const nextWeekEntries = nextSnap.docs.flatMap(d => d.data().entries || []);
+
+            // Construir horario por día para el curso seleccionado
+            const allSchedules = getAllSchedules();
+            const scheduleByDay = {};
+            Object.values(allSchedules).forEach(blocks => {
+                (blocks || []).forEach(block => {
+                    if (!agendaExportCurso || block.course === agendaExportCurso) {
+                        const key = block.day.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        if (!scheduleByDay[key]) scheduleByDay[key] = [];
+                        if (!scheduleByDay[key].includes(block.subject)) scheduleByDay[key].push(block.subject);
+                    }
+                });
+            });
+
             const ok = await exportAgendaMensualCardPDF({
                 agendaDocs: docs,
                 selectedCurso: agendaExportCurso,
@@ -917,6 +948,9 @@ export default function CalendarioEvaluaciones() {
                 evaluaciones: weekEvals,
                 weekStart: agendaExportWeek,
                 profesorJefeName: agendaExportProfesorJefe?.name || '',
+                scheduleByDay,
+                nextWeekEvaluaciones: nextWeekEvals,
+                nextWeekEntries,
             });
             if (!ok) toast.error('No hay nada agendado para esa semana');
             else setShowAgendaExportModal(false);
@@ -968,7 +1002,7 @@ export default function CalendarioEvaluaciones() {
             <div className="relative z-10 p-6 md:p-10 pb-16 max-w-7xl mx-auto space-y-5">
 
                 {/* ── Page header ────────────────────────────────────────── */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 flex-wrap gap-y-3">
                     <div style={{
                         width: 52, height: 52, borderRadius: 14, flexShrink: 0,
                         background: `linear-gradient(135deg, ${PRIMARY}, ${PRIMARY_2})`,
@@ -978,15 +1012,15 @@ export default function CalendarioEvaluaciones() {
                     }}>
                         <CalendarDays className="w-6 h-6" />
                     </div>
-                    <div className="flex-1">
-                        <h1 className="font-headline text-[28px] leading-tight font-bold" style={{ color: INK, letterSpacing: '-0.5px' }}>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="font-headline text-xl sm:text-[28px] leading-tight font-bold" style={{ color: INK, letterSpacing: '-0.5px' }}>
                             Calendario de Evaluaciones
                         </h1>
                         <p className="text-sm mt-0.5" style={{ color: INK_2 }}>
                             {canCreateEval ? 'Haz clic en un día para programar una evaluación' : 'Vista general de evaluaciones programadas'}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                    <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
                         {isTeacher && (
                             <button
                                 onClick={() => setShowAgenda(true)}
@@ -1139,8 +1173,9 @@ export default function CalendarioEvaluaciones() {
                 </div>
 
                 {/* ── Calendar grid ──────────────────────────────────────── */}
+                <div className="overflow-x-auto -mx-6 md:-mx-10 px-6 md:px-10">
                 <div
-                    className="rounded-3xl overflow-hidden"
+                    className="rounded-3xl overflow-hidden min-w-[500px]"
                     style={{
                         background: 'rgba(255,255,255,0.82)',
                         backdropFilter: 'blur(14px)',
@@ -1154,13 +1189,14 @@ export default function CalendarioEvaluaciones() {
                         className="grid grid-cols-5"
                         style={{ background: 'rgba(251,247,241,0.9)', borderBottom: `1px solid ${LINE}` }}
                     >
-                        {DIAS.map(d => (
+                        {DIAS.map((d, i) => (
                             <div
                                 key={d}
-                                className="px-4 py-3 text-left"
+                                className="px-2 sm:px-4 py-2 sm:py-3 text-left"
                                 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: INK_2 }}
                             >
-                                {d}
+                                <span className="hidden sm:inline">{d}</span>
+                                <span className="sm:hidden">{['Lun', 'Mar', 'Mié', 'Jue', 'Vie'][i]}</span>
                             </div>
                         ))}
                     </div>
@@ -1208,10 +1244,8 @@ export default function CalendarioEvaluaciones() {
                                                 setDayModal({ dateStr, events: evs, agendaItems: agenda });
                                             }
                                         }}
-                                        className="group transition-colors flex flex-col"
+                                        className="group transition-colors flex flex-col min-h-[80px] sm:min-h-[118px] p-1.5 sm:p-3"
                                         style={{
-                                            minHeight: 118,
-                                            padding: '10px 12px 12px',
                                             borderRight: di < 4 ? `1px solid ${LINE}` : 'none',
                                             cursor: clickable ? 'pointer' : 'default',
                                             background: dimmed
@@ -1416,6 +1450,7 @@ export default function CalendarioEvaluaciones() {
                         </div>
                     ))}
                 </div>
+                </div>{/* end scroll wrapper */}
 
                 {/* ── Subject legend — filter chips ──────────────────────── */}
                 <div className="flex flex-wrap gap-2">
@@ -1601,7 +1636,7 @@ export default function CalendarioEvaluaciones() {
             {showAgendaExportModal && (
                 <CalModal onClose={() => setShowAgendaExportModal(false)} width={460}>
                     {/* Head */}
-                    <div style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                    <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
                         <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: PRIMARY_SOFT, color: PRIMARY, display: 'grid', placeItems: 'center' }}>
                             <NotebookPen className="w-5 h-5" />
                         </div>
@@ -1616,7 +1651,7 @@ export default function CalendarioEvaluaciones() {
                     </div>
 
                     {/* Body */}
-                    <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div className="cal-modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
                         {/* Curso dropdown */}
                         <div>
@@ -1685,7 +1720,7 @@ export default function CalendarioEvaluaciones() {
                     </div>
 
                     {/* Foot */}
-                    <div style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', gap: 10, flexShrink: 0 }}>
+                    <div className="cal-modal-foot" style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', gap: 10, flexShrink: 0 }}>
                         <button onClick={() => setShowAgendaExportModal(false)} className="transition-colors hover:bg-slate-100 rounded-xl"
                             style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>
                             Cancelar

@@ -55,6 +55,53 @@
   from { opacity: 0; transform: scale(0.94) translateY(10px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
+@keyframes calSlideUp {
+  from { opacity: 0; transform: translateY(60px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── CalModal — overlay y contenedor base ── */
+.cal-modal-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.cal-modal-pull {
+  display: none;
+}
+
+/* ── CalModal — bottom sheet en mobile ── */
+@media (max-width: 639px) {
+  .cal-modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .cal-modal-inner {
+    border-radius: 22px 22px 0 0 !important;
+    width: 100% !important;
+    max-height: 92vh !important;
+    animation: calSlideUp 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  .cal-modal-pull {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(31, 42, 46, 0.15);
+    border-radius: 2px;
+    margin: 10px auto 2px;
+    flex-shrink: 0;
+  }
+  .cal-modal-head {
+    padding: 14px 16px 12px !important;
+  }
+  .cal-modal-body {
+    padding: 12px 16px !important;
+  }
+  .cal-modal-foot {
+    padding: 12px 16px !important;
+  }
+}
 
 /* ── Calendario Evaluaciones — animated background keyframes ── */
 @keyframes calDriftA {

@@ -7,7 +7,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth, isAdmin, ROLES } from '../context/AuthContext';
 import {
-    ChevronLeft, ChevronRight, Plus, X,
+    ChevronLeft, ChevronRight, ChevronDown, Plus, X,
     Megaphone, Package, Calendar, MessageCircle,
     CalendarRange, User, Pencil, Trash2,
     Save, BookOpen, Loader2, FileDown,
@@ -32,6 +32,90 @@ const V3_ACT_TEXT   = '#5028B8';
 
 const V3_DAY_COLOR = { lunes:'#FF7A4D', martes:'#FF7A4D', miercoles:'#26B7BB', jueves:'#7B5BE0', viernes:'#26B7BB' };
 const V3_DAY_SHORT = { lunes:'LUN', martes:'MAR', miercoles:'MIÉ', jueves:'JUE', viernes:'VIE' };
+
+// ─── CustomSelect — reemplaza <select> nativo ────────────────────────────────
+function CustomSelect({ value, onChange, options, placeholder, buttonStyle, maxWidth, dropUp = false }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    // Normalize to { value, label }
+    const normalized = options.map(o => typeof o === 'string' ? { value: o, label: o } : o);
+    const selected = normalized.find(o => o.value === value);
+
+    return (
+        <div ref={ref} style={{ position: 'relative', maxWidth }}>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    ...buttonStyle,
+                }}
+            >
+                <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selected?.label ?? placeholder ?? ''}
+                </span>
+                <ChevronDown
+                    size={13}
+                    style={{ flexShrink: 0, opacity: 0.55, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .15s' }}
+                />
+            </button>
+            {open && (
+                <div style={{
+                    position: 'absolute',
+                    ...(dropUp ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+                    left: 0, right: 0,
+                    background: '#fff', borderRadius: 12,
+                    border: '1px solid rgba(0,0,0,0.09)',
+                    boxShadow: '0 8px 28px -6px rgba(0,0,0,0.18)',
+                    zIndex: 9999, overflowY: 'auto', maxHeight: 240,
+                }}>
+                    {placeholder && (
+                        <div
+                            onClick={() => { onChange(''); setOpen(false); }}
+                            style={{
+                                padding: '9px 14px', fontSize: 13, color: V3_TEXT_SOFT,
+                                cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.05)',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f8f8fb'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        >
+                            {placeholder}
+                        </div>
+                    )}
+                    {normalized.map(o => {
+                        const isSelected = o.value === value;
+                        return (
+                            <div
+                                key={o.value}
+                                onClick={() => { onChange(o.value); setOpen(false); }}
+                                style={{
+                                    padding: '9px 14px', fontSize: 13, cursor: 'pointer',
+                                    fontWeight: isSelected ? 700 : 500,
+                                    color: isSelected ? V3_ACT_TEXT : V3_TEXT_MED,
+                                    background: isSelected ? V3_ACT_BG : 'transparent',
+                                    transition: 'background .1s',
+                                }}
+                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f5f3ff'; }}
+                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                {o.label}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
 
 const V3SumLine = ({ k, v }) => (
     <div style={{ marginBottom:7 }}>
@@ -621,23 +705,19 @@ export function AgendaSemanalModal({ user, onClose }) {
                         {/* Course dropdown */}
                         <div style={{ flex:1, minWidth:0 }}>
                             {teacherCourses.length > 0 ? (
-                                <select
+                                <CustomSelect
                                     value={selectedCourse || ''}
-                                    onChange={e => setSelectedCourse(e.target.value)}
-                                    style={{
-                                        width:'100%', maxWidth:220,
+                                    onChange={val => setSelectedCourse(val)}
+                                    options={teacherCourses}
+                                    maxWidth={220}
+                                    buttonStyle={{
+                                        width:'100%',
                                         padding:'8px 12px', borderRadius:10,
                                         border:`1.5px solid ${V3_PRIMARY}30`,
                                         background:V3_ACT_BG, color:V3_ACT_TEXT,
                                         fontSize:14, fontWeight:700,
-                                        cursor:'pointer', fontFamily:'inherit',
-                                        outline:'none', appearance:'auto',
                                     }}
-                                >
-                                    {teacherCourses.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
+                                />
                             ) : null}
                         </div>
 
@@ -743,29 +823,6 @@ export function AgendaSemanalModal({ user, onClose }) {
                                 {saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'saved' ? 'Guardado' : ''}
                             </div>
 
-                            <button
-                                disabled={!selectedCourse}
-                                onClick={() => {
-                                    setExportWeekStart(weekStart);
-                                    setShowExportModal(true);
-                                }}
-                                title="Exportar PDF"
-                                style={{
-                                    height:32, padding:'0 12px', borderRadius:10,
-                                    border:'1px solid rgba(123,91,224,0.25)',
-                                    background: !selectedCourse ? V3_BG_FIELD : V3_ACT_BG,
-                                    color: V3_ACT_TEXT,
-                                    cursor: !selectedCourse ? 'not-allowed' : 'pointer',
-                                    display:'flex', alignItems:'center', gap:5,
-                                    fontSize:12, fontWeight:700, flexShrink:0,
-                                    opacity: !selectedCourse ? 0.5 : 1,
-                                    transition:'all .15s',
-                                }}
-                            >
-                                <FileDown size={12}/>
-                                PDF
-                            </button>
-
                             <button onClick={onClose} style={{
                                 width:32, height:32, borderRadius:10,
                                 border:'1px solid rgba(0,0,0,0.06)',
@@ -789,36 +846,36 @@ export function AgendaSemanalModal({ user, onClose }) {
                             <SkeletonDays />
                         ) : selectedCourse ? (
                             <LayoutGroup>
-                                <AnimatePresence initial={false}>
+                                <AnimatePresence mode="popLayout" initial={false}>
                                     {focusedDay ? (
                                         <motion.div
                                             key={`focused-${focusedDay}`}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.12 }}
+                                            transition={{ duration: 0.18, ease: 'easeOut' }}
                                             style={{ display:'flex', flexDirection:'column', gap:10 }}
                                         >
                                             <motion.button
-                                                initial={{ opacity: 0, y: -6 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: 0.1, duration: 0.15 }}
+                                                initial={{ opacity: 0, x: -8 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.22, ease: 'easeOut' }}
                                                 onClick={() => setFocusedDay(null)}
                                                 style={{
                                                     alignSelf:'flex-start',
-                                                    display:'flex', alignItems:'center', gap:6,
-                                                    padding:'5px 12px', borderRadius:8, border:'none',
-                                                    background:'rgba(0,0,0,0.05)', color:V3_TEXT_MUTED,
-                                                    fontSize:12, fontWeight:700, cursor:'pointer',
+                                                    display:'flex', alignItems:'center', gap:8,
+                                                    padding:'9px 18px', borderRadius:10, border:'none',
+                                                    background:'rgba(0,0,0,0.07)', color:V3_TEXT_MUTED,
+                                                    fontSize:15, fontWeight:700, cursor:'pointer',
                                                     fontFamily:'inherit',
                                                 }}
                                             >
-                                                <ChevronLeft size={13}/> Todos los días
+                                                <ChevronLeft size={17}/> Todos los días
                                             </motion.button>
                                             <motion.div
                                                 layoutId={`dc-${focusedDay}`}
                                                 layout
-                                                transition={{ type:'spring', stiffness:380, damping:32 }}
+                                                transition={{ type:'spring', stiffness:280, damping:30, mass:0.8 }}
                                                 style={{ borderRadius:14 }}
                                             >
                                                 <DayCard
@@ -839,17 +896,21 @@ export function AgendaSemanalModal({ user, onClose }) {
                                             key="grid"
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.12 }}
+                                            exit={{ opacity: 0, scale: 0.98 }}
+                                            transition={{ duration: 0.16, ease: 'easeOut' }}
                                             style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}
                                         >
-                                            {DIAS.map(dia => (
+                                            {DIAS.map(dia => {
+                                                const dayActive = courseDays.size === 0 || courseDays.has(dia);
+                                                return (
                                                 <motion.div
                                                     key={dia}
                                                     layoutId={`dc-${dia}`}
                                                     layout
-                                                    transition={{ type:'spring', stiffness:380, damping:32 }}
-                                                    style={{ borderRadius:14 }}
+                                                    transition={{ type:'spring', stiffness:280, damping:30, mass:0.8 }}
+                                                    whileHover={dayActive ? { scale: 1.10, zIndex: 10, boxShadow:'0 16px 40px -8px rgba(0,0,0,0.22)', transition: { type:'spring', stiffness:400, damping:26 } } : {}}
+                                                    style={{ borderRadius:14, position:'relative', zIndex:1, cursor: dayActive ? 'pointer' : 'default' }}
+                                                    onClick={() => { if (dayActive) setFocusedDay(dia); }}
                                                 >
                                                     <DayCard
                                                         dia={dia}
@@ -859,11 +920,12 @@ export function AgendaSemanalModal({ user, onClose }) {
                                                         asignaturas={courseSubjects[selectedCourse] ?? []}
                                                         onAdd={(asig, txt) => addEntry(dia, asig, txt)}
                                                         onRemove={removeEntry}
-                                                        isActive={courseDays.size === 0 || courseDays.has(dia)}
+                                                        isActive={dayActive}
                                                         onFocus={() => setFocusedDay(dia)}
                                                     />
                                                 </motion.div>
-                                            ))}
+                                                );
+                                            })}
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -1126,18 +1188,25 @@ function DayCard({ dia, dateLabel, dateISO, entries, asignaturas, onAdd, onRemov
                     display:'flex', flexDirection:'column', gap:6,
                 }}>
                     {asignaturas.length > 0 ? (
-                        <select
-                            value={form.asignatura}
-                            onChange={e => setForm(f => ({ ...f, asignatura: e.target.value }))}
-                            style={{
-                                width:'100%', padding:'7px 9px', borderRadius:8,
-                                border:'1px solid rgba(0,0,0,0.1)', background:'white',
-                                fontSize:13, color:V3_TEXT_MED, outline:'none',
-                                fontFamily:'inherit',
-                            }}
-                        >
-                            {asignaturas.map(a => <option key={a} value={a}>{a}</option>)}
-                        </select>
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                            {asignaturas.map(a => (
+                                <button
+                                    key={a}
+                                    type="button"
+                                    onClick={() => setForm(f => ({ ...f, asignatura: a }))}
+                                    style={{
+                                        padding:'4px 10px', borderRadius:20,
+                                        fontSize:12, fontWeight:700, cursor:'pointer',
+                                        fontFamily:'inherit', transition:'all .12s',
+                                        border: form.asignatura === a ? `1.5px solid ${c}` : '1.5px solid rgba(0,0,0,0.1)',
+                                        background: form.asignatura === a ? `${c}15` : 'white',
+                                        color: form.asignatura === a ? c : V3_TEXT_MUTED,
+                                    }}
+                                >
+                                    {a}
+                                </button>
+                            ))}
+                        </div>
                     ) : (
                         <input
                             value={form.asignatura}
@@ -1203,7 +1272,7 @@ function EntryItem({ entry, color, onRemove }) {
                 </div>
                 <div style={{ fontSize:13, color:V3_TEXT_DARK, lineHeight:1.4 }}>{entry.texto}</div>
             </div>
-            <button onClick={onRemove} style={{
+            <button onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{
                 padding:2, borderRadius:5, border:'none',
                 background:'transparent', color:'transparent',
                 cursor:'pointer', flexShrink:0, marginTop:2,
@@ -1405,14 +1474,18 @@ function AddTeacherForm({ curso, weekStart, teachers, user, getSchedule, existin
 
     return (
         <div className="space-y-3">
-            <select
+            <CustomSelect
                 value={docenteId}
-                onChange={e => setDocenteId(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-eyr-primary/40"
-            >
-                <option value="">Seleccionar docente...</option>
-                {available.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+                onChange={val => setDocenteId(val)}
+                options={available.map(t => ({ value: t.id, label: t.name }))}
+                placeholder="Seleccionar docente..."
+                dropUp
+                buttonStyle={{
+                    width: '100%', padding: '10px 12px', borderRadius: 12,
+                    border: '1px solid #e2e8f0', background: 'white',
+                    fontSize: 14, color: docenteId ? V3_TEXT_DARK : V3_TEXT_SOFT,
+                }}
+            />
             {docenteId && (
                 <div className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-xs border',
                     autoAsignatura ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400'

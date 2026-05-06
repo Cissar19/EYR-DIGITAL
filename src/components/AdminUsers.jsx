@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake, Tag } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake, Tag, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ModalContainer from './ModalContainer';
@@ -38,6 +38,12 @@ export default function AdminUsers() {
     const [newPasswordValue, setNewPasswordValue] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
 
+    // Bulk reset modal state (super_admin only)
+    const [showBulkResetModal, setShowBulkResetModal] = useState(false);
+    const [bulkResetPassword, setBulkResetPassword] = useState('');
+    const [showBulkPassword, setShowBulkPassword] = useState(false);
+    const [bulkResetProgress, setBulkResetProgress] = useState(null); // null | { current, total, errors }
+
     const generateRandomPassword = () => {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
         let password = '';
@@ -47,6 +53,34 @@ export default function AdminUsers() {
             password += chars[array[i] % chars.length];
         }
         return password;
+    };
+
+    const handleBulkReset = async () => {
+        if (bulkResetPassword.length < 6) return;
+        setBulkResetProgress({ current: 0, total: 0, errors: 0 });
+        try {
+            const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'teacher')));
+            const teachers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            setBulkResetProgress({ current: 0, total: teachers.length, errors: 0 });
+            let errors = 0;
+            for (let i = 0; i < teachers.length; i++) {
+                try {
+                    await setUserPassword(teachers[i].uid, bulkResetPassword);
+                } catch {
+                    errors++;
+                }
+                setBulkResetProgress({ current: i + 1, total: teachers.length, errors });
+            }
+            const ok = teachers.length - errors;
+            toast.success(`Contraseña actualizada para ${ok} docente${ok !== 1 ? 's' : ''}${errors > 0 ? ` (${errors} errores)` : ''}`);
+            setShowBulkResetModal(false);
+            setBulkResetPassword('');
+            setShowBulkPassword(false);
+            setBulkResetProgress(null);
+        } catch (err) {
+            toast.error('Error: ' + err.message);
+            setBulkResetProgress(null);
+        }
     };
 
     // Local paginated users list — loaded directly from Firestore
@@ -363,18 +397,28 @@ export default function AdminUsers() {
                     <p className="text-slate-500 mt-1 text-base">Gestión de todo el personal de la escuela (Docentes y Asistentes).</p>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
+                    {currentUser?.role === ROLES.SUPER_ADMIN && (
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => { setBulkResetPassword(''); setShowBulkPassword(false); setBulkResetProgress(null); setShowBulkResetModal(true); }}
+                            className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-4 py-3 rounded-xl font-semibold transition-all text-sm"
+                        >
+                            <KeyRound className="w-4 h-4" />
+                            <span className="hidden sm:inline">Restablecer contraseña docentes</span>
+                            <span className="sm:hidden">Clave docentes</span>
+                        </motion.button>
+                    )}
                     {canManageUsers && (
-                        <>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={openCreateModal}
-                                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-slate-200 transition-all hover:-translate-y-1"
-                            >
-                                <Plus className="w-5 h-5" /> Nuevo Usuario
-                            </motion.button>
-                        </>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={openCreateModal}
+                            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold shadow-xl shadow-slate-200 transition-all hover:-translate-y-1"
+                        >
+                            <Plus className="w-5 h-5" /> Nuevo Usuario
+                        </motion.button>
                     )}
                 </div>
             </div>
@@ -1355,6 +1399,106 @@ export default function AdminUsers() {
                                     </>
                                 ) : (
                                     'Cambiar Contraseña'
+                                )}
+                            </button>
+                        </div>
+                    </ModalContainer>
+                )}
+            </AnimatePresence>
+
+            {/* ── Modal: Restablecer contraseña a todos los docentes ── */}
+            <AnimatePresence>
+                {showBulkResetModal && (
+                    <ModalContainer
+                        title="Restablecer contraseña — Docentes"
+                        icon={<Users className="w-6 h-6" />}
+                        onClose={() => { if (!bulkResetProgress) { setShowBulkResetModal(false); setBulkResetPassword(''); setShowBulkPassword(false); } }}
+                    >
+                        <div className="px-7 pb-0 space-y-4 overflow-y-auto">
+                            {/* Aviso */}
+                            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-800">Operación masiva</p>
+                                    <p className="text-sm text-amber-700 mt-0.5">
+                                        Esto establecerá la misma contraseña para <strong>todos los docentes</strong> del sistema. Los usuarios deberán cambiarla en su primer inicio de sesión.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Input contraseña */}
+                            <div>
+                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Contraseña general</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type={showBulkPassword ? 'text' : 'password'}
+                                            value={bulkResetPassword}
+                                            onChange={e => setBulkResetPassword(e.target.value)}
+                                            placeholder="Mínimo 6 caracteres"
+                                            disabled={!!bulkResetProgress}
+                                            className="w-full px-5 py-4 pr-12 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-mono text-sm text-eyr-on-surface disabled:opacity-60"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowBulkPassword(v => !v)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-eyr-on-variant hover:text-eyr-on-surface transition-colors"
+                                        >
+                                            {showBulkPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setBulkResetPassword(generateRandomPassword()); setShowBulkPassword(true); }}
+                                        disabled={!!bulkResetProgress}
+                                        className="px-3 py-3 rounded-2xl bg-eyr-surface-low hover:bg-eyr-surface-mid border border-eyr-outline-variant/30 text-eyr-on-variant transition-colors disabled:opacity-50"
+                                        title="Generar contraseña aleatoria"
+                                    >
+                                        <Dices className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                {bulkResetPassword.length > 0 && bulkResetPassword.length < 6 && (
+                                    <p className="text-xs text-red-500 mt-1 ml-1">Mínimo 6 caracteres</p>
+                                )}
+                            </div>
+
+                            {/* Progreso */}
+                            {bulkResetProgress && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm font-semibold text-eyr-on-variant">
+                                        <span>Actualizando docentes…</span>
+                                        <span className="text-eyr-primary">{bulkResetProgress.current}/{bulkResetProgress.total}</span>
+                                    </div>
+                                    <div className="w-full h-2.5 bg-eyr-surface-low rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-eyr-primary to-[#742fe5] rounded-full transition-all duration-300"
+                                            style={{ width: bulkResetProgress.total ? `${(bulkResetProgress.current / bulkResetProgress.total) * 100}%` : '0%' }}
+                                        />
+                                    </div>
+                                    {bulkResetProgress.errors > 0 && (
+                                        <p className="text-xs text-red-500">{bulkResetProgress.errors} error{bulkResetProgress.errors !== 1 ? 'es' : ''}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-7 py-5 bg-eyr-surface-mid flex gap-3 shrink-0">
+                            <button
+                                onClick={() => { setShowBulkResetModal(false); setBulkResetPassword(''); setShowBulkPassword(false); setBulkResetProgress(null); }}
+                                disabled={!!bulkResetProgress}
+                                className="text-eyr-on-variant hover:bg-red-50 hover:text-red-500 rounded-full px-8 py-4 text-base font-bold transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleBulkReset}
+                                disabled={bulkResetPassword.length < 6 || !!bulkResetProgress}
+                                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-extrabold px-8 py-3 shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {bulkResetProgress ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Actualizando…</>
+                                ) : (
+                                    <><KeyRound className="w-4 h-4" /> Restablecer para todos</>
                                 )}
                             </button>
                         </div>

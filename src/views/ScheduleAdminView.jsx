@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock } from 'lucide-react';
+import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock, GraduationCap, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext';
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
 
 export default function ScheduleAdminView() {
     const { user, getAllUsers } = useAuth();
-    const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded } = useSchedule();
+    const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded, getAllSchedules } = useSchedule();
     const userCanEdit = canEditHelper(user);
 
-    // State — only teacher selector needed now
+    // View mode: 'teacher' | 'course'
+    const [viewMode, setViewMode] = useState('teacher');
+
+    // Teacher view state
     const [selectedTeacherId, setSelectedTeacherId] = useState('');
     const [selectedTeacher, setSelectedTeacher] = useState(null);
     const [scheduleData, setScheduleData] = useState({});
@@ -19,9 +22,39 @@ export default function ScheduleAdminView() {
     const [ftCourse, setFtCourse] = useState('');
     const [ftSubject, setFtSubject] = useState('');
 
+    // Course view state
+    const [selectedCourse, setSelectedCourse] = useState('');
+
     const teachers = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.TEACHER);
     }, [getAllUsers]);
+
+    // Build course schedule by crossing all teacher schedules
+    const courseGrid = React.useMemo(() => {
+        if (!selectedCourse) return {};
+        const allSchedules = getAllSchedules();
+        const teacherMap = {};
+        teachers.forEach(t => { teacherMap[t.id] = t; });
+
+        const grid = {};
+        Object.entries(allSchedules).forEach(([teacherId, blocks]) => {
+            const teacher = teacherMap[teacherId];
+            if (!teacher) return;
+            (blocks || []).forEach(block => {
+                if (block.course !== selectedCourse) return;
+                const key = `${block.day}-${block.startTime}`;
+                if (!grid[key]) {
+                    grid[key] = [];
+                }
+                grid[key].push({
+                    subject: block.subject,
+                    teacherName: teacher.name,
+                    teacherId,
+                });
+            });
+        });
+        return grid;
+    }, [selectedCourse, getAllSchedules, teachers]);
 
     // Load schedule when teacher is selected
     useEffect(() => {
@@ -192,8 +225,36 @@ export default function ScheduleAdminView() {
                             </div>
                         </div>
 
-                        {/* Mode Toggle */}
-                        {canShowSchedule && userCanEdit && (
+                        {/* View Mode Tabs */}
+                        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl border border-white/20 shadow-lg">
+                            <button
+                                onClick={() => setViewMode('teacher')}
+                                className={cn(
+                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
+                                    viewMode === 'teacher'
+                                        ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200"
+                                        : "text-slate-600 hover:text-slate-900"
+                                )}
+                            >
+                                <User className="w-4 h-4" />
+                                Por Docente
+                            </button>
+                            <button
+                                onClick={() => setViewMode('course')}
+                                className={cn(
+                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
+                                    viewMode === 'course'
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200"
+                                        : "text-slate-600 hover:text-slate-900"
+                                )}
+                            >
+                                <GraduationCap className="w-4 h-4" />
+                                Por Curso
+                            </button>
+                        </div>
+
+                        {/* Edit Mode Toggle */}
+                        {canShowSchedule && viewMode === 'teacher' && userCanEdit && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -228,24 +289,133 @@ export default function ScheduleAdminView() {
                     </div>
                 </motion.div>
 
-                {/* Teacher Selector */}
+                {/* Selector Panel */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                     className="relative z-20 bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
                 >
-                    <div className="max-w-md">
-                        <TeacherCombobox
-                            teachers={teachers}
-                            selectedTeacherId={selectedTeacherId}
-                            onSelect={setSelectedTeacherId}
+                    {viewMode === 'teacher' ? (
+                        <div className="max-w-md">
+                            <TeacherCombobox
+                                teachers={teachers}
+                                selectedTeacherId={selectedTeacherId}
+                                onSelect={setSelectedTeacherId}
+                            />
+                        </div>
+                    ) : (
+                        <CourseSelector
+                            selectedCourse={selectedCourse}
+                            onSelect={setSelectedCourse}
                         />
-                    </div>
+                    )}
                 </motion.div>
 
-                {/* Weekly Grid */}
-                {canShowSchedule ? (
+                {/* ─── Course Schedule View ─────────────────── */}
+                {viewMode === 'course' && (
+                    selectedCourse ? (
+                        <motion.div
+                            key={selectedCourse}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <div className="mb-6 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-semibold text-slate-900 mb-1">
+                                        Horario Semanal
+                                    </h2>
+                                    <p className="text-sm text-slate-500">{selectedCourse}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider border-b-2 border-slate-200 min-w-[120px]">
+                                                    Bloque
+                                                </th>
+                                                {DAYS.map(day => (
+                                                    <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[160px]">
+                                                        {day}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {SCHEDULE_BLOCKS.map((block) => {
+                                                const isBreak = block.type === 'break';
+                                                const isSpecial = block.type === 'special';
+
+                                                if (isBreak) {
+                                                    return (
+                                                        <tr key={block.id}>
+                                                            <td className="sticky left-0 z-10 bg-amber-50 px-4 py-2 border-b border-amber-100">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                                                                    <span className="text-xs font-semibold text-amber-700">{block.label}</span>
+                                                                </div>
+                                                                <div className="text-[10px] text-amber-500 tabular-nums">{block.start} - {block.end}</div>
+                                                            </td>
+                                                            <td colSpan={5} className="bg-amber-50/50 px-4 py-2 border-b border-amber-100 text-center">
+                                                                <span className="text-xs text-amber-500 italic">{block.label === 'Almuerzo' ? 'Almuerzo' : 'Recreo'}</span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <tr key={block.id}>
+                                                        <td className={cn(
+                                                            "sticky left-0 z-10 px-4 py-2 border-b border-slate-100",
+                                                            isSpecial ? "bg-orange-50" : "bg-white"
+                                                        )}>
+                                                            <div className={cn("text-xs font-semibold", isSpecial ? "text-orange-600" : "text-slate-700")}>
+                                                                {block.label}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400 tabular-nums">{block.start} - {block.end}</div>
+                                                        </td>
+                                                        {DAYS.map(day => {
+                                                            const key = `${day}-${block.start}`;
+                                                            const entries = courseGrid[key] || [];
+                                                            return (
+                                                                <td key={day} className="px-1.5 py-1.5 border-b border-slate-100 border-l border-slate-50">
+                                                                    <CourseViewCell entries={entries} />
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-center py-24"
+                        >
+                            <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                <GraduationCap className="w-12 h-12 text-slate-400" />
+                            </div>
+                            <p className="text-slate-600 font-medium text-lg">
+                                Selecciona un curso para ver su horario semanal
+                            </p>
+                            <p className="text-slate-400 text-sm mt-2">
+                                Se construye automáticamente desde los horarios de los docentes
+                            </p>
+                        </motion.div>
+                    )
+                )}
+
+                {/* ─── Teacher Schedule View ────────────────── */}
+                {viewMode === 'teacher' && (canShowSchedule ? (
                     <>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -537,10 +707,10 @@ export default function ScheduleAdminView() {
                             La grilla semanal aparecerá aquí
                         </p>
                     </motion.div>
-                )}
+                ))}
                 {/* Action Buttons */}
                 {
-                    canShowSchedule && isEditMode && userCanEdit && (
+                    viewMode === 'teacher' && canShowSchedule && isEditMode && userCanEdit && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -689,6 +859,71 @@ function EditCell({ cellData, day, startTime, isSpecial, updateCell, clearCell }
                     Limpiar
                 </button>
             )}
+        </div>
+    );
+}
+
+// ─── Course view cell ───────────────────────────────────────
+function CourseViewCell({ entries }) {
+    if (!entries || entries.length === 0) {
+        return (
+            <div className="rounded-xl px-2 py-2.5 bg-slate-50 text-center min-h-[52px] flex items-center justify-center">
+                <span className="text-[11px] text-slate-300 italic">Libre</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-1">
+            {entries.map((entry, i) => {
+                const color = getSubjectColor(entry.subject);
+                const parts = entry.teacherName.split(' ');
+                const shortName = parts.length >= 2
+                    ? `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
+                    : parts[0];
+                return (
+                    <div
+                        key={i}
+                        className={cn(
+                            "rounded-xl px-2 py-1.5 min-h-[52px] flex flex-col items-center justify-center text-center border",
+                            color.bg,
+                            color.border
+                        )}
+                    >
+                        <span className={cn("text-[11px] font-bold leading-tight", color.title)}>
+                            {entry.subject || '—'}
+                        </span>
+                        <span className={cn("text-[10px] leading-tight mt-0.5", color.sub)}>
+                            {shortName}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+// ─── Course selector ────────────────────────────────────────
+function CourseSelector({ selectedCourse, onSelect }) {
+    return (
+        <div className="max-w-md">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+                <GraduationCap className="w-4 h-4 text-emerald-500" />
+                Curso
+            </label>
+            <div className="relative">
+                <select
+                    value={selectedCourse}
+                    onChange={(e) => onSelect(e.target.value)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-sm bg-white shadow-sm border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none appearance-none font-medium text-slate-900"
+                >
+                    <option value="">Seleccionar curso...</option>
+                    {COURSES_LIST.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
         </div>
     );
 }

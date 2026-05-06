@@ -1912,8 +1912,29 @@ export function exportAdminDaysHistoryPDF(requests, filters = {}) {
 const ASIG_FULL_PDF = {
     MA: 'Matemática', LE: 'Lenguaje', CN: 'Ciencias Naturales', HI: 'Historia',
     IN: 'Inglés', EF: 'Ed. Física', AV: 'Artes Visuales', MU: 'Música',
-    TE: 'Tecnología', OR: 'Orientación',
+    TE: 'Tecnología', OR: 'Orientación', MUAV: 'Música / Arte',
+    TLE: 'Taller Lenguaje', TMA: 'Taller Matemática', TCN: 'Taller Ciencias',
 };
+
+// Mapeo inverso: nombre de asignatura del horario → código ASIG
+const SCHEDULE_SUBJECT_TO_ASIG = {
+    'Lenguaje': 'LE', 'Leng. y Lit.': 'LE',
+    'T. Lenguaje': 'TLE', 'Taller Len': 'TLE',
+    'Matemática': 'MA',
+    'T. Matemática': 'TMA',
+    'Historia': 'HI', 'H. G. y Cs. S.': 'HI', 'For. Ciud.': 'HI',
+    'Ciencias': 'CN', 'C. Nat': 'CN',
+    'T. Ciencias': 'TCN',
+    'Inglés': 'IN',
+    'Artes': 'AV',
+    'Música': 'MU', 'Música/Arte': 'MUAV',
+    'Ed. Física': 'EF',
+    'Tecnología': 'TE',
+    'Orientación': 'OR',
+};
+
+// Asignaturas que no deben aparecer en el PDF de agenda
+const SCHEDULE_EXCLUDE_PDF = new Set(['Jefatura', 'PAE', 'Religión', 'Religión / FC']);
 
 const ASIG_COLORS_PDF = {
     MA: [37, 99, 235],   // blue-600
@@ -1926,6 +1947,10 @@ const ASIG_COLORS_PDF = {
     MU: [190, 18, 60],   // rose-700
     TE: [71, 85, 105],   // slate-600
     OR: [13, 148, 136],  // teal-600
+    MUAV: [132, 20, 120], // purple (electivo Música/Arte)
+    TLE: [109, 40, 217],  // violet-700 (taller lenguaje)
+    TMA: [29, 78, 216],   // blue-700   (taller matemática)
+    TCN: [4, 120, 87],    // emerald-700 (taller ciencias)
 };
 
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -2597,7 +2622,8 @@ function _emojiAt(doc, emoji, x, y, s = 5) {
 
 const ASIG_ICONS_PDF = {
     MA: '🔢', LE: '📖', CN: '🌿', HI: '🏛️', IN: '🌎',
-    EF: '⚽', AV: '🎨', MU: '🎵', TE: '💻', OR: '⭐',
+    EF: '⚽', AV: '🎨', MU: '🎵', TE: '💻', OR: '⭐', MUAV: '🎨',
+    TLE: '✏️', TMA: '📐', TCN: '🔬',
 };
 const DAY_ICONS_PDF = {
     lunes: '📅', martes: '✏️', miercoles: '💡', jueves: '🔬', viernes: '🍳',
@@ -2820,13 +2846,15 @@ function _drawAvisosCard(doc, y, { pageH, mL, cW, onNewPage }) {
 function _drawAgendaDayCards(doc, {
     weekStart, entries, holidays, evaluaciones = [],
     pageW, pageH, mL, mR, cW,
-    startY, onNewPage,
+    startY, onNewPage, scheduleByDay = {},
+    nextWeekEvaluaciones = [], nextWeekEntries = [],
 }) {
     const CARD_R     = 6;
     const HDR_CARD_H = 22;
     const PILL_H     = 9;
     const PILL_R     = 4.5;
     const ENTRY_H    = 6.5;
+    const NEXT_ENTRY_H = 5.5;
     const CARD_PAD   = 6;
     const CARD_GAP   = 5;
     const SEC_LBL_H  = 6;
@@ -2857,13 +2885,22 @@ function _drawAgendaDayCards(doc, {
         const info       = dayInfo[dia];
         const dayEvals   = evalsByIso[info.iso] || [];
         const color      = DAY_COLOR_AGENDA[dia];
-        const hasContent = diaEntries.length > 0 || info.holiday || dayEvals.length > 0;
-        if (!hasContent) return;
+
+        // Próxima semana — mismo día +7 días
+        const nextDt = new Date(info.iso + 'T12:00:00');
+        nextDt.setDate(nextDt.getDate() + 7);
+        const nextDayIso     = nextDt.toISOString().slice(0, 10);
+        const nextDayEvals   = nextWeekEvaluaciones.filter(ev => ev.date === nextDayIso);
+        const nextDayEntries = nextWeekEntries.filter(e => e.dia === dia);
+        const hasReminder    = nextDayEvals.length > 0 || nextDayEntries.length > 0;
 
         const isAmber  = dia === 'miercoles';
         const hdrClr   = isAmber ? [42, 42, 42] : WHITE;
-        // "Clases del día": deriva de las entradas escritas por los docentes del curso.
-        const asigs = [...new Set(diaEntries.map(e => e.asignatura))];
+        // "Clases del día": preferir horario oficial del curso; si no hay, usar entradas.
+        const scheduleSubjects = (scheduleByDay[dia] || []).filter(s => !SCHEDULE_EXCLUDE_PDF.has(s));
+        const asigs = scheduleSubjects.length > 0
+            ? [...new Set(scheduleSubjects.map(s => SCHEDULE_SUBJECT_TO_ASIG[s] || s))]
+            : [...new Set(diaEntries.map(e => e.asignatura))];
 
         // ── Measure heights ──────────────────────────────────────────────
         doc.setFontSize(8);
@@ -2894,11 +2931,16 @@ function _drawAgendaDayCards(doc, {
         const dividerH = pillsH > 0 && diaEntries.length > 0 ? 7 : 0;
         const entriesH = diaEntries.length > 0 ? SEC_LBL_H + SEC_PAD + entriesActualH : 0;
         const holidayH = info.holiday && diaEntries.length === 0 && dayEvals.length === 0 ? 14 : 0;
+        const emptyH   = !info.holiday && asigs.length === 0 && diaEntries.length === 0 && dayEvals.length === 0 ? 14 : 0;
         const evalDivH = (pillsH > 0 || diaEntries.length > 0) && dayEvals.length > 0 ? 7 : 0;
         const evalH    = dayEvals.length > 0
             ? SEC_LBL_H + SEC_PAD + dayEvals.length * ENTRY_H + Math.max(0, dayEvals.length - 1) * 2
             : 0;
-        const contentH = CARD_PAD + pillsH + dividerH + entriesH + evalDivH + evalH + holidayH + CARD_PAD;
+        const reminderDivH = hasReminder ? 8 : 0;
+        const reminderH    = hasReminder
+            ? SEC_LBL_H + SEC_PAD + (nextDayEvals.length + (nextDayEntries.length > 0 ? 1 : 0)) * NEXT_ENTRY_H
+            : 0;
+        const contentH = CARD_PAD + pillsH + dividerH + entriesH + evalDivH + evalH + holidayH + emptyH + reminderDivH + reminderH + CARD_PAD;
         const cardH    = HDR_CARD_H + Math.max(18, contentH);
 
         // Page break
@@ -3109,6 +3151,43 @@ function _drawAgendaDayCards(doc, {
                     if (ei < dayEvals.length - 1) cy += 2;
                 });
             }
+
+            // ── Día sin contenido ─────────────────────────────────────────
+            if (asigs.length === 0 && diaEntries.length === 0 && dayEvals.length === 0) {
+                doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+                doc.text('Sin evaluaciones — no se solicitan materiales', mL + CARD_PAD + 2, cy + 7);
+            }
+        }
+
+        // ── Recordatorio próxima semana ───────────────────────────────────
+        if (hasReminder) {
+            const remY      = y + cardH - CARD_PAD - reminderH;
+            const nextDate  = new Date(nextDayIso + 'T12:00:00');
+            const nextLabel = `Para el próximo ${DAY_NAME_AGENDA[dia]} ${nextDate.getDate()} de ${MESES_ES_AGENDA[nextDate.getMonth()]}`;
+
+            doc.setDrawColor(...LINE_CLR);
+            doc.setLineWidth(0.4);
+            doc.line(mL + CARD_PAD, remY - 4, pageW - mR - CARD_PAD, remY - 4);
+
+            _emojiAt(doc, '📅', mL + CARD_PAD + 1, remY + 0.2, 5);
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...MUTED);
+            doc.text(nextLabel, mL + CARD_PAD + 7.5, remY + SEC_LBL_H - 0.5);
+            let ry = remY + SEC_LBL_H + SEC_PAD;
+
+            nextDayEvals.forEach(ev => {
+                const asigColor = ASIG_COLORS_PDF[ev.asignatura] || MUTED;
+                doc.setFillColor(...asigColor); doc.setLineWidth(0);
+                doc.circle(mL + CARD_PAD + 3.5, ry + 3, 1.5, 'F');
+                const label = (ASIG_FULL_PDF[ev.asignatura] || ev.asignatura) + ': ' + (ev.name || '');
+                doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
+                doc.text(label, mL + CARD_PAD + 7, ry + 4.5);
+                ry += NEXT_ENTRY_H;
+            });
+
+            if (nextDayEntries.length > 0) {
+                doc.setFontSize(8); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+                doc.text('Hay contenido agendado para ese día', mL + CARD_PAD + 7, ry + 4.5);
+            }
         }
 
         y += cardH + CARD_GAP;
@@ -3171,7 +3250,7 @@ export async function exportAgendaSemanalCardPDF({ weekStart, curso, docenteName
  * Genera una sección de tarjetas por cada agendaDoc del mes.
  * Retorna false si no hay docs para exportar.
  */
-export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, mesLabel, holidays = {}, evaluaciones = [], weekStart: forcedWeekStart = null, profesorJefeName = '' }) {
+export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, mesLabel, holidays = {}, evaluaciones = [], weekStart: forcedWeekStart = null, profesorJefeName = '', scheduleByDay = {}, nextWeekEvaluaciones = [], nextWeekEntries = [] }) {
     // Agrupar por (weekStart + curso) y unir todas las entradas de los docentes.
     // Así "Clases del día" muestra TODAS las asignaturas del curso, no solo las del docente.
     const grouped = new Map();
@@ -3190,8 +3269,9 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
     // Si no hay agenda_contenido pero sí hay evaluaciones (o se forzó un weekStart),
     // crear un doc sintético para que se genere la grilla de días con las pruebas.
     if (docs.length === 0) {
-        if (evaluaciones.length === 0 && !forcedWeekStart) return false;
-        const ws = forcedWeekStart || evaluaciones[0].date; // fallback aproximado
+        if (evaluaciones.length === 0 && !forcedWeekStart && Object.keys(scheduleByDay).length === 0) return false;
+        const ws = forcedWeekStart || (evaluaciones[0]?.date) || null;
+        if (!ws) return false;
         docs = [{ weekStart: ws, curso: selectedCurso || null, entries: [] }];
     }
 
@@ -3245,7 +3325,7 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
 
         y = _drawAgendaDayCards(doc, {
             weekStart, entries, holidays, evaluaciones: weekEvals, pageW, pageH, mL, mR, cW,
-            startY: y, onNewPage,
+            startY: y, onNewPage, scheduleByDay, nextWeekEvaluaciones, nextWeekEntries,
         });
 
         isFirst = false;
