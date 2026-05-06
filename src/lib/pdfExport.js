@@ -1936,6 +1936,14 @@ const SCHEDULE_SUBJECT_TO_ASIG = {
 // Asignaturas que no deben aparecer en el PDF de agenda
 const SCHEDULE_EXCLUDE_PDF = new Set(['Jefatura', 'PAE', 'Religión', 'Religión / FC']);
 
+// Mapeo hora inicio → hora fin para los bloques del colegio
+const BLOCK_END_PDF = {
+    '08:00': '08:10', '08:10': '08:55', '08:55': '09:40',
+    '09:55': '10:40', '10:40': '11:25',
+    '11:40': '12:25', '12:25': '13:10',
+    '13:55': '14:40', '14:40': '15:25',
+};
+
 const ASIG_COLORS_PDF = {
     MA: [37, 99, 235],   // blue-600
     LE: [124, 58, 237],  // violet-600
@@ -2749,9 +2757,9 @@ function _drawAgendaMiniHeader(doc, { logoDataUrl, weekLabel, pageW, mL, mR }) {
     doc.setFillColor(...GOLD);
     doc.rect(0, H - 2, pageW, 2, 'F');
     doc.addImage(logoDataUrl, 'JPEG', mL, 1.5, 8, 8);
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
+    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...WHITE);
     doc.text('AGENDA SEMANAL', mL + 11, 8);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GOLD);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...GOLD);
     doc.text(weekLabel, pageW - mR, 8, { align: 'right' });
 
     return H + 4;
@@ -2848,16 +2856,17 @@ function _drawAgendaDayCards(doc, {
     pageW, pageH, mL, mR, cW,
     startY, onNewPage, scheduleByDay = {},
     nextWeekEvaluaciones = [], nextWeekEntries = [],
+    oaLookup = {},
 }) {
     const CARD_R     = 6;
-    const HDR_CARD_H = 22;
-    const PILL_H     = 9;
-    const PILL_R     = 4.5;
-    const ENTRY_H    = 6.5;
-    const NEXT_ENTRY_H = 5.5;
-    const CARD_PAD   = 6;
-    const CARD_GAP   = 5;
-    const SEC_LBL_H  = 6;
+    const HDR_CARD_H = 28;
+    const PILL_H     = 8;
+    const PILL_R     = 4;
+    const ENTRY_H    = 8.5;
+    const NEXT_ENTRY_H = 7.5;
+    const CARD_PAD   = 7;
+    const CARD_GAP   = 6;
+    const SEC_LBL_H  = 8;
     const SEC_PAD    = 3;
     const WHITE      = [255, 255, 255];
     const DARK       = [40,  40,  50];
@@ -2897,18 +2906,40 @@ function _drawAgendaDayCards(doc, {
         const isAmber  = dia === 'miercoles';
         const hdrClr   = isAmber ? [42, 42, 42] : WHITE;
         // "Clases del día": preferir horario oficial del curso; si no hay, usar entradas.
-        const scheduleSubjects = (scheduleByDay[dia] || []).filter(s => !SCHEDULE_EXCLUDE_PDF.has(s));
-        const asigs = scheduleSubjects.length > 0
-            ? [...new Set(scheduleSubjects.map(s => SCHEDULE_SUBJECT_TO_ASIG[s] || s))]
-            : [...new Set(diaEntries.map(e => e.asignatura))];
+        const rawSchedule  = (scheduleByDay[dia] || []).filter(item => !SCHEDULE_EXCLUDE_PDF.has(item.subject));
+        const hasTimeData  = rawSchedule.length > 0;
+        const scheduleItems = hasTimeData
+            ? rawSchedule.map(item => ({ code: SCHEDULE_SUBJECT_TO_ASIG[item.subject] || item.subject, startTime: item.startTime }))
+            : diaEntries.map(e => ({ code: e.asignatura, startTime: null }));
+
+        // Fusionar bloques consecutivos del mismo ramo en una pill con rango "HH:MM–HH:MM"
+        const mergedItems = [];
+        scheduleItems.forEach(item => {
+            if (!item.startTime) { mergedItems.push(item); return; }
+            const endT = BLOCK_END_PDF[item.startTime];
+            const last = mergedItems[mergedItems.length - 1];
+            if (last && last.code === item.code && last._endTime === item.startTime) {
+                last._endTime = endT || item.startTime;
+                last._merged = true;
+            } else {
+                mergedItems.push({ ...item, _endTime: endT, _merged: false });
+            }
+        });
+
+        const asigs = [...new Set(mergedItems.map(i => i.code))];
 
         // ── Measure heights ──────────────────────────────────────────────
         doc.setFontSize(8);
-        // Pills row count
+        // Pills row count (con hora si hay datos de horario)
         let pillRowW = 0, pillRows = 1;
-        asigs.forEach(asig => {
-            const name = ASIG_FULL_PDF[asig] || asig;
-            const pw   = doc.getTextWidth(name) + 24;
+        mergedItems.forEach(item => {
+            const name  = ASIG_FULL_PDF[item.code] || item.code;
+            const icon  = ASIG_ICONS_PDF[item.code] || '';
+            const timeLabel = item.startTime
+                ? (item._merged ? `${item.startTime}–${item._endTime}` : item.startTime)
+                : null;
+            const timeW = timeLabel ? doc.getTextWidth(timeLabel) + 5 : 0;
+            const pw    = timeW + doc.getTextWidth(name) + (icon ? 17 : 10);
             if (pillRowW + pw + 4 > cW - CARD_PAD * 2 - 4) {
                 pillRows++; pillRowW = pw + 4;
             } else { pillRowW += pw + 4; }
@@ -2925,16 +2956,40 @@ function _drawAgendaDayCards(doc, {
             if (ei < diaEntries.length - 1) entriesActualH += 5;
         });
 
-        const pillsH   = asigs.length > 0
+        const pillsH   = mergedItems.length > 0
             ? SEC_LBL_H + SEC_PAD + pillRows * PILL_H + (pillRows - 1) * 3 + SEC_PAD
             : 0;
         const dividerH = pillsH > 0 && diaEntries.length > 0 ? 7 : 0;
         const entriesH = diaEntries.length > 0 ? SEC_LBL_H + SEC_PAD + entriesActualH : 0;
         const holidayH = info.holiday && diaEntries.length === 0 && dayEvals.length === 0 ? 14 : 0;
         const emptyH   = !info.holiday && asigs.length === 0 && diaEntries.length === 0 && dayEvals.length === 0 ? 14 : 0;
-        const evalDivH = (pillsH > 0 || diaEntries.length > 0) && dayEvals.length > 0 ? 7 : 0;
-        const evalH    = dayEvals.length > 0
-            ? SEC_LBL_H + SEC_PAD + dayEvals.length * ENTRY_H + Math.max(0, dayEvals.length - 1) * 2
+        const evalDivH   = (pillsH > 0 || diaEntries.length > 0) && dayEvals.length > 0 ? 5 : 0;
+        const EVAL_HDR_H = 16;
+        const OA_FONT_SZ = 9.5;
+        const OA_LINE_H  = 5.5; // mm por línea de texto OA
+
+        // Pre-computar líneas de descripción de cada OA para calcular alturas exactas
+        doc.setFontSize(OA_FONT_SZ);
+        const evalRenderData = dayEvals.map(ev => {
+            const asigIcon = ASIG_ICONS_PDF[ev.asignatura] || '';
+            const tx = mL + 6 + (asigIcon ? 9 : 0);
+            const oaRows = (ev.oaCodes || []).map(code => {
+                const shortCode = code.split('-').pop();
+                const desc = oaLookup[code]?.description || '';
+                doc.setFont('helvetica', 'bold');
+                const codeW = doc.getTextWidth(shortCode) + 2;
+                doc.setFont('helvetica', 'normal');
+                const lines = desc ? doc.splitTextToSize(desc, pageW - mR - tx - codeW - 2) : [];
+                return { shortCode, codeW, lines };
+            });
+            const oaH = oaRows.length > 0
+                ? 3 + oaRows.reduce((s, r) => s + Math.max(1, r.lines.length) * OA_LINE_H, 0)
+                : 0;
+            return { oaRows, itemH: Math.ceil(11 + oaH) };
+        });
+
+        const evalH = dayEvals.length > 0
+            ? EVAL_HDR_H + 4 + evalRenderData.reduce((s, d) => s + d.itemH, 0) + Math.max(0, dayEvals.length - 1) * 3
             : 0;
         const reminderDivH = hasReminder ? 8 : 0;
         const reminderH    = hasReminder
@@ -2984,17 +3039,17 @@ function _drawAgendaDayCards(doc, {
 
         // Day name (large bold)
         const nameX = iconBX + iconSz + 4;
-        doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(...hdrClr);
-        doc.text(DAY_NAME_AGENDA[dia].toUpperCase(), nameX, y + 13);
+        doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...hdrClr);
+        doc.text(DAY_NAME_AGENDA[dia].toUpperCase(), nameX, y + 15);
 
         // Date (smaller, translucent)
-        doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10.5); doc.setFont('helvetica', 'normal');
         doc.setTextColor(...(isAmber ? [80, 80, 80] : [220, 228, 248]));
-        doc.text(info.label, nameX, y + 19.5);
+        doc.text(info.label, nameX, y + 23);
 
         // Holiday badge (right side of card header)
         if (info.holiday) {
-            doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9); doc.setFont('helvetica', 'bold');
             const hText = info.holiday;
             const hW = doc.getTextWidth(hText) + 14;
             doc.setFillColor(...color.map(c => Math.max(0, c - 55)));
@@ -3008,50 +3063,58 @@ function _drawAgendaDayCards(doc, {
         let cy = y + HDR_CARD_H + CARD_PAD;
 
         if (info.holiday && diaEntries.length === 0 && dayEvals.length === 0) {
-            doc.setFontSize(10); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
-            doc.text('Feriado — sin clases', mL + CARD_PAD + 2, cy + 7);
+            doc.setFontSize(12); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+            doc.text('Feriado — sin clases', mL + CARD_PAD + 2, cy + 9);
         } else {
             // ── "📚 Clases del día" section ───────────────────────────────
-            if (asigs.length > 0) {
-                // Section label: emoji 📚 + texto
-                _emojiAt(doc, '📚', mL + CARD_PAD + 1, cy + 0.2, 5);
-                doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+            if (mergedItems.length > 0) {
+                _emojiAt(doc, '📚', mL + CARD_PAD + 1, cy + 0.5, 6);
+                doc.setFontSize(10); doc.setFont('helvetica', 'bold');
                 doc.setTextColor(...color.map(c => Math.max(0, c - 10)));
-                doc.text('Clases del dia', mL + CARD_PAD + 7.5, cy + SEC_LBL_H - 0.5);
+                doc.text('Clases del dia', mL + CARD_PAD + 9, cy + SEC_LBL_H - 0.5);
                 cy += SEC_LBL_H + SEC_PAD;
 
-                // Subject pills (white bg, colored border, emoji + name)
+                // Pills con hora (o sin hora si no hay datos de horario)
                 let px = mL + CARD_PAD + 2;
-                asigs.forEach(asig => {
-                    const asigName  = ASIG_FULL_PDF[asig]  || asig;
-                    const asigColor = ASIG_COLORS_PDF[asig] || color;
-                    const asigIcon  = ASIG_ICONS_PDF[asig]  || '';
+                mergedItems.forEach(item => {
+                    const asigName  = ASIG_FULL_PDF[item.code]  || item.code;
+                    const asigColor = ASIG_COLORS_PDF[item.code] || color;
+                    const asigIcon  = ASIG_ICONS_PDF[item.code]  || '';
                     doc.setFontSize(8);
+                    const timeLabel = item.startTime
+                        ? (item._merged ? `${item.startTime}–${item._endTime}` : item.startTime)
+                        : null;
+                    const timeW = timeLabel ? doc.getTextWidth(timeLabel) + 5 : 0;
                     const nameW = doc.getTextWidth(asigName);
-                    const pillW = nameW + (asigIcon ? 19 : 12);
+                    const pillW = timeW + nameW + (asigIcon ? 17 : 10);
 
                     if (px + pillW > pageW - mR - CARD_PAD) {
                         px = mL + CARD_PAD + 2;
                         cy += PILL_H + 3;
                     }
 
-                    // Pill: white fill + colored border
+                    // Pill: fondo blanco + borde de color
                     doc.setFillColor(255, 255, 255);
                     doc.setDrawColor(...asigColor);
                     doc.setLineWidth(0.6);
                     doc.roundedRect(px, cy, pillW, PILL_H, PILL_R, PILL_R, 'FD');
 
-                    // Emoji icon dentro del pill
-                    let tx = px + 5;
-                    if (asigIcon) {
-                        _emojiAt(doc, asigIcon, px + 2, cy + 1, 5.5);
-                        tx = px + 9;
+                    let tx = px + 4;
+
+                    // Hora (muted, al inicio del pill)
+                    if (timeLabel) {
+                        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
+                        doc.text(timeLabel, tx, cy + PILL_H * 0.72);
+                        tx += timeW;
                     }
 
-                    // Subject name
+                    // Icono
+                    if (asigIcon) { _emojiAt(doc, asigIcon, tx, cy + 1, 5.5); tx += 7.5; }
+
+                    // Nombre
                     doc.setFontSize(8); doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...asigColor.map(c => Math.max(0, c - 20)));
-                    doc.text(asigName, tx, cy + PILL_H * 0.7);
+                    doc.text(asigName, tx, cy + PILL_H * 0.72);
                     px += pillW + 4;
                 });
                 cy += PILL_H + SEC_PAD + 2;
@@ -3068,10 +3131,10 @@ function _drawAgendaDayCards(doc, {
             // ── "🎒 Materiales necesarios" section ────────────────────────
             if (diaEntries.length > 0) {
                 // Section label con emoji 🎒
-                _emojiAt(doc, '🎒', mL + CARD_PAD + 1, cy + 0.2, 5);
-                doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+                _emojiAt(doc, '🎒', mL + CARD_PAD + 1, cy + 0.5, 6);
+                doc.setFontSize(10); doc.setFont('helvetica', 'bold');
                 doc.setTextColor(...color.map(c => Math.max(0, c - 10)));
-                doc.text('Materiales necesarios', mL + CARD_PAD + 7.5, cy + SEC_LBL_H - 0.5);
+                doc.text('Materiales necesarios', mL + CARD_PAD + 9, cy + SEC_LBL_H - 0.5);
                 cy += SEC_LBL_H + SEC_PAD;
 
                 diaEntries.forEach((entry, ei) => {
@@ -3081,25 +3144,25 @@ function _drawAgendaDayCards(doc, {
 
                     // Emoji bullet o círculo coloreado
                     if (asigIcon) {
-                        _emojiAt(doc, asigIcon, mL + CARD_PAD + 1, cy + 0.5, 5);
+                        _emojiAt(doc, asigIcon, mL + CARD_PAD + 1, cy + 1, 6);
                     } else {
                         doc.setFillColor(...asigColor);
                         doc.setLineWidth(0);
-                        doc.circle(mL + CARD_PAD + 3.5, cy + 3.2, 1.8, 'F');
+                        doc.circle(mL + CARD_PAD + 3.5, cy + 4, 2, 'F');
                     }
 
                     // Subject label (bold, colored)
-                    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(10.5); doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...asigColor.map(c => Math.max(0, c - 20)));
                     const labelW = doc.getTextWidth(label) + 2;
-                    doc.text(label, mL + CARD_PAD + 10, cy + 4.5);
+                    doc.text(label, mL + CARD_PAD + 10, cy + 5.5);
 
                     // Entry text
                     doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
                     const maxW  = cW - CARD_PAD * 2 - 12 - labelW;
                     const lines = doc.splitTextToSize(entry.texto || '', maxW);
                     lines.forEach((ln, li) => {
-                        doc.text(ln, mL + CARD_PAD + 10 + labelW, cy + 4.5 + li * ENTRY_H);
+                        doc.text(ln, mL + CARD_PAD + 10 + labelW, cy + 5.5 + li * ENTRY_H);
                     });
                     cy += lines.length * ENTRY_H;
 
@@ -3117,45 +3180,73 @@ function _drawAgendaDayCards(doc, {
                 });
             }
 
-            // ── "📝 Evaluaciones" section ─────────────────────────────────
+            // ── "⚠️ Evaluaciones" section ─────────────────────────────────
             if (dayEvals.length > 0) {
-                if (pillsH > 0 || diaEntries.length > 0) {
-                    doc.setDrawColor(...LINE_CLR);
-                    doc.setLineWidth(0.4);
-                    doc.line(mL + CARD_PAD, cy, pageW - mR - CARD_PAD, cy);
-                    cy += 5;
-                }
-                _emojiAt(doc, '📝', mL + CARD_PAD + 1, cy + 0.2, 5);
-                doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
-                doc.setTextColor(...color.map(c => Math.max(0, c - 10)));
-                doc.text('Evaluaciones', mL + CARD_PAD + 7.5, cy + SEC_LBL_H - 0.5);
-                cy += SEC_LBL_H + SEC_PAD;
+                if (pillsH > 0 || diaEntries.length > 0) cy += evalDivH;
+
+                const EVAL_RED   = [194, 72, 78];   // rose-600 suavizado
+                const EVAL_LIGHT = [255, 243, 244];  // rose-50
+
+                // Banner de alerta
+                doc.setFillColor(...EVAL_RED); doc.setLineWidth(0);
+                doc.roundedRect(mL, cy, cW, EVAL_HDR_H, 3, 3, 'F');
+                doc.rect(mL, cy + EVAL_HDR_H - 3, cW, 3, 'F'); // aplanar borde inferior
+                _emojiAt(doc, '⚠️', mL + CARD_PAD, cy + 3, 10);
+                doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+                doc.text(
+                    dayEvals.length === 1 ? 'EVALUACIÓN' : `EVALUACIONES (${dayEvals.length})`,
+                    mL + CARD_PAD + 14, cy + EVAL_HDR_H * 0.68
+                );
+                cy += EVAL_HDR_H + 4;
 
                 dayEvals.forEach((ev, ei) => {
-                    const asigColor = ASIG_COLORS_PDF[ev.asignatura] || color;
-                    const asigIcon  = ASIG_ICONS_PDF[ev.asignatura]  || '';
-                    const label     = (ASIG_FULL_PDF[ev.asignatura]  || ev.asignatura) + ':';
-                    if (asigIcon) {
-                        _emojiAt(doc, asigIcon, mL + CARD_PAD + 1, cy + 0.5, 5);
-                    } else {
-                        doc.setFillColor(...asigColor); doc.setLineWidth(0);
-                        doc.circle(mL + CARD_PAD + 3.5, cy + 3.2, 1.8, 'F');
-                    }
-                    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
+                    const asigColor          = ASIG_COLORS_PDF[ev.asignatura] || EVAL_RED;
+                    const asigIcon           = ASIG_ICONS_PDF[ev.asignatura]  || '';
+                    const label              = (ASIG_FULL_PDF[ev.asignatura]  || ev.asignatura) + ':';
+                    const { oaRows, itemH }  = evalRenderData[ei];
+
+                    // Fondo rosado + barra izquierda roja
+                    doc.setFillColor(...EVAL_LIGHT); doc.setLineWidth(0);
+                    doc.roundedRect(mL, cy, cW, itemH, 2, 2, 'F');
+                    doc.setFillColor(...EVAL_RED);
+                    doc.rect(mL, cy, 3.5, itemH, 'F');
+
+                    const ix = mL + 6;
+                    if (asigIcon) { _emojiAt(doc, asigIcon, ix, cy + 2.5, 7); }
+
+                    const tx = ix + (asigIcon ? 9 : 0);
+                    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...asigColor.map(c => Math.max(0, c - 20)));
                     const labelW = doc.getTextWidth(label) + 2;
-                    doc.text(label, mL + CARD_PAD + 10, cy + 4.5);
+                    doc.text(label, tx, cy + 8);
+
                     doc.setFont('helvetica', 'normal'); doc.setTextColor(...DARK);
-                    doc.text(ev.name || '', mL + CARD_PAD + 10 + labelW, cy + 4.5);
-                    cy += ENTRY_H;
-                    if (ei < dayEvals.length - 1) cy += 2;
+                    doc.text(ev.name || '', tx + labelW, cy + 8, { maxWidth: pageW - mR - tx - labelW - 2 });
+
+                    // OA: código en rojo bold + descripción completa (todas las líneas)
+                    if (oaRows.length > 0) {
+                        let oy = cy + 13;
+                        oaRows.forEach(({ shortCode, codeW, lines }) => {
+                            doc.setFontSize(OA_FONT_SZ); doc.setFont('helvetica', 'bold');
+                            doc.setTextColor(...EVAL_RED);
+                            doc.text(shortCode, tx, oy);
+                            if (lines.length > 0) {
+                                doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 55, 60);
+                                lines.forEach((ln, li) => doc.text(ln, tx + codeW, oy + li * OA_LINE_H));
+                            }
+                            oy += Math.max(1, lines.length) * OA_LINE_H;
+                        });
+                    }
+
+                    cy += itemH;
+                    if (ei < dayEvals.length - 1) cy += 3;
                 });
             }
 
             // ── Día sin contenido ─────────────────────────────────────────
             if (asigs.length === 0 && diaEntries.length === 0 && dayEvals.length === 0) {
-                doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
-                doc.text('Sin evaluaciones — no se solicitan materiales', mL + CARD_PAD + 2, cy + 7);
+                doc.setFontSize(11); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+                doc.text('Sin evaluaciones — no se solicitan materiales', mL + CARD_PAD + 2, cy + 9);
             }
         }
 
@@ -3169,24 +3260,24 @@ function _drawAgendaDayCards(doc, {
             doc.setLineWidth(0.4);
             doc.line(mL + CARD_PAD, remY - 4, pageW - mR - CARD_PAD, remY - 4);
 
-            _emojiAt(doc, '📅', mL + CARD_PAD + 1, remY + 0.2, 5);
-            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...MUTED);
-            doc.text(nextLabel, mL + CARD_PAD + 7.5, remY + SEC_LBL_H - 0.5);
+            _emojiAt(doc, '📅', mL + CARD_PAD + 1, remY + 0.5, 6);
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...MUTED);
+            doc.text(nextLabel, mL + CARD_PAD + 9, remY + SEC_LBL_H - 0.5);
             let ry = remY + SEC_LBL_H + SEC_PAD;
 
             nextDayEvals.forEach(ev => {
                 const asigColor = ASIG_COLORS_PDF[ev.asignatura] || MUTED;
                 doc.setFillColor(...asigColor); doc.setLineWidth(0);
-                doc.circle(mL + CARD_PAD + 3.5, ry + 3, 1.5, 'F');
+                doc.circle(mL + CARD_PAD + 3.5, ry + 4, 2, 'F');
                 const label = (ASIG_FULL_PDF[ev.asignatura] || ev.asignatura) + ': ' + (ev.name || '');
-                doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
-                doc.text(label, mL + CARD_PAD + 7, ry + 4.5);
+                doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
+                doc.text(label, mL + CARD_PAD + 8, ry + 5.5);
                 ry += NEXT_ENTRY_H;
             });
 
             if (nextDayEntries.length > 0) {
-                doc.setFontSize(8); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
-                doc.text('Hay contenido agendado para ese día', mL + CARD_PAD + 7, ry + 4.5);
+                doc.setFontSize(9.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+                doc.text('Hay contenido agendado para ese día', mL + CARD_PAD + 8, ry + 5.5);
             }
         }
 
@@ -3275,7 +3366,10 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
         docs = [{ weekStart: ws, curso: selectedCurso || null, entries: [] }];
     }
 
-    const logoDataUrl = await loadImageAsDataUrl(logoEyrUrl);
+    const [logoDataUrl, oaLookup] = await Promise.all([
+        loadImageAsDataUrl(logoEyrUrl),
+        fetchOALookup(),
+    ]);
     const doc   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -3325,7 +3419,7 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
 
         y = _drawAgendaDayCards(doc, {
             weekStart, entries, holidays, evaluaciones: weekEvals, pageW, pageH, mL, mR, cW,
-            startY: y, onNewPage, scheduleByDay, nextWeekEvaluaciones, nextWeekEntries,
+            startY: y, onNewPage, scheduleByDay, nextWeekEvaluaciones, nextWeekEntries, oaLookup,
         });
 
         isFirst = false;
@@ -3341,9 +3435,9 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
         doc.text('¡Que tengan una excelente semana!', pageW / 2, pageH - 9, { align: 'center' });
-        doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
+        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MUTED);
         doc.text(`Generado ${ts} — EYR Digital`, mL, pageH - 4);
         doc.text(`Página ${i} de ${totalPages}`, pageW - mR, pageH - 4, { align: 'right' });
     }

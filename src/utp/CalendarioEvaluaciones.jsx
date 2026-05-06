@@ -940,9 +940,17 @@ export default function CalendarioEvaluaciones() {
                     if (!agendaExportCurso || block.course === agendaExportCurso) {
                         const key = block.day.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                         if (!scheduleByDay[key]) scheduleByDay[key] = [];
-                        if (!scheduleByDay[key].includes(block.subject)) scheduleByDay[key].push(block.subject);
+                        // Deduplicar por (subject, startTime) — evita repetidos cuando varios docentes
+                        // tienen el mismo bloque (ej. Música/Arte en distintos cursos).
+                        const dup = scheduleByDay[key].some(
+                            b => b.subject === block.subject && b.startTime === block.startTime
+                        );
+                        if (!dup) scheduleByDay[key].push({ subject: block.subject, startTime: block.startTime });
                     }
                 });
+            });
+            Object.keys(scheduleByDay).forEach(key => {
+                scheduleByDay[key].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
             });
 
             const ok = await exportAgendaMensualCardPDF({
