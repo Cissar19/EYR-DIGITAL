@@ -6,7 +6,7 @@ import ObjetivosSelector from '../components/ObjetivosSelector';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import { useSchedule, SCHEDULE_BLOCKS, SUBJECT_TO_ASIG } from '../context/ScheduleContext';
 import { addBusinessDays } from '../lib/businessDays';
-import { CHILE_HOLIDAYS_SET } from '../data/chileHolidays';
+import { useHolidays } from '../context/HolidaysContext';
 import { toast } from 'sonner';
 
 // ── Design tokens (V3) ───────────────────────────────────────────────────────
@@ -401,6 +401,7 @@ function PopoverItem({ children, active, onClick, onSelect }) {
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function CrearEvaluacionModal({ onClose, onCreated, user, defaultDate, evalId, initialData }) {
   const { addEvaluacion, updateEvaluacion, submitTeacherEdit, evaluaciones } = useEvaluaciones();
+  const { allHolidaysSet } = useHolidays();
   const isEditing     = !!evalId;
   const isTeacherEdit = isEditing && user?.role === 'teacher';
   const { getSchedule } = useSchedule();
@@ -522,7 +523,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
   const todayStr      = new Date().toISOString().slice(0, 10);
   const minAllowedDate = useMemo(() =>
     isTeacher && !isEditing
-      ? addBusinessDays(todayStr, 5, CHILE_HOLIDAYS_SET)
+      ? addBusinessDays(todayStr, 5, allHolidaysSet)
       : null
   , [isTeacher, isEditing, todayStr]);
 

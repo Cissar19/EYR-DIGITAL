@@ -16,7 +16,7 @@ import { cn } from '../lib/utils';
 import { COURSES_LIST, useSchedule } from '../context/ScheduleContext';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { CHILE_HOLIDAYS } from '../data/chileHolidays';
+import { useHolidays } from '../context/HolidaysContext';
 import { exportAgendaSemanalCardPDF } from '../lib/pdfExport';
 
 // ── Design tokens V3 (agenda modal) ──────────────────────────────────────────
@@ -362,6 +362,7 @@ function ManagementAgendaView({ user }) {
 export function AgendaSemanalModal({ user, onClose }) {
     const { getSchedule } = useSchedule();
     const { getAllUsers } = useAuth();
+    const { allHolidays } = useHolidays();
 
     const [weekStart,      setWeekStart]      = useState(() => toISO(getMondayOf(new Date())));
     const [selectedCourse, setSelectedCourse] = useState(null);
@@ -524,7 +525,7 @@ export function AgendaSemanalModal({ user, onClose }) {
                 curso:       selectedCourse,
                 docenteName: profesorJefe?.name || user.name || user.displayName || '',
                 entries:     allEntries,
-                holidays:    CHILE_HOLIDAYS,
+                holidays:    allHolidays,
             });
             setShowExportModal(false);
         } catch {
@@ -1085,7 +1086,8 @@ export function AgendaSemanalModal({ user, onClose }) {
 
 // ─── Tarjeta de día (V3) ──────────────────────────────────────────────────────
 function DayCard({ dia, dateLabel, dateISO, entries, asignaturas, onAdd, onRemove, onFocus, focused, isActive = true }) {
-    const holiday = dateISO ? CHILE_HOLIDAYS[dateISO] : null;
+    const { allHolidays } = useHolidays();
+    const holiday = dateISO ? allHolidays[dateISO] : null;
     const c = isActive ? (V3_DAY_COLOR[dia] || V3_PRIMARY) : '#CBD5E1';
     // En modo enfocado el formulario arranca abierto
     const [showForm, setShowForm] = useState(() => !!focused && isActive && !holiday);

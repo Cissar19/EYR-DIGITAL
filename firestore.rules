@@ -510,5 +510,15 @@ service cloud.firestore {
         isAdmin() || isUTP()
       );
     }
+
+    // ============================================
+    // INTERFERIADOS (días sin clases institucionales)
+    // ============================================
+    match /interferiados/{dateStr} {
+      // Todos los autenticados pueden leer (afecta todos los calendarios)
+      allow read: if isAuthenticated();
+      // Solo jefa UTP y admins pueden crear/modificar/eliminar
+      allow write: if isUTP();
+    }
   }
 }

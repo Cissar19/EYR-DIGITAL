@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X,
     Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle,
-    FileDown, Loader2, NotebookPen, Users, Layers, Flag,
+    FileDown, Loader2, NotebookPen, Users, Layers, Flag, BanIcon,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { collection, query, where, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
@@ -13,7 +13,7 @@ import CrearEvaluacionModal from './CrearEvaluacionModal';
 import { AgendaSemanalModal } from './AgendaSemanal';
 import { CURSOS } from '../data/objetivosAprendizaje';
 import { exportCalendarioPDF, exportAgendaMensualCardPDF } from '../lib/pdfExport';
-import { CHILE_HOLIDAYS } from '../data/chileHolidays';
+import { useHolidays } from '../context/HolidaysContext';
 import { toast } from 'sonner';
 import { useSchedule } from '../context/ScheduleContext';
 
@@ -686,9 +686,11 @@ export default function CalendarioEvaluaciones() {
     const { user, getAllUsers } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
     const { getSchedule, getAllSchedules } = useSchedule();
+    const { allHolidays, customHolidays, addHoliday, deleteHoliday } = useHolidays();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const canCRUD = isAdmin(user) || user?.role === 'utp_head';
     const isTeacher = user?.role === 'teacher';
+    const canManageHolidays = user?.role === 'utp_head';
 
     const [selectedDate, setSelectedDate]         = useState(null);
     const [dayModal, setDayModal]                 = useState(null);
@@ -696,6 +698,9 @@ export default function CalendarioEvaluaciones() {
     const [showAgenda, setShowAgenda]             = useState(false);
     const [evalModal, setEvalModal]               = useState(null);
     const [selectedAsignatura, setSelectedAsignatura] = useState(null);
+    const [showInterferiado, setShowInterferiado] = useState(false);
+    const [interferiado, setInterferiado]         = useState({ date: '', name: '' });
+    const [savingInterferiado, setSavingInterferiado] = useState(false);
 
     const today        = useMemo(() => new Date(), []);
     const todayStr     = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -827,7 +832,7 @@ export default function CalendarioEvaluaciones() {
 
     // Próximo feriado
     const nextHoliday = useMemo(() => {
-        const sorted = Object.entries(CHILE_HOLIDAYS)
+        const sorted = Object.entries(allHolidays)
             .filter(([date]) => date > todayStr)
             .sort(([a], [b]) => a.localeCompare(b));
         if (sorted.length === 0) return null;
@@ -838,7 +843,7 @@ export default function CalendarioEvaluaciones() {
         const dateLabel = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
         const countLabel = diffDays === 1 ? 'Mañana' : `En ${diffDays} días`;
         return { date, name, diffDays, dateLabel, countLabel };
-    }, [todayStr]);
+    }, [allHolidays, todayStr]);
 
     // Stats for the selected month
     const stats = useMemo(() => {
@@ -944,7 +949,7 @@ export default function CalendarioEvaluaciones() {
                 agendaDocs: docs,
                 selectedCurso: agendaExportCurso,
                 mesLabel: agendaExportWeekLabel,
-                holidays: CHILE_HOLIDAYS,
+                holidays: allHolidays,
                 evaluaciones: weekEvals,
                 weekStart: agendaExportWeek,
                 profesorJefeName: agendaExportProfesorJefe?.name || '',
@@ -1021,16 +1026,6 @@ export default function CalendarioEvaluaciones() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
-                        {isTeacher && (
-                            <button
-                                onClick={() => setShowAgenda(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px active:translate-y-0"
-                                style={{ background: '#fff', border: `1px solid ${LINE}`, color: INK_2, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
-                            >
-                                <NotebookPen className="w-4 h-4" />
-                                Agenda Semanal
-                            </button>
-                        )}
                         {/* Export dropdown */}
                         <div className="relative" ref={exportDropdownRef}>
                             <button
@@ -1082,7 +1077,7 @@ export default function CalendarioEvaluaciones() {
                                                         mesLabel: `${MESES[selectedMonth]} ${currentYear}`,
                                                         year: currentYear,
                                                         month: selectedMonth,
-                                                        holidays: CHILE_HOLIDAYS,
+                                                        holidays: allHolidays,
                                                     });
                                                 } finally {
                                                     setExportingPdf(false);
@@ -1098,6 +1093,15 @@ export default function CalendarioEvaluaciones() {
                                 )}
                             </AnimatePresence>
                         </div>
+                        {canManageHolidays && (
+                            <button
+                                onClick={() => { setInterferiado({ date: '', name: '' }); setShowInterferiado(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px"
+                                style={{ background: '#fff', border: '1px solid #FCA5A5', color: '#DC2626', boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
+                            >
+                                <BanIcon className="w-4 h-4" /> Interferiado
+                            </button>
+                        )}
                         {canCreateEval && (
                             <>
                                 <button
@@ -1107,6 +1111,16 @@ export default function CalendarioEvaluaciones() {
                                 >
                                     <Pencil className="w-4 h-4" /> Editar fechas
                                 </button>
+                                {isTeacher && (
+                                    <button
+                                        onClick={() => setShowAgenda(true)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px active:translate-y-0"
+                                        style={{ background: '#fff', border: `1px solid ${LINE}`, color: INK_2, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
+                                    >
+                                        <NotebookPen className="w-4 h-4" />
+                                        Agenda Semanal
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setShowFijar(true)}
                                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px active:translate-y-0"
@@ -1228,7 +1242,8 @@ export default function CalendarioEvaluaciones() {
                                 const clickable  = inMonth;
                                 const canAdd     = inMonth && !isPast && canCreateEval;
                                 const dimmed     = !inMonth;
-                                const holiday    = inMonth ? CHILE_HOLIDAYS[dateStr] : null;
+                                const holiday    = inMonth ? allHolidays[dateStr] : null;
+                                const isCustomHoliday = inMonth && !!customHolidays[dateStr];
                                 const noClass    = inMonth && teacherDaysForCurso != null && !teacherDaysForCurso.has(DIAS[di]);
 
                                 return (
@@ -1288,9 +1303,21 @@ export default function CalendarioEvaluaciones() {
                                             <div style={{
                                                 fontSize: 10, fontWeight: 700, color: '#DC2626',
                                                 marginBottom: 6, lineHeight: 1.2,
-                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                display: 'flex', alignItems: 'flex-start', gap: 2,
                                             }}>
-                                                {holiday}
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                    {holiday}
+                                                </span>
+                                                {isCustomHoliday && canManageHolidays && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); deleteHoliday(dateStr).then(() => toast.success('Interferiado eliminado')).catch(() => toast.error('Error al eliminar')); }}
+                                                        title="Eliminar interferiado"
+                                                        style={{ flexShrink: 0, color: '#DC2626', opacity: 0.7, lineHeight: 1 }}
+                                                        className="hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X style={{ width: 10, height: 10 }} />
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
 
@@ -1730,6 +1757,97 @@ export default function CalendarioEvaluaciones() {
                             style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: PRIMARY, color: '#fff', opacity: exportingAgenda ? 0.7 : 1 }}>
                             {exportingAgenda ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
                             {exportingAgenda ? 'Exportando…' : 'Exportar PDF'}
+                        </button>
+                    </div>
+                </CalModal>
+            )}
+
+            {/* ── Modal: Agregar interferiado (solo utp_head) ── */}
+            {showInterferiado && (
+                <CalModal onClose={() => setShowInterferiado(false)} width={400}>
+                    <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#FEE2E2', color: '#DC2626', display: 'grid', placeItems: 'center' }}>
+                            <BanIcon className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h2 className="font-headline" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>Agregar interferiado</h2>
+                            <p style={{ fontSize: 13, color: INK_2, marginTop: 3 }}>Día sin clases que afecta todos los calendarios</p>
+                        </div>
+                        <button onClick={() => setShowInterferiado(false)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                            style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="cal-modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Fecha</p>
+                            <input
+                                type="date"
+                                value={interferiado.date}
+                                onChange={e => setInterferiado(v => ({ ...v, date: e.target.value }))}
+                                style={{ width: '100%', padding: '10px 14px', border: `1px solid ${LINE}`, borderRadius: 10, fontSize: 14, color: INK, background: '#fff', outline: 'none' }}
+                            />
+                        </div>
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Nombre</p>
+                            <input
+                                type="text"
+                                placeholder="Ej: Aniversario del colegio"
+                                value={interferiado.name}
+                                onChange={e => setInterferiado(v => ({ ...v, name: e.target.value }))}
+                                style={{ width: '100%', padding: '10px 14px', border: `1px solid ${LINE}`, borderRadius: 10, fontSize: 14, color: INK, background: '#fff', outline: 'none' }}
+                            />
+                        </div>
+
+                        {/* Interferiados existentes */}
+                        {Object.keys(customHolidays).length > 0 && (
+                            <div>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Interferiados activos</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {Object.entries(customHolidays).sort(([a],[b]) => a.localeCompare(b)).map(([date, name]) => (
+                                        <div key={date} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                                            <Flag style={{ width: 14, height: 14, color: '#DC2626', flexShrink: 0 }} />
+                                            <span style={{ flex: 1, fontSize: 13, color: INK, fontWeight: 600 }}>{name}</span>
+                                            <span style={{ fontSize: 12, color: INK_3 }}>{new Date(date + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}</span>
+                                            <button
+                                                onClick={() => deleteHoliday(date).then(() => toast.success('Eliminado')).catch(() => toast.error('Error al eliminar'))}
+                                                style={{ color: '#DC2626', opacity: 0.7, flexShrink: 0 }}
+                                                className="hover:opacity-100 transition-opacity"
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 style={{ width: 14, height: 14 }} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="cal-modal-foot" style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', gap: 10, flexShrink: 0 }}>
+                        <button onClick={() => setShowInterferiado(false)} className="transition-colors hover:bg-slate-100 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>
+                            Cerrar
+                        </button>
+                        <button
+                            disabled={!interferiado.date || !interferiado.name.trim() || savingInterferiado}
+                            onClick={async () => {
+                                setSavingInterferiado(true);
+                                try {
+                                    await addHoliday(interferiado.date, interferiado.name.trim());
+                                    toast.success('Interferiado agregado');
+                                    setInterferiado({ date: '', name: '' });
+                                } catch {
+                                    toast.error('Error al guardar');
+                                } finally {
+                                    setSavingInterferiado(false);
+                                }
+                            }}
+                            className="flex items-center justify-center gap-2 transition-all hover:brightness-95 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: '#DC2626', color: '#fff', opacity: (!interferiado.date || !interferiado.name.trim() || savingInterferiado) ? 0.5 : 1 }}>
+                            {savingInterferiado ? <Loader2 className="w-4 h-4 animate-spin" /> : <BanIcon className="w-4 h-4" />}
+                            Agregar
                         </button>
                     </div>
                 </CalModal>
