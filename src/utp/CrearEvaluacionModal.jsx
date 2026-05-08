@@ -519,15 +519,8 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
     );
   }, [evaluaciones, curso, date, asignatura, isEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Restricción de 5 días hábiles solo para profesores (no para ediciones)
-  const todayStr      = new Date().toISOString().slice(0, 10);
-  const minAllowedDate = useMemo(() =>
-    isTeacher && !isEditing
-      ? addBusinessDays(todayStr, 5, allHolidaysSet)
-      : null
-  , [isTeacher, isEditing, todayStr]);
-
-  const tooSoon = isTeacher && !isEditing && !!date && minAllowedDate && date < minAllowedDate;
+  const minAllowedDate = null;
+  const tooSoon = false;
 
   const formValid = curso && asignatura && name.trim() && date && !hasConflict && !tooSoon;
 
@@ -919,7 +912,6 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
                 seleccionados={selectedOas}
                 cursoNombreExterno={curso || undefined}
                 asignaturaNombreExterno={asignatura ? getAsigName(asignatura) : undefined}
-                soloBasales
                 embedded
               />
             )}
