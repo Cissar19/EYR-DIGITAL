@@ -696,7 +696,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         </div>
 
         {/* ── Form area ────────────────────────────────────────────────────── */}
-        <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
+        <div style={{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden' }}>
 
           {/* Tabs + close */}
           <div style={{
