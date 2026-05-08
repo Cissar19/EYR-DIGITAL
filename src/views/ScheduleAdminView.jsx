@@ -61,9 +61,15 @@ export default function ScheduleAdminView() {
         return grid;
     }, [selectedCourse, getAllSchedules, teachers]);
 
-    // Sync localCourseData when course or saved schedule changes
+    // Salir de edición y limpiar al cambiar de curso
     useEffect(() => {
-        if (!selectedCourse) { setLocalCourseData({}); return; }
+        setIsCourseEditMode(false);
+        setLocalCourseData({});
+    }, [selectedCourse]);
+
+    // Sincronizar datos desde Firestore cada vez que lleguen (pero no durante edición)
+    useEffect(() => {
+        if (!selectedCourse || isCourseEditMode) return;
         const saved = getCourseSchedule(selectedCourse);
         if (saved && saved.length > 0) {
             const obj = {};
@@ -72,8 +78,7 @@ export default function ScheduleAdminView() {
         } else {
             setLocalCourseData({});
         }
-        setIsCourseEditMode(false);
-    }, [selectedCourse]); // eslint-disable-line
+    }, [selectedCourse, getCourseSchedule, isCourseEditMode]);
 
     const handleImportFromTeachers = () => {
         const imported = {};

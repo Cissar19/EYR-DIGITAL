@@ -82,6 +82,7 @@ export const SUBJECTS_LIST = [
     'Ciencias',
     'C. Nat',
     'Inglés',
+    'T. Inglés',
     'Artes',
     'Música',
     'Música/Arte',
