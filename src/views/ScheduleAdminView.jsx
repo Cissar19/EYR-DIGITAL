@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock, GraduationCap, Users } from 'lucide-react';
+import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock, GraduationCap, Users, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext';
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
+import { useCourseSchedule } from '../context/CourseScheduleContext';
 
 export default function ScheduleAdminView() {
     const { user, getAllUsers } = useAuth();
     const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded, getAllSchedules } = useSchedule();
+    const { getCourseSchedule, updateCourseSchedule } = useCourseSchedule();
     const userCanEdit = canEditHelper(user);
 
     // View mode: 'teacher' | 'course'
@@ -24,6 +26,9 @@ export default function ScheduleAdminView() {
 
     // Course view state
     const [selectedCourse, setSelectedCourse] = useState('');
+    const [isCourseEditMode, setIsCourseEditMode] = useState(false);
+    // localCourseData: { 'Lunes-08:10': 'Lenguaje', ... }
+    const [localCourseData, setLocalCourseData] = useState({});
 
     const teachers = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.TEACHER);
@@ -55,6 +60,39 @@ export default function ScheduleAdminView() {
         });
         return grid;
     }, [selectedCourse, getAllSchedules, teachers]);
+
+    // Sync localCourseData when course or saved schedule changes
+    useEffect(() => {
+        if (!selectedCourse) { setLocalCourseData({}); return; }
+        const saved = getCourseSchedule(selectedCourse);
+        if (saved && saved.length > 0) {
+            const obj = {};
+            saved.forEach(b => { obj[`${b.day}-${b.startTime}`] = b.subject; });
+            setLocalCourseData(obj);
+        } else {
+            setLocalCourseData({});
+        }
+        setIsCourseEditMode(false);
+    }, [selectedCourse]); // eslint-disable-line
+
+    const handleImportFromTeachers = () => {
+        const imported = {};
+        Object.entries(courseGrid).forEach(([key, entries]) => {
+            if (entries.length > 0) imported[key] = entries[0].subject;
+        });
+        setLocalCourseData(imported);
+    };
+
+    const handleSaveCourseSchedule = () => {
+        const blocks = Object.entries(localCourseData)
+            .filter(([, subject]) => subject)
+            .map(([key, subject]) => {
+                const [day, ...rest] = key.split('-');
+                return { day, startTime: rest.join('-'), subject };
+            });
+        updateCourseSchedule(selectedCourse, blocks, user);
+        setIsCourseEditMode(false);
+    };
 
     // Load schedule when teacher is selected
     useEffect(() => {
@@ -312,7 +350,7 @@ export default function ScheduleAdminView() {
                     )}
                 </motion.div>
 
-                {/* ─── Course Schedule View ─────────────────── */}
+                {/* ─── Course Schedule View (editable oficial) ─ */}
                 {viewMode === 'course' && (
                     selectedCourse ? (
                         <motion.div
@@ -321,15 +359,56 @@ export default function ScheduleAdminView() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
                         >
-                            <div className="mb-6 flex items-center justify-between">
+                            {/* Header con controles */}
+                            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                                 <div>
                                     <h2 className="text-2xl font-semibold text-slate-900 mb-1">
-                                        Horario Semanal
+                                        Horario Oficial del Curso
                                     </h2>
-                                    <p className="text-sm text-slate-500">{selectedCourse}</p>
+                                    <p className="text-sm text-slate-500">{selectedCourse} · fuente autoritativa para PDF</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Importar desde docentes */}
+                                    {isCourseEditMode && (
+                                        <button
+                                            onClick={handleImportFromTeachers}
+                                            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium bg-white border border-teal-200 text-teal-700 hover:bg-teal-50 transition-all shadow-sm"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            Importar desde docentes
+                                        </button>
+                                    )}
+                                    {/* Vista / Editar toggle */}
+                                    {userCanEdit && (
+                                        <div className="flex items-center gap-1 bg-white/80 backdrop-blur-xl p-1 rounded-xl border border-white/20 shadow-md">
+                                            <button
+                                                onClick={() => setIsCourseEditMode(false)}
+                                                className={cn(
+                                                    "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all",
+                                                    !isCourseEditMode
+                                                        ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow"
+                                                        : "text-slate-500 hover:text-slate-800"
+                                                )}
+                                            >
+                                                <Eye className="w-3.5 h-3.5" /> Vista
+                                            </button>
+                                            <button
+                                                onClick={() => setIsCourseEditMode(true)}
+                                                className={cn(
+                                                    "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all",
+                                                    isCourseEditMode
+                                                        ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow"
+                                                        : "text-slate-500 hover:text-slate-800"
+                                                )}
+                                            >
+                                                <Edit3 className="w-3.5 h-3.5" /> Editar
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
+                            {/* Grilla */}
                             <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse">
@@ -339,17 +418,15 @@ export default function ScheduleAdminView() {
                                                     Bloque
                                                 </th>
                                                 {DAYS.map(day => (
-                                                    <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[160px]">
+                                                    <th key={day} className="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider bg-slate-100 border-b-2 border-slate-200 min-w-[150px]">
                                                         {day}
                                                     </th>
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {SCHEDULE_BLOCKS.map((block) => {
+                                            {SCHEDULE_BLOCKS.filter(b => b.type !== 'special').map((block) => {
                                                 const isBreak = block.type === 'break';
-                                                const isSpecial = block.type === 'special';
-
                                                 if (isBreak) {
                                                     return (
                                                         <tr key={block.id}>
@@ -366,24 +443,34 @@ export default function ScheduleAdminView() {
                                                         </tr>
                                                     );
                                                 }
-
                                                 return (
                                                     <tr key={block.id}>
-                                                        <td className={cn(
-                                                            "sticky left-0 z-10 px-4 py-2 border-b border-slate-100",
-                                                            isSpecial ? "bg-orange-50" : "bg-white"
-                                                        )}>
-                                                            <div className={cn("text-xs font-semibold", isSpecial ? "text-orange-600" : "text-slate-700")}>
-                                                                {block.label}
-                                                            </div>
+                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2 border-b border-slate-100">
+                                                            <div className="text-xs font-semibold text-slate-700">{block.label}</div>
                                                             <div className="text-[10px] text-slate-400 tabular-nums">{block.start} - {block.end}</div>
                                                         </td>
                                                         {DAYS.map(day => {
                                                             const key = `${day}-${block.start}`;
-                                                            const entries = courseGrid[key] || [];
+                                                            const subject = localCourseData[key] || '';
                                                             return (
                                                                 <td key={day} className="px-1.5 py-1.5 border-b border-slate-100 border-l border-slate-50">
-                                                                    <CourseViewCell entries={entries} />
+                                                                    {isCourseEditMode ? (
+                                                                        <CourseScheduleEditCell
+                                                                            subject={subject}
+                                                                            onChange={val => setLocalCourseData(prev => {
+                                                                                const next = { ...prev };
+                                                                                if (val) next[key] = val;
+                                                                                else delete next[key];
+                                                                                return next;
+                                                                            })}
+                                                                        />
+                                                                    ) : (
+                                                                        <CourseScheduleViewCell
+                                                                            subject={subject}
+                                                                            fallbackEntries={courseGrid[key] || []}
+                                                                            hasOfficialSchedule={getCourseSchedule(selectedCourse) !== null}
+                                                                        />
+                                                                    )}
                                                                 </td>
                                                             );
                                                         })}
@@ -394,6 +481,23 @@ export default function ScheduleAdminView() {
                                     </table>
                                 </div>
                             </div>
+
+                            {/* Botón guardar */}
+                            {isCourseEditMode && userCanEdit && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex justify-end mt-6"
+                                >
+                                    <button
+                                        onClick={handleSaveCourseSchedule}
+                                        className="flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-emerald-500 to-teal-600 shadow-2xl shadow-emerald-200 hover:shadow-emerald-300 hover:scale-105 transition-all"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        Guardar horario oficial
+                                    </button>
+                                </motion.div>
+                            )}
                         </motion.div>
                     ) : (
                         <motion.div
@@ -405,10 +509,10 @@ export default function ScheduleAdminView() {
                                 <GraduationCap className="w-12 h-12 text-slate-400" />
                             </div>
                             <p className="text-slate-600 font-medium text-lg">
-                                Selecciona un curso para ver su horario semanal
+                                Selecciona un curso para ver su horario oficial
                             </p>
                             <p className="text-slate-400 text-sm mt-2">
-                                Se construye automáticamente desde los horarios de los docentes
+                                Este horario alimenta directamente el PDF de agenda semanal
                             </p>
                         </motion.div>
                     )
@@ -899,6 +1003,64 @@ function CourseViewCell({ entries }) {
                     </div>
                 );
             })}
+        </div>
+    );
+}
+
+// ─── Course schedule edit cell ──────────────────────────────
+function CourseScheduleEditCell({ subject, onChange }) {
+    const color = subject ? getSubjectColor(subject) : null;
+    return (
+        <div className={cn(
+            "rounded-xl p-1.5 min-h-[44px] border",
+            color ? cn(color.bg, color.border) : "bg-white border-dashed border-slate-200"
+        )}>
+            <div className="relative">
+                <select
+                    value={subject}
+                    onChange={e => onChange(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 focus:outline-none text-[11px] font-semibold appearance-none bg-white text-slate-800"
+                >
+                    <option value="">Libre</option>
+                    {SUBJECTS_LIST.filter(s => s !== 'Jefatura').map(s => (
+                        <option key={s} value={s}>{s}</option>
+                    ))}
+                </select>
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+            </div>
+        </div>
+    );
+}
+
+// ─── Course schedule view cell ──────────────────────────────
+function CourseScheduleViewCell({ subject, fallbackEntries, hasOfficialSchedule }) {
+    if (subject) {
+        const color = getSubjectColor(subject);
+        return (
+            <div className={cn(
+                "rounded-xl px-2 py-2 min-h-[44px] flex flex-col items-center justify-center text-center border",
+                color.bg, color.border
+            )}>
+                <span className={cn("text-[11px] font-bold leading-tight", color.title)}>{subject}</span>
+            </div>
+        );
+    }
+    // Sin horario oficial guardado → mostrar referencia desde docentes (atenuada)
+    if (!hasOfficialSchedule && fallbackEntries.length > 0) {
+        const color = getSubjectColor(fallbackEntries[0].subject);
+        return (
+            <div className={cn(
+                "rounded-xl px-2 py-2 min-h-[44px] flex flex-col items-center justify-center text-center border opacity-50",
+                color.bg, color.border
+            )}>
+                <span className={cn("text-[11px] font-bold leading-tight", color.title)}>{fallbackEntries[0].subject}</span>
+                <span className="text-[9px] text-slate-400 mt-0.5">docentes</span>
+            </div>
+        );
+    }
+    return (
+        <div className="rounded-xl px-2 py-2.5 bg-slate-50 text-center min-h-[44px] flex items-center justify-center">
+            <span className="text-[11px] text-slate-300 italic">Libre</span>
         </div>
     );
 }

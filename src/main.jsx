@@ -29,6 +29,7 @@ import { TodoProvider } from './context/TodoContext.jsx'
 import { AcademicYearProvider } from './context/AcademicYearContext.jsx'
 import { IncentivoEYRProvider } from './context/IncentivoEYRContext.jsx'
 import { HolidaysProvider } from './context/HolidaysContext.jsx'
+import { CourseScheduleProvider } from './context/CourseScheduleContext.jsx'
 
 // Gate data providers behind auth so Firestore subscriptions
 // only start once the user is authenticated (avoids silent failures
@@ -49,6 +50,7 @@ const DataProviders = ({ children }) => {
             <TicketProvider>
               <EquipmentProvider>
                 <ScheduleProvider>
+                  <CourseScheduleProvider>
                   <MedicalLeavesProvider>
                     <ReplacementLogsProvider>
                       <ConvivenciaProvider>
@@ -80,6 +82,7 @@ const DataProviders = ({ children }) => {
                       </ConvivenciaProvider>
                     </ReplacementLogsProvider>
                   </MedicalLeavesProvider>
+                  </CourseScheduleProvider>
                 </ScheduleProvider>
               </EquipmentProvider>
             </TicketProvider>

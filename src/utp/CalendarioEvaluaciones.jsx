@@ -16,6 +16,7 @@ import { exportCalendarioPDF, exportAgendaMensualCardPDF } from '../lib/pdfExpor
 import { useHolidays } from '../context/HolidaysContext';
 import { toast } from 'sonner';
 import { useSchedule } from '../context/ScheduleContext';
+import { useCourseSchedule } from '../context/CourseScheduleContext';
 
 const DIA_TO_OFFSET = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4 };
 
@@ -686,6 +687,7 @@ export default function CalendarioEvaluaciones() {
     const { user, getAllUsers } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
     const { getSchedule, getAllSchedules } = useSchedule();
+    const { getCourseSchedule } = useCourseSchedule();
     const { allHolidays, customHolidays, addHoliday, deleteHoliday } = useHolidays();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const canCRUD = isAdmin(user) || user?.role === 'utp_head';
@@ -932,23 +934,35 @@ export default function CalendarioEvaluaciones() {
             const nextSnap = await getDocs(query(collection(db, 'agenda_contenido'), ...nextConstraints));
             const nextWeekEntries = nextSnap.docs.flatMap(d => d.data().entries || []);
 
-            // Construir horario por día para el curso seleccionado
-            const allSchedules = getAllSchedules();
+            // Construir horario por día para el curso seleccionado.
+            // Prioridad: horario oficial del curso (course_schedules) → fallback docentes.
+            const normalizeDay = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const officialBlocks = agendaExportCurso ? getCourseSchedule(agendaExportCurso) : null;
             const scheduleByDay = {};
-            Object.values(allSchedules).forEach(blocks => {
-                (blocks || []).forEach(block => {
-                    if (!agendaExportCurso || block.course === agendaExportCurso) {
-                        const key = block.day.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        if (!scheduleByDay[key]) scheduleByDay[key] = [];
-                        // Deduplicar por (subject, startTime) — evita repetidos cuando varios docentes
-                        // tienen el mismo bloque (ej. Música/Arte en distintos cursos).
-                        const dup = scheduleByDay[key].some(
-                            b => b.subject === block.subject && b.startTime === block.startTime
-                        );
-                        if (!dup) scheduleByDay[key].push({ subject: block.subject, startTime: block.startTime });
+
+            if (officialBlocks && officialBlocks.length > 0) {
+                officialBlocks.forEach(block => {
+                    const key = normalizeDay(block.day);
+                    if (!scheduleByDay[key]) scheduleByDay[key] = [];
+                    if (!scheduleByDay[key].some(b => b.startTime === block.startTime)) {
+                        scheduleByDay[key].push({ subject: block.subject, startTime: block.startTime });
                     }
                 });
-            });
+            } else {
+                const allSchedules = getAllSchedules();
+                Object.values(allSchedules).forEach(blocks => {
+                    (blocks || []).forEach(block => {
+                        if (!agendaExportCurso || block.course === agendaExportCurso) {
+                            const key = normalizeDay(block.day);
+                            if (!scheduleByDay[key]) scheduleByDay[key] = [];
+                            const dup = scheduleByDay[key].some(
+                                b => b.subject === block.subject && b.startTime === block.startTime
+                            );
+                            if (!dup) scheduleByDay[key].push({ subject: block.subject, startTime: block.startTime });
+                        }
+                    });
+                });
+            }
             Object.keys(scheduleByDay).forEach(key => {
                 scheduleByDay[key].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
             });
