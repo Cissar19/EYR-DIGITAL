@@ -163,6 +163,11 @@ service cloud.firestore {
       allow write: if isManagement() || isAdmin();
     }
 
+    match /course_schedules/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // ============================================
     // INVENTORY
     // ============================================
