@@ -768,9 +768,8 @@ export default function CalendarioEvaluaciones() {
     const weeks = useMemo(() => buildMonthGrid(currentYear, selectedMonth), [currentYear, selectedMonth]);
 
     const relevantEvals = useMemo(() => {
-        if (canCRUD) return evaluaciones;
-        return evaluaciones.filter(e => e.createdBy?.id === user?.uid);
-    }, [evaluaciones, canCRUD, user?.uid]);
+        return evaluaciones;
+    }, [evaluaciones]);
 
     const filteredEvals = useMemo(() => {
         let evs = selectedCurso ? relevantEvals.filter(e => e.curso === selectedCurso) : relevantEvals;
@@ -809,7 +808,6 @@ export default function CalendarioEvaluaciones() {
     const agendaItemsByDate = useMemo(() => {
         const map = {};
         agendaDocs.forEach(docData => {
-            if (!canCRUD && docData.docenteId !== user.uid) return;
             if (selectedCurso && docData.curso !== selectedCurso) return;
             (docData.entries ?? []).forEach(entry => {
                 const offset = DIA_TO_OFFSET[entry.dia];
@@ -830,7 +828,7 @@ export default function CalendarioEvaluaciones() {
             });
         });
         return map;
-    }, [agendaDocs, canCRUD, user.uid, selectedCurso]);
+    }, [agendaDocs, selectedCurso]);
 
     // Próximo feriado
     const nextHoliday = useMemo(() => {
