@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X,
     Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle,
-    FileDown, Loader2, NotebookPen, Users, Layers, Flag, BanIcon, Table2, Megaphone,
+    FileDown, Loader2, NotebookPen, Users, Layers, Flag, BanIcon, Table2, Megaphone, GraduationCap,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc, setDoc } from 'firebase/firestore';
@@ -1400,6 +1400,12 @@ export default function CalendarioEvaluaciones() {
 
                 {/* ── Filter row ─────────────────────────────────────────── */}
                 <div className="flex flex-wrap items-center gap-3">
+                    {isAsistenteAula && asistenteAulaCurso && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white" style={{ background: PRIMARY }}>
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            {asistenteAulaCurso}
+                        </div>
+                    )}
                     {canCreateEval && (
                         <PillSelector
                             label="curso"
