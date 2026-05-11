@@ -95,6 +95,7 @@ export const SUBJECTS_LIST = [
     'T. Ciencias',
     'T. Lenguaje',
     'Taller Len',
+    'T.Deportiva',
     'PAE'
 ];
 

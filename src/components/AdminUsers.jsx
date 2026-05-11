@@ -250,6 +250,13 @@ export default function AdminUsers() {
                     label: 'Docente',
                     icon: GraduationCap
                 };
+            case ROLES.DOCENTE_VOLANTE:
+                return {
+                    bgColor: 'bg-indigo-100',
+                    textColor: 'text-indigo-400',
+                    label: 'Docente Volante',
+                    icon: GraduationCap
+                };
             case ROLES.STAFF:
                 return {
                     bgColor: 'bg-teal-100',
@@ -335,6 +342,7 @@ export default function AdminUsers() {
     const ROLE_FILTERS = [
         { value: 'all', label: 'Todos' },
         { value: ROLES.TEACHER, label: 'Docentes', icon: GraduationCap, color: 'blue' },
+        { value: ROLES.DOCENTE_VOLANTE, label: 'Doc. Volante', icon: GraduationCap, color: 'indigo' },
         { value: ROLES.STAFF, label: 'Asistentes', icon: Briefcase, color: 'teal' },
         { value: ROLES.ADMIN, label: 'Admin', icon: ShieldCheck, color: 'amber' },
         { value: ROLES.DIRECTOR, label: 'Director', icon: Shield, color: 'indigo' },
@@ -804,6 +812,17 @@ export default function AdminUsers() {
                                         >
                                             <GraduationCap className="w-4 h-4" />
                                             Docente
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'docente_volante' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'docente_volante'
+                                                    ? 'bg-indigo-400 border-indigo-400 text-white shadow-lg shadow-indigo-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <GraduationCap className="w-4 h-4" />
+                                            Doc. Volante
                                         </button>
                                         <button
                                             type="button"

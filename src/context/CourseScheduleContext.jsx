@@ -17,14 +17,20 @@ function courseDocId(course) {
  */
 export const CourseScheduleProvider = ({ children }) => {
     const [courseSchedules, setCourseSchedules] = useState({});
+    const [courseAssistants, setCourseAssistants] = useState({});
 
     useEffect(() => {
         const unsubscribe = subscribeToCollection('course_schedules', (docs) => {
-            const result = {};
+            const schedules = {};
+            const assistants = {};
             docs.forEach(doc => {
-                if (doc.course) result[doc.course] = doc.blocks || [];
+                if (doc.course) {
+                    schedules[doc.course] = doc.blocks || [];
+                    assistants[doc.course] = doc.assistant || null;
+                }
             });
-            setCourseSchedules(result);
+            setCourseSchedules(schedules);
+            setCourseAssistants(assistants);
         });
         return () => unsubscribe();
     }, []);
@@ -40,6 +46,12 @@ export const CourseScheduleProvider = ({ children }) => {
             : null;
     }, [courseSchedules]);
 
+    /** Devuelve { id, name } de la asistente asignada al curso, o null. */
+    const getCourseAssistant = useCallback((course) => {
+        if (!course) return null;
+        return courseAssistants[course] || null;
+    }, [courseAssistants]);
+
     const updateCourseSchedule = useCallback(async (course, blocks, user) => {
         const docId = courseDocId(course);
         setCourseSchedules(prev => ({ ...prev, [course]: blocks }));
@@ -48,7 +60,7 @@ export const CourseScheduleProvider = ({ children }) => {
                 course,
                 blocks,
                 updatedBy: user ? { id: user.uid, name: user.name || user.email || '' } : null,
-            });
+            }, { merge: true });
             toast.success('Horario de curso guardado');
         } catch (err) {
             console.error('CourseSchedule save error:', err);
@@ -56,10 +68,28 @@ export const CourseScheduleProvider = ({ children }) => {
         }
     }, []);
 
+    /** Actualiza solo la asistente de aula del curso sin tocar los bloques. */
+    const updateCourseAssistant = useCallback(async (course, assistant) => {
+        const docId = courseDocId(course);
+        setCourseAssistants(prev => ({ ...prev, [course]: assistant }));
+        try {
+            await setDocument('course_schedules', docId, {
+                course,
+                assistant: assistant || null,
+            }, { merge: true });
+        } catch (err) {
+            console.error('CourseSchedule assistant save error:', err);
+            toast.error('Error al guardar asistente');
+        }
+    }, []);
+
     const value = useMemo(() => ({
+        courseAssistants,
         getCourseSchedule,
+        getCourseAssistant,
         updateCourseSchedule,
-    }), [getCourseSchedule, updateCourseSchedule]);
+        updateCourseAssistant,
+    }), [courseAssistants, getCourseSchedule, getCourseAssistant, updateCourseSchedule, updateCourseAssistant]);
 
     return (
         <CourseScheduleContext.Provider value={value}>

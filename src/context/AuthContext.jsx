@@ -40,6 +40,7 @@ const AuthContext = createContext();
  * - convivencia_head: Jefe Convivencia (Convivencia management + block scheduling)
  * - convivencia: Convivencia Escolar (Basic convivencia access)
  * - teacher: Docente (Reservations, prints, administrative days)
+ * - docente_volante: Docente Volante (Floating/substitute teacher, same access as teacher)
  * - profesor_jefe: Profesor Jefe (Homeroom teacher, class administrative duties)
  * - staff: Asistente (Basic access, attendance, simple requests)
  * - asistente_aula: Asistente de Aula (Classroom support)
@@ -56,6 +57,7 @@ export const ROLES = {
     CONVIVENCIA_HEAD: 'convivencia_head',
     CONVIVENCIA: 'convivencia',
     TEACHER: 'teacher',
+    DOCENTE_VOLANTE: 'docente_volante',
     PROFESOR_JEFE: 'profesor_jefe',
     STAFF: 'staff',
     ASISTENTE_AULA: 'asistente_aula',
@@ -76,6 +78,7 @@ export const ROLE_LABELS = {
     [ROLES.CONVIVENCIA_HEAD]: 'Jefe Convivencia',
     [ROLES.CONVIVENCIA]: 'Convivencia Escolar',
     [ROLES.TEACHER]: 'Docente',
+    [ROLES.DOCENTE_VOLANTE]: 'Docente Volante',
     [ROLES.PROFESOR_JEFE]: 'Profesor Jefe',
     [ROLES.STAFF]: 'Asistente',
     [ROLES.ASISTENTE_AULA]: 'Asistente de Aula',

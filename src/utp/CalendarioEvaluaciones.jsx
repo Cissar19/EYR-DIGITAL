@@ -687,12 +687,20 @@ export default function CalendarioEvaluaciones() {
     const { user, getAllUsers } = useAuth();
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
     const { getSchedule, getAllSchedules } = useSchedule();
-    const { getCourseSchedule } = useCourseSchedule();
+    const { courseAssistants, getCourseSchedule, getCourseAssistant } = useCourseSchedule();
     const { allHolidays, customHolidays, addHoliday, deleteHoliday } = useHolidays();
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const canCRUD = isAdmin(user) || user?.role === 'utp_head';
     const isTeacher = user?.role === 'teacher';
     const canManageHolidays = user?.role === 'utp_head';
+    const isAsistenteAula = user?.role === 'asistente_aula';
+
+    const asistenteAulaCurso = useMemo(() => {
+        if (!isAsistenteAula || !user?.uid) return null;
+        return Object.keys(courseAssistants).find(
+            course => courseAssistants[course]?.id === user.uid
+        ) || null;
+    }, [isAsistenteAula, courseAssistants, user?.uid]);
 
     const [selectedDate, setSelectedDate]         = useState(null);
     const [dayModal, setDayModal]                 = useState(null);
@@ -835,9 +843,19 @@ export default function CalendarioEvaluaciones() {
 
     const weeks = useMemo(() => buildMonthGrid(currentYear, selectedMonth), [currentYear, selectedMonth]);
 
+    // Auto-seleccionar el curso de la asistente de aula
+    useEffect(() => {
+        if (isAsistenteAula && asistenteAulaCurso) {
+            setSelectedCurso(asistenteAulaCurso);
+        }
+    }, [isAsistenteAula, asistenteAulaCurso]);
+
     const relevantEvals = useMemo(() => {
+        if (isAsistenteAula && asistenteAulaCurso) {
+            return evaluaciones.filter(e => e.curso === asistenteAulaCurso);
+        }
         return evaluaciones;
-    }, [evaluaciones]);
+    }, [evaluaciones, isAsistenteAula, asistenteAulaCurso]);
 
     const filteredEvals = useMemo(() => {
         let evs = selectedCurso ? relevantEvals.filter(e => e.curso === selectedCurso) : relevantEvals;
@@ -1134,11 +1152,8 @@ export default function CalendarioEvaluaciones() {
                 ? [profJefe.name, ...otrosDocentes].slice(0, 2)
                 : otrosDocentes.slice(0, 2);
 
-            // 6. Asistente PIE/staff del establecimiento asignado al curso (si existe)
-            const asistentePIE = allUsersData.find(u =>
-                (u.role === 'pie' || u.role === 'staff') && u.assignedCourse === agendaExportCurso
-            );
-            const asistente = asistentePIE?.name || '';
+            // 6. Asistente de aula asignada al curso (desde horario oficial del curso)
+            const asistente = getCourseAssistant(agendaExportCurso)?.name || '';
 
             // 7. Avisos del profesor jefe para este curso
             let avisosExtra = [];

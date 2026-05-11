@@ -9,7 +9,7 @@ import { useCourseSchedule } from '../context/CourseScheduleContext';
 export default function ScheduleAdminView() {
     const { user, getAllUsers } = useAuth();
     const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded, getAllSchedules } = useSchedule();
-    const { getCourseSchedule, updateCourseSchedule } = useCourseSchedule();
+    const { getCourseSchedule, getCourseAssistant, updateCourseSchedule, updateCourseAssistant } = useCourseSchedule();
     const userCanEdit = canEditHelper(user);
 
     // View mode: 'teacher' | 'course'
@@ -29,9 +29,14 @@ export default function ScheduleAdminView() {
     const [isCourseEditMode, setIsCourseEditMode] = useState(false);
     // localCourseData: { 'Lunes-08:10': 'Lenguaje', ... }
     const [localCourseData, setLocalCourseData] = useState({});
+    const [localAssistantId, setLocalAssistantId] = useState('');
 
     const teachers = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.TEACHER);
+    }, [getAllUsers]);
+
+    const assistantesAula = React.useMemo(() => {
+        return getAllUsers().filter(u => u.role === ROLES.ASISTENTE_AULA);
     }, [getAllUsers]);
 
     // Build course schedule by crossing all teacher schedules
@@ -65,6 +70,7 @@ export default function ScheduleAdminView() {
     useEffect(() => {
         setIsCourseEditMode(false);
         setLocalCourseData({});
+        setLocalAssistantId('');
     }, [selectedCourse]);
 
     // Sincronizar datos desde Firestore cada vez que lleguen (pero no durante edición)
@@ -78,7 +84,9 @@ export default function ScheduleAdminView() {
         } else {
             setLocalCourseData({});
         }
-    }, [selectedCourse, getCourseSchedule, isCourseEditMode]);
+        const savedAssistant = getCourseAssistant(selectedCourse);
+        setLocalAssistantId(savedAssistant?.id || '');
+    }, [selectedCourse, getCourseSchedule, getCourseAssistant, isCourseEditMode]);
 
     const handleImportFromTeachers = () => {
         const imported = {};
@@ -96,6 +104,9 @@ export default function ScheduleAdminView() {
                 return { day, startTime: rest.join('-'), subject };
             });
         updateCourseSchedule(selectedCourse, blocks, user);
+        const assistantUser = assistantesAula.find(u => u.id === localAssistantId);
+        const assistantData = assistantUser ? { id: assistantUser.id, name: assistantUser.name } : null;
+        updateCourseAssistant(selectedCourse, assistantData);
         setIsCourseEditMode(false);
     };
 
@@ -411,6 +422,31 @@ export default function ScheduleAdminView() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* Asistente de Aula */}
+                            <div className="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3">
+                                <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                <span className="text-sm font-medium text-emerald-800 shrink-0">Asistente de Aula:</span>
+                                {isCourseEditMode && userCanEdit ? (
+                                    <div className="relative flex-1 max-w-xs">
+                                        <select
+                                            value={localAssistantId}
+                                            onChange={e => setLocalAssistantId(e.target.value)}
+                                            className="w-full px-3 py-1.5 rounded-xl border border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none text-sm appearance-none bg-white text-slate-800"
+                                        >
+                                            <option value="">Sin asistente asignada</option>
+                                            {assistantesAula.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400 pointer-events-none" />
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-emerald-700">
+                                        {assistantesAula.find(u => u.id === localAssistantId)?.name || getCourseAssistant(selectedCourse)?.name || 'No asignada'}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Grilla */}

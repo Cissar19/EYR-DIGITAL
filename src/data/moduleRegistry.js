@@ -16,7 +16,7 @@ import {
  *                 (null = everyone, array = only listed roles)
  */
 
-const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];
+const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'docente_volante', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];
 const MANAGEMENT = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
 
 export const MODULE_REGISTRY = [
@@ -114,7 +114,7 @@ export const MODULE_REGISTRY = [
         icon: Shield,
         path: '/convivencia',
         category: 'role_specific',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'docente_volante'],
     },
     {
         key: 'teacher_hours',
@@ -159,7 +159,7 @@ export const MODULE_REGISTRY = [
         path: '/utp',
         category: 'role_specific',
         group: 'utp',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'docente_volante'],
     },
     {
         key: 'utp_formatos',
@@ -177,7 +177,7 @@ export const MODULE_REGISTRY = [
         path: '/utp/calendario',
         category: 'role_specific',
         group: 'utp',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'docente_volante', 'asistente_aula'],
     },
     {
         key: 'utp_agenda',
@@ -186,7 +186,7 @@ export const MODULE_REGISTRY = [
         path: '/utp/agenda',
         category: 'role_specific',
         group: 'utp',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'docente_volante'],
     },
     {
         key: 'utp_temario',
@@ -195,7 +195,7 @@ export const MODULE_REGISTRY = [
         path: '/utp/temario',
         category: 'role_specific',
         group: 'utp',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'docente_volante'],
     },
     {
         key: 'cobertura',
@@ -213,7 +213,7 @@ export const MODULE_REGISTRY = [
         path: '/pie',
         category: 'role_specific',
         group: 'pie',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'pie'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'teacher', 'docente_volante', 'pie'],
     },
     {
         key: 'control_sano',
@@ -266,7 +266,7 @@ export const MODULE_REGISTRY = [
         path: '/retos',
         category: 'role_specific',
         group: 'utp',
-        defaultRoles: ['super_admin', 'admin', 'utp_head', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'utp_head', 'teacher', 'docente_volante'],
     },
     {
         key: 'no_pierde_clases',
@@ -283,7 +283,7 @@ export const MODULE_REGISTRY = [
         icon: Award,
         path: '/incentivo-eyr',
         category: 'role_specific',
-        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher'],
+        defaultRoles: ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher', 'docente_volante'],
     },
     {
         key: 'corrida_escolar',
@@ -314,4 +314,4 @@ export const getModuleByPath = (path) => MODULE_REGISTRY.find(m => m.path === pa
 export const ALL_MODULE_KEYS = MODULE_REGISTRY.map(m => m.key);
 
 /** Configurable roles (excludes super_admin and admin which always have full access) */
-export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];
+export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'docente_volante', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];

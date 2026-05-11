@@ -220,7 +220,7 @@ export default function CalendarioMobile() {
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
     const { allHolidays }                        = useHolidays();
     const { getSchedule, getAllSchedules }        = useSchedule();
-    const { getCourseSchedule }                  = useCourseSchedule();
+    const { getCourseSchedule, getCourseAssistant } = useCourseSchedule();
 
     const today       = useMemo(() => new Date(), []);
     const todayStr    = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -503,7 +503,7 @@ export default function CalendarioMobile() {
                 .map(uid => allUsersData.find(u => u.id === uid)?.name)
                 .filter(n => n && n !== profJefe?.name);
             const profesores = profJefe ? [profJefe.name, ...otrosDocentes].slice(0, 2) : otrosDocentes.slice(0, 2);
-            const asistentePIE = allUsersData.find(u => (u.role === 'pie' || u.role === 'staff') && u.assignedCourse === agendaExportCurso);
+            const asistente = getCourseAssistant(agendaExportCurso)?.name || '';
 
             let avisosExtra = [];
             if (agendaExportCurso) {
@@ -515,7 +515,7 @@ export default function CalendarioMobile() {
                 weekStart: agendaExportWeek,
                 selectedCurso: agendaExportCurso,
                 profesores,
-                asistente: asistentePIE?.name || '',
+                asistente,
                 scheduleByDay: schedByDay,
                 entries: agendaEntries,
                 evaluaciones: weekEvals,

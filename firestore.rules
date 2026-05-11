@@ -271,15 +271,15 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && (
         isManagement() ||
-        (getUserRole() == 'teacher' && teacherScheduleAllows(request.auth.uid, request.resource.data.curso, request.resource.data.asignatura))
+        (getUserRole() in ['teacher', 'docente_volante'] && teacherScheduleAllows(request.auth.uid, request.resource.data.curso, request.resource.data.asignatura))
       );
       allow update: if isAuthenticated() && (
         isManagement() ||
-        (getUserRole() == 'teacher' && teacherScheduleAllows(request.auth.uid, resource.data.curso, resource.data.asignatura))
+        (getUserRole() in ['teacher', 'docente_volante'] && teacherScheduleAllows(request.auth.uid, resource.data.curso, resource.data.asignatura))
       );
       allow delete: if isAuthenticated() && (
         isManagement() ||
-        (getUserRole() == 'teacher' && resource.data.createdBy.id == request.auth.uid)
+        (getUserRole() in ['teacher', 'docente_volante'] && resource.data.createdBy.id == request.auth.uid)
       );
     }
 
@@ -325,7 +325,7 @@ service cloud.firestore {
     match /retos/{retoId} {
       allow read: if isAuthenticated();
       allow create, update: if isAuthenticated() &&
-        getUserRole() in ['super_admin', 'admin', 'utp_head', 'teacher'];
+        getUserRole() in ['super_admin', 'admin', 'utp_head', 'teacher', 'docente_volante'];
       allow delete: if isAdmin();
     }
 
@@ -464,7 +464,7 @@ service cloud.firestore {
     // INCENTIVO-EYR (banco de estrellas)
     // ============================================
     function isIncentivoUser() {
-      return isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher'];
+      return isAuthenticated() && getUserRole() in ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'teacher', 'docente_volante'];
     }
 
     // Usuarios anónimos autenticados (kiosko de canje via QR)
