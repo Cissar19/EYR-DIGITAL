@@ -6,11 +6,12 @@ import {
     ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
     Wallet, Medal, Award, LayoutList, GraduationCap,
     Minus, Plus, Settings, Save, Gift, Pencil, Trash2,
-    ShoppingBag, Tag, Package, ToggleLeft, ToggleRight, Percent, QrCode, Download,
+    ShoppingBag, Tag, Package, ToggleLeft, ToggleRight, Percent, QrCode, Download, Printer,
 } from 'lucide-react';
 import { useStudents } from '../context/StudentsContext';
 import { useIncentivoEYR } from '../context/IncentivoEYRContext';
 import { useAuth } from '../context/AuthContext';
+import logoEyr from '../assets/logo_eyr.png';
 
 // Contexto local para pasar la config activa a sub-componentes del mismo archivo
 const RulesCtx = React.createContext(null);
@@ -138,20 +139,195 @@ function TierBadge({ coins }) {
     );
 }
 
-// ── Modal QR alumno ───────────────────────────────────────────────────────────
-const CARD_W = 272;
-const CARD_H = 380;
+// ── Modal QR / Tarjeta alumno (diseño Antorcha) ───────────────────────────────
+// Calcula "MM/YY" de caducidad: el alumno egresa de 8vo el diciembre del año correspondiente
+function calcValidDate(curso) {
+    if (!curso) return '—';
+    const match = curso.match(/^(\d+)/);
+    if (!match) return '—';
+    const grade = parseInt(match[1], 10);
+    if (grade < 1 || grade > 8) return '—';
+    const expiryYear = new Date().getFullYear() + (8 - grade);
+    return `12/${String(expiryYear).slice(2)}`;
+}
 
-function QrModal({ student, coins, onClose }) {
+const AT = {
+    navy:    '#16285A',
+    navyD:   '#0E1B40',
+    gold:    '#F2C233',
+    goldD:   '#D9A91A',
+    red:     '#C8102E',
+    cream:   '#FBF6E7',
+    ink:     '#0B1430',
+};
+
+// ── Tarjetas para impresión (escala 600×424 → 7.5cm×5.3cm) ───────────────────
+// La inner div es 600×424 px escalada con transform; el wrapper tiene dimensiones físicas en cm.
+// En pantalla: 7.5cm ≈ 283px. En impresión: exactamente 7.5cm.
+
+function PrintCardFront({ student }) {
+    return (
+        <div style={{ width:'7.5cm', height:'5.3cm', overflow:'hidden', position:'relative', flexShrink:0, borderRadius:'0.35cm' }}>
+            <div style={{ position:'absolute', top:0, left:0, width:600, height:424, transform:'scale(0.4724)', transformOrigin:'top left', background:AT.navy, fontFamily:"'Fredoka', system-ui, sans-serif", color:'#fff' }}>
+                <div style={{ position:'absolute', right:-120, top:-120, width:520, height:520, borderRadius:'50%', background:'radial-gradient(circle, rgba(242,194,51,0.33) 0%, rgba(242,194,51,0.13) 35%, transparent 65%)' }} />
+                <svg style={{ position:'absolute', right:-100, top:-100, width:440, height:440, opacity:0.35 }} viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" fill="none" stroke="#F2C233" strokeWidth="0.4" strokeDasharray="0.6 1.2" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F2C233" strokeWidth="0.3" />
+                    <circle cx="50" cy="50" r="32" fill="none" stroke="#F2C233" strokeWidth="0.3" strokeDasharray="2 1" />
+                </svg>
+                <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.18 }} viewBox="0 0 600 424" preserveAspectRatio="none">
+                    <defs>
+                        <radialGradient id="ryMaskPF" cx="78%" cy="42%" r="60%">
+                            <stop offset="0%" stopColor="white" stopOpacity="1" /><stop offset="100%" stopColor="white" stopOpacity="0" />
+                        </radialGradient>
+                        <mask id="rysMaskPF"><rect width="600" height="424" fill="url(#ryMaskPF)" /></mask>
+                    </defs>
+                    <g mask="url(#rysMaskPF)" stroke="#F2C233" strokeWidth="1.2">
+                        <line x1="468" y1="178" x2="968" y2="178" /><line x1="468" y1="178" x2="936" y2="349" />
+                        <line x1="468" y1="178" x2="818" y2="496" /><line x1="468" y1="178" x2="618" y2="657" />
+                        <line x1="468" y1="178" x2="381" y2="671" /><line x1="468" y1="178" x2="155" y2="554" />
+                        <line x1="468" y1="178" x2="-21" y2="356" /><line x1="468" y1="178" x2="-32" y2="178" />
+                        <line x1="468" y1="178" x2="0" y2="7" /><line x1="468" y1="178" x2="118" y2="-140" />
+                        <line x1="468" y1="178" x2="318" y2="-301" /><line x1="468" y1="178" x2="555" y2="-315" />
+                        <line x1="468" y1="178" x2="781" y2="-198" /><line x1="468" y1="178" x2="957" y2="0" />
+                    </g>
+                </svg>
+                <img src="/logo_eyr.png" alt="" style={{ position:'absolute', right:18, top:60, width:220, height:220, objectFit:'contain', filter:'drop-shadow(0 6px 16px rgba(0,0,0,0.45)) drop-shadow(0 0 24px rgba(242,194,51,0.35))' }} />
+                <div style={{ position:'absolute', top:22, left:28, right:250 }}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:2.5, color:AT.gold }}>CENTRO EDUCACIONAL</div>
+                    <div style={{ fontSize:17, fontWeight:700, lineHeight:1.05, marginTop:4, color:'#fff' }}>Ernesto Yáñez Rivera</div>
+                    <div style={{ fontSize:10, fontWeight:500, marginTop:3, color:'rgba(255,255,255,0.7)', letterSpacing:1 }}>N° 1353 · TARJETA ESCOLAR</div>
+                </div>
+                <div style={{ position:'absolute', top:112, left:28, display:'inline-flex', alignItems:'baseline', gap:2, background:AT.gold, color:AT.navyD, padding:'6px 14px 7px', borderRadius:8 }}>
+                    <span style={{ fontSize:22, fontWeight:700, lineHeight:1 }}>EYR</span>
+                    <span style={{ fontSize:18, fontWeight:700, lineHeight:1 }}>·</span>
+                    <span style={{ fontSize:22, fontWeight:700, lineHeight:1 }}>pesos</span>
+                </div>
+                <div style={{ position:'absolute', top:168, left:28, display:'flex', alignItems:'center', gap:8 }}>
+                    <svg width="58" height="44" viewBox="0 0 58 44">
+                        <rect x="1" y="1" width="56" height="42" rx="8" fill="#F2C233" stroke="#0E1B40" strokeWidth="2" />
+                        <path d="M 1 22 H 14 M 44 22 H 57 M 22 1 V 12 M 22 32 V 43 M 36 1 V 12 M 36 32 V 43" stroke="#0E1B40" strokeWidth="2" fill="none" />
+                        <rect x="14" y="12" width="30" height="20" rx="3" fill="none" stroke="#0E1B40" strokeWidth="2" />
+                        <line x1="14" y1="22" x2="44" y2="22" stroke="#0E1B40" strokeWidth="1.5" />
+                        <line x1="29" y1="12" x2="29" y2="32" stroke="#0E1B40" strokeWidth="1.5" />
+                    </svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28">
+                        <path d="M 4 6 Q 12 14 4 22" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                        <path d="M 10 4 Q 20 14 10 24" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                        <path d="M 16 2 Q 28 14 16 26" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                    </svg>
+                </div>
+                <div style={{ position:'absolute', top:232, left:28, width:360, fontFamily:"'JetBrains Mono', monospace", fontSize:21, fontWeight:700, letterSpacing:1.5, color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.55)' }}>
+                    {student.rut || '—'}
+                </div>
+                <div style={{ position:'absolute', bottom:18, left:18, right:18, background:AT.cream, borderRadius:14, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', border:`1.5px solid ${AT.gold}` }}>
+                    <div>
+                        <div style={{ fontSize:9, fontWeight:700, letterSpacing:1.5, color:AT.red }}>ESTUDIANTE</div>
+                        <div style={{ fontSize:21, fontWeight:700, marginTop:2, color:AT.navyD, lineHeight:1.05 }}>{(student.fullName||'').toUpperCase()}</div>
+                        {student.curso && <div style={{ fontSize:11, fontWeight:600, color:AT.navyD, opacity:0.85, marginTop:2 }}>{student.curso.toUpperCase()}</div>}
+                    </div>
+                    <div style={{ textAlign:'right', borderLeft:`2px solid ${AT.gold}`, paddingLeft:14 }}>
+                        <div style={{ fontSize:9, fontWeight:700, letterSpacing:1.5, color:AT.red }}>VÁLIDA</div>
+                        <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:17, fontWeight:700, marginTop:2, color:AT.navyD }}>{calcValidDate(student.curso)}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PrintCardBack({ student }) {
+    const url = `${window.location.origin}/kiosko/${student.id}`;
+    return (
+        <div style={{ width:'7.5cm', height:'5.3cm', overflow:'hidden', position:'relative', flexShrink:0, borderRadius:'0.35cm' }}>
+            <div style={{ position:'absolute', top:0, left:0, width:600, height:424, transform:'scale(0.4724)', transformOrigin:'top left', background:AT.cream, fontFamily:"'Fredoka', system-ui, sans-serif", color:AT.navyD }}>
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:16, background:AT.red }} />
+                <div style={{ position:'absolute', top:16, left:0, right:0, height:3, background:AT.gold }} />
+                <div style={{ position:'absolute', top:44, left:0, right:0, height:52, background:'#000' }} />
+                <div style={{ position:'absolute', top:128, left:28, right:28, height:50, background:'#fff', borderRadius:6, border:`1.5px solid ${AT.navy}`, display:'flex', alignItems:'center', padding:'0 14px' }}>
+                    <div style={{ flex:1, height:22, background:'repeating-linear-gradient(45deg, #e8e2cf, #e8e2cf 4px, #fff 4px, #fff 8px)', borderRadius:3, marginRight:12 }} />
+                    <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:14, fontWeight:700, color:AT.navyD, background:AT.gold, padding:'4px 10px', borderRadius:4 }}>
+                        CVV {student.rut ? student.rut.replace(/[^0-9]/g,'').slice(-3) : '???'}
+                    </div>
+                </div>
+                <div style={{ position:'absolute', top:198, left:28, right:28+108+12, fontSize:13, lineHeight:1.55, fontWeight:500, color:AT.navyD }}>
+                    Tarjeta personal del Centro Educacional Ernesto Yáñez Rivera N°1353. Los EYR-pesos se ganan con logros académicos, conducta y proyectos. Canjeables en kiosco y tienda escolar.
+                </div>
+                <div style={{ position:'absolute', top:198, right:28, width:108, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+                    <div style={{ background:'#fff', padding:6, borderRadius:8, border:`1.5px solid ${AT.navy}`, lineHeight:0 }}>
+                        <QRCodeSVG value={url} size={90} level="M" />
+                    </div>
+                    <div style={{ fontSize:8, fontWeight:700, letterSpacing:1.5, color:AT.navy, opacity:0.6 }}>KIOSCO EYR</div>
+                </div>
+                <div style={{ position:'absolute', bottom:22, left:28, right:28+108+12, display:'flex', alignItems:'flex-end', gap:8 }}>
+                    <img src="/logo_eyr.png" alt="" style={{ width:32, height:32, objectFit:'contain' }} />
+                    <div style={{ fontSize:10, opacity:0.85, lineHeight:1.5, fontWeight:500, color:AT.navyD }}>
+                        <div>Si me pierdes, llévame a Inspectoría</div>
+                        <div>eyr.cl/pesos · {new Date().getFullYear()}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Vista de impresión de tarjetas del curso ──────────────────────────────────
+// Frentes en la primera sección, reversos (orden espejado por fila para dúplex) en la segunda.
+function PrintCourseView({ roster, courseName, onClose }) {
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.id = 'print-course-style';
+        style.textContent = `
+            @media print {
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                #root { display: none !important; }
+                #print-course-overlay {
+                    position: static !important;
+                    overflow: visible !important;
+                    background: white !important;
+                    padding: 0 !important;
+                }
+                .no-print { display: none !important; }
+                @page { size: A4 portrait; margin: 12mm; }
+            }
+        `;
+        document.head.appendChild(style);
+        return () => document.getElementById('print-course-style')?.remove();
+    }, []);
+
+    return createPortal(
+        <div id="print-course-overlay" style={{ position:'fixed', inset:0, zIndex:9999, background:'#ebe7df', overflowY:'auto' }}>
+
+            {/* Barra de herramientas */}
+            <div className="no-print" style={{ position:'sticky', top:0, background:'#fff', borderBottom:'1.5px solid #e0ddd6', padding:'10px 20px', display:'flex', alignItems:'center', gap:10, zIndex:10 }}>
+                <button onClick={onClose} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'1.5px solid #ddd', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit', color:'#666' }}>
+                    <X size={13} /> Cerrar
+                </button>
+                <span style={{ fontSize:13, fontWeight:700, color:'#333', flex:1 }}>
+                    Tarjetas · {courseName} · {roster.length} alumnos
+                </span>
+                <button onClick={() => window.print()} style={{ display:'flex', alignItems:'center', gap:6, background:AT.navy, border:'none', borderRadius:8, padding:'8px 18px', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff', fontFamily:'inherit' }}>
+                    <Printer size={14} /> Imprimir / Guardar PDF
+                </button>
+            </div>
+
+            {/* Pares frente + reverso, uno por alumno */}
+            <div style={{ padding:'10mm 12mm', display:'flex', flexDirection:'column', gap:'6mm', alignItems:'flex-start' }}>
+                {roster.map(s => (
+                    <div key={s.id} style={{ display:'flex', gap:'4mm', alignItems:'stretch', pageBreakInside:'avoid', breakInside:'avoid' }}>
+                        <PrintCardFront student={s} />
+                        <PrintCardBack student={s} />
+                    </div>
+                ))}
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+function QrModal({ student, onClose }) {
     const url = `${window.location.origin}/kiosko/${student.id}`;
     const [flipped, setFlipped] = useState(false);
-
-    // Auto-regresa al QR tras 2 segundos
-    useEffect(() => {
-        if (!flipped) return;
-        const t = setTimeout(() => setFlipped(false), 2000);
-        return () => clearTimeout(t);
-    }, [flipped]);
 
     function handleDownload() {
         const svg = document.getElementById('qr-svg-export');
@@ -167,7 +343,7 @@ function QrModal({ student, coins, onClose }) {
         const img = new Image();
         img.onload = () => {
             ctx.drawImage(img, (SIZE - 280) / 2, 20, 280, 280);
-            ctx.fillStyle = '#1b1530';
+            ctx.fillStyle = AT.ink;
             ctx.font = 'bold 15px system-ui';
             ctx.textAlign = 'center';
             ctx.fillText(student.fullName, SIZE / 2, 330);
@@ -182,114 +358,246 @@ function QrModal({ student, coins, onClose }) {
         img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
     }
 
-    return createPortal(
-        <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:EYR.overlay, backdropFilter:'blur(6px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, padding:16 }}>
+    // Dimensiones: proporción 600×424 del diseño original, escalado a 480px de ancho
+    const CW = 480;
+    const CH = Math.round(CW * 424 / 600); // ~339 px
+    const scale = CW / 600;
 
+    // Escala una medida del diseño original (en px base 600×424)
+    const s = (v) => Math.round(v * scale);
+
+    return createPortal(
+        <div
+            onClick={onClose}
+            style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(14,27,64,0.72)', backdropFilter:'blur(8px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, padding:16 }}
+        >
             {/* Botón cerrar */}
-            <button onClick={onClose} style={{ alignSelf:'flex-end', marginRight: `calc(50% - ${CARD_W/2}px)`, width:32, height:32, display:'grid', placeItems:'center', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', cursor:'pointer', borderRadius:10, backdropFilter:'blur(4px)' }}>
+            <button
+                onClick={onClose}
+                style={{ alignSelf:'flex-end', marginRight:`calc(50% - ${CW/2}px)`, width:32, height:32, display:'grid', placeItems:'center', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', cursor:'pointer', borderRadius:10, backdropFilter:'blur(4px)' }}
+            >
                 <X size={16} />
             </button>
 
             {/* Flip card */}
             <div
                 onClick={e => { e.stopPropagation(); setFlipped(f => !f); }}
-                style={{ perspective:1000, width:CARD_W, height:CARD_H, cursor:'pointer', flexShrink:0 }}
+                style={{ perspective:1200, width:CW, height:CH, cursor:'pointer', flexShrink:0 }}
             >
                 <div style={{
                     width:'100%', height:'100%',
                     position:'relative',
                     transformStyle:'preserve-3d',
-                    transition:'transform 0.65s cubic-bezier(.4,0,.2,1)',
+                    transition:'transform 0.7s cubic-bezier(.4,0,.2,1)',
                     transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 }}>
 
-                    {/* ── CARA FRONTAL — QR ─────────────────────────────── */}
+                    {/* ── CARA FRONTAL — Tarjeta Antorcha ───────────────── */}
                     <div style={{
                         position:'absolute', inset:0,
                         backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
-                        background:'#fff',
-                        borderRadius:24,
-                        boxShadow:EYR.shadowLg,
+                        background:AT.navy,
+                        borderRadius:s(28),
                         overflow:'hidden',
-                        display:'flex', flexDirection:'column', alignItems:'center',
+                        boxShadow:'0 20px 50px -20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.18)',
+                        fontFamily:"'Fredoka', system-ui, sans-serif",
+                        color:'#fff',
                     }}>
-                        <div style={{ height:6, width:'100%', background:EYR.stripe, flexShrink:0 }} />
-                        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px 24px', gap:12 }}>
-                            <div style={{ background:'#fff', padding:10, borderRadius:16, border:`1.5px solid ${EYR.line}` }}>
-                                <QRCodeSVG id="qr-svg-export" value={url} size={168} level="M" />
+                        {/* Halo dorado */}
+                        <div style={{
+                            position:'absolute', right:s(-120), top:s(-120),
+                            width:s(520), height:s(520),
+                            borderRadius:'50%',
+                            background:'radial-gradient(circle, rgba(242,194,51,0.33) 0%, rgba(242,194,51,0.13) 35%, transparent 65%)',
+                        }} />
+
+                        {/* Anillos concéntricos */}
+                        <svg style={{ position:'absolute', right:s(-100), top:s(-100), width:s(440), height:s(440), opacity:0.35 }} viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="44" fill="none" stroke="#F2C233" strokeWidth="0.4" strokeDasharray="0.6 1.2" />
+                            <circle cx="50" cy="50" r="38" fill="none" stroke="#F2C233" strokeWidth="0.3" />
+                            <circle cx="50" cy="50" r="32" fill="none" stroke="#F2C233" strokeWidth="0.3" strokeDasharray="2 1" />
+                        </svg>
+
+                        {/* Rayos de luz */}
+                        <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.18 }} viewBox="0 0 600 424" preserveAspectRatio="none">
+                            <defs>
+                                <radialGradient id="rayMaskAt" cx="78%" cy="42%" r="60%">
+                                    <stop offset="0%" stopColor="white" stopOpacity="1" />
+                                    <stop offset="100%" stopColor="white" stopOpacity="0" />
+                                </radialGradient>
+                                <mask id="raysMaskAt">
+                                    <rect width="600" height="424" fill="url(#rayMaskAt)" />
+                                </mask>
+                            </defs>
+                            <g mask="url(#raysMaskAt)" stroke="#F2C233" strokeWidth="1.2">
+                                <line x1="468" y1="178" x2="968" y2="178" />
+                                <line x1="468" y1="178" x2="936" y2="349" />
+                                <line x1="468" y1="178" x2="818" y2="496" />
+                                <line x1="468" y1="178" x2="618" y2="657" />
+                                <line x1="468" y1="178" x2="381" y2="671" />
+                                <line x1="468" y1="178" x2="155" y2="554" />
+                                <line x1="468" y1="178" x2="-21" y2="356" />
+                                <line x1="468" y1="178" x2="-32" y2="178" />
+                                <line x1="468" y1="178" x2="0" y2="7" />
+                                <line x1="468" y1="178" x2="118" y2="-140" />
+                                <line x1="468" y1="178" x2="318" y2="-301" />
+                                <line x1="468" y1="178" x2="555" y2="-315" />
+                                <line x1="468" y1="178" x2="781" y2="-198" />
+                                <line x1="468" y1="178" x2="957" y2="0" />
+                            </g>
+                        </svg>
+
+                        {/* Escudo */}
+                        <img
+                            src={logoEyr}
+                            alt="Escudo EYR"
+                            style={{ position:'absolute', right:s(18), top:s(60), width:s(220), height:s(220), objectFit:'contain', filter:'drop-shadow(0 6px 16px rgba(0,0,0,0.45)) drop-shadow(0 0 24px rgba(242,194,51,0.35))' }}
+                        />
+
+                        {/* Encabezado escuela */}
+                        <div style={{ position:'absolute', top:s(22), left:s(28), right:s(250) }}>
+                            <div style={{ fontSize:s(9), fontWeight:700, letterSpacing:2.5, color:AT.gold }}>CENTRO EDUCACIONAL</div>
+                            <div style={{ fontSize:s(17), fontWeight:700, lineHeight:1.05, marginTop:s(4), color:'#fff' }}>Ernesto Yáñez Rivera</div>
+                            <div style={{ fontSize:s(10), fontWeight:500, marginTop:s(3), color:'rgba(255,255,255,0.7)', letterSpacing:1 }}>N° 1353 · TARJETA ESCOLAR</div>
+                        </div>
+
+                        {/* Badge EYR·pesos */}
+                        <div style={{ position:'absolute', top:s(112), left:s(28), display:'inline-flex', alignItems:'baseline', gap:2, background:AT.gold, color:AT.navyD, padding:`${s(6)}px ${s(14)}px ${s(7)}px`, borderRadius:s(8), boxShadow:'0 4px 12px rgba(217,169,26,0.25)' }}>
+                            <span style={{ fontSize:s(22), fontWeight:700, lineHeight:1, letterSpacing:-0.3 }}>EYR</span>
+                            <span style={{ fontSize:s(18), fontWeight:700, lineHeight:1 }}>·</span>
+                            <span style={{ fontSize:s(22), fontWeight:700, lineHeight:1, letterSpacing:-0.3 }}>pesos</span>
+                        </div>
+
+                        {/* Chip + NFC */}
+                        <div style={{ position:'absolute', top:s(168), left:s(28), display:'flex', alignItems:'center', gap:s(8) }}>
+                            <svg width={s(58)} height={s(44)} viewBox="0 0 58 44">
+                                <rect x="1" y="1" width="56" height="42" rx="8" fill="#F2C233" stroke="#0E1B40" strokeWidth="2" />
+                                <path d="M 1 22 H 14 M 44 22 H 57 M 22 1 V 12 M 22 32 V 43 M 36 1 V 12 M 36 32 V 43" stroke="#0E1B40" strokeWidth="2" fill="none" />
+                                <rect x="14" y="12" width="30" height="20" rx="3" fill="none" stroke="#0E1B40" strokeWidth="2" />
+                                <line x1="14" y1="22" x2="44" y2="22" stroke="#0E1B40" strokeWidth="1.5" />
+                                <line x1="29" y1="12" x2="29" y2="32" stroke="#0E1B40" strokeWidth="1.5" />
+                            </svg>
+                            <svg width={s(24)} height={s(28)} viewBox="0 0 24 28">
+                                <path d="M 4 6 Q 12 14 4 22" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                                <path d="M 10 4 Q 20 14 10 24" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                                <path d="M 16 2 Q 28 14 16 26" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                            </svg>
+                        </div>
+
+                        {/* Número de tarjeta = RUT */}
+                        <div style={{ position:'absolute', top:s(232), left:s(28), width:s(360), fontFamily:"'JetBrains Mono', monospace", fontSize:s(21), fontWeight:700, letterSpacing:1.5, color:'#fff', textShadow:'0 1px 3px rgba(0,0,0,0.55)' }}>
+                            {student.rut || '—'}
+                        </div>
+
+                        {/* Panel del estudiante */}
+                        <div style={{
+                            position:'absolute', bottom:s(18), left:s(18), right:s(18),
+                            background:AT.cream,
+                            borderRadius:s(14),
+                            padding:`${s(10)}px ${s(16)}px`,
+                            display:'flex', justifyContent:'space-between', alignItems:'center',
+                            boxShadow:'0 6px 14px rgba(0,0,0,0.25)',
+                            border:`1.5px solid ${AT.gold}`,
+                        }}>
+                            <div>
+                                <div style={{ fontSize:s(9), fontWeight:700, letterSpacing:1.5, color:AT.red }}>ESTUDIANTE</div>
+                                <div style={{ fontSize:s(21), fontWeight:700, marginTop:s(2), color:AT.navyD, lineHeight:1.05, fontFamily:"'Fredoka', system-ui, sans-serif" }}>
+                                    {(student.fullName || '').toUpperCase()}
+                                </div>
+                                {student.curso && (
+                                    <div style={{ fontSize:s(11), fontWeight:600, color:AT.navyD, opacity:0.85, marginTop:s(2) }}>
+                                        {student.curso.toUpperCase()}
+                                    </div>
+                                )}
                             </div>
-                            <div style={{ textAlign:'center' }}>
-                                <div style={{ fontSize:14, fontWeight:800, color:EYR.ink }}>{student.fullName}</div>
-                                {student.curso && <div style={{ fontSize:11, color:EYR.ink3, marginTop:2 }}>{student.curso}</div>}
-                            </div>
-                            <div style={{ display:'flex', alignItems:'center', gap:4, background:EYR.amberS, borderRadius:99, padding:'4px 12px' }}>
-                                <Star size={12} fill="#f5a524" color="#f5a524" />
-                                <span style={{ fontSize:13, fontWeight:900, color:EYR.ink }}>{coins}</span>
-                                <span style={{ fontSize:11, color:EYR.ink3 }}>estrellas</span>
+                            <div style={{ textAlign:'right', borderLeft:`2px solid ${AT.gold}`, paddingLeft:s(14) }}>
+                                <div style={{ fontSize:s(9), fontWeight:700, letterSpacing:1.5, color:AT.red }}>VÁLIDA</div>
+                                <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:s(17), fontWeight:700, marginTop:s(2), color:AT.navyD }}>{calcValidDate(student.curso)}</div>
                             </div>
                         </div>
-                        <div style={{ padding:'0 0 14px', display:'flex', alignItems:'center', gap:4 }}>
-                            <span style={{ fontSize:11, color:EYR.ink3 }}>Toca para ver tarjeta</span>
+
+                        {/* Hint flip */}
+                        <div style={{ position:'absolute', bottom:s(4), left:0, right:0, textAlign:'center', fontSize:s(9), color:'rgba(255,255,255,0.35)', letterSpacing:1 }}>
+                            toca para ver reverso
                         </div>
                     </div>
 
-                    {/* ── CARA TRASERA — Tarjeta alumno ─────────────────── */}
+                    {/* ── CARA TRASERA — Reverso Antorcha ───────────────── */}
                     <div style={{
                         position:'absolute', inset:0,
                         backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
                         transform:'rotateY(180deg)',
-                        background:`linear-gradient(145deg, ${EYR.pri} 0%, #742fe5 55%, ${EYR.accent} 100%)`,
-                        borderRadius:24,
-                        boxShadow:EYR.shadowLg,
+                        background:AT.cream,
+                        borderRadius:s(28),
                         overflow:'hidden',
-                        display:'flex', flexDirection:'column',
-                        padding:24,
-                        color:'#fff',
+                        boxShadow:'0 20px 50px -20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.12)',
+                        fontFamily:"'Fredoka', system-ui, sans-serif",
+                        color:AT.navyD,
                     }}>
-                        {/* Círculos decorativos */}
-                        <div style={{ position:'absolute', top:-50, right:-50, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.07)', pointerEvents:'none' }} />
-                        <div style={{ position:'absolute', bottom:-40, left:-40, width:150, height:150, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
-                        <div style={{ position:'absolute', top:'40%', left:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }} />
+                        {/* Franja roja */}
+                        <div style={{ position:'absolute', top:0, left:0, right:0, height:s(16), background:AT.red }} />
+                        {/* Franja dorada */}
+                        <div style={{ position:'absolute', top:s(16), left:0, right:0, height:s(3), background:AT.gold }} />
+                        {/* Banda magnética */}
+                        <div style={{ position:'absolute', top:s(44), left:0, right:0, height:s(52), background:'#000' }} />
 
-                        <div style={{ position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-                            {/* Branding top */}
-                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                                <span style={{ fontSize:10, fontWeight:900, letterSpacing:2, opacity:0.65, textTransform:'uppercase' }}>EYR Digital</span>
-                                <div style={{ display:'flex', gap:3 }}>
-                                    {[0,1,2].map(i => <Star key={i} size={10} fill="rgba(255,255,255,0.5)" color="rgba(255,255,255,0.5)" />)}
-                                </div>
+                        {/* Panel de firma */}
+                        <div style={{
+                            position:'absolute', top:s(128), left:s(28), right:s(28), height:s(50),
+                            background:'#fff', borderRadius:s(6),
+                            border:`1.5px solid ${AT.navy}`,
+                            display:'flex', alignItems:'center', justifyContent:'space-between',
+                            padding:`0 ${s(14)}px`,
+                        }}>
+                            <div style={{
+                                flex:1, height:s(22),
+                                background:'repeating-linear-gradient(45deg, #e8e2cf, #e8e2cf 4px, #fff 4px, #fff 8px)',
+                                borderRadius:s(3), marginRight:s(12),
+                            }} />
+                            <div style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:s(14), fontWeight:700, color:AT.navyD, background:AT.gold, padding:`${s(4)}px ${s(10)}px`, borderRadius:s(4) }}>
+                                CVV {student.rut ? student.rut.replace(/[^0-9]/g, '').slice(-3) : '???'}
                             </div>
+                        </div>
 
-                            {/* Avatar + nombre */}
-                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
-                                <div style={{ width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.18)', border:'2.5px solid rgba(255,255,255,0.35)', display:'grid', placeItems:'center', fontSize:32, fontWeight:900, letterSpacing:-1 }}>
-                                    {(student.fullName || '?').charAt(0).toUpperCase()}
-                                </div>
-                                <div style={{ textAlign:'center' }}>
-                                    <div style={{ fontSize:17, fontWeight:900, letterSpacing:-0.3 }}>{student.fullName}</div>
-                                    {student.curso && <div style={{ fontSize:12, opacity:0.7, marginTop:3 }}>{student.curso}</div>}
-                                </div>
-                            </div>
+                        {/* Texto legal — columna izquierda */}
+                        <div style={{ position:'absolute', top:s(198), left:s(28), right:s(28+108+12), fontSize:s(12), lineHeight:1.55, color:AT.navyD, fontWeight:500 }}>
+                            Tarjeta personal del Centro Educacional Ernesto Yáñez Rivera N°1353. Los EYR-pesos se ganan con logros académicos, conducta y proyectos. Canjeables en kiosco y tienda escolar.
+                        </div>
 
-                            {/* Saldo */}
-                            <div style={{ background:'rgba(255,255,255,0.14)', borderRadius:16, padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', backdropFilter:'blur(8px)' }}>
-                                <span style={{ fontSize:12, fontWeight:700, opacity:0.85 }}>Saldo de estrellas</span>
-                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                    <Star size={16} fill="#fde68a" color="#fde68a" />
-                                    <span style={{ fontSize:24, fontWeight:900, lineHeight:1 }}>{coins}</span>
-                                </div>
+                        {/* QR — columna derecha */}
+                        <div style={{
+                            position:'absolute', top:s(198), right:s(28),
+                            width:s(108), display:'flex', flexDirection:'column', alignItems:'center', gap:s(6),
+                        }}>
+                            <div style={{ background:'#fff', padding:s(6), borderRadius:s(8), border:`1.5px solid ${AT.navy}`, lineHeight:0 }}>
+                                <QRCodeSVG id="qr-svg-export" value={url} size={s(90)} level="M" />
                             </div>
+                            <div style={{ fontSize:s(8), fontWeight:700, letterSpacing:1.5, color:AT.navy, opacity:0.6 }}>KIOSCO EYR</div>
+                        </div>
+
+                        {/* Pie */}
+                        <div style={{ position:'absolute', bottom:s(22), left:s(28), right:s(28+108+12), display:'flex', alignItems:'flex-end', gap:s(8) }}>
+                            <img src={logoEyr} alt="Escudo" style={{ width:s(32), height:s(32), objectFit:'contain', flexShrink:0 }} />
+                            <div style={{ fontSize:s(10), opacity:0.85, lineHeight:1.5, fontWeight:500, color:AT.navyD }}>
+                                <div>Si me pierdes, llévame a Inspectoría</div>
+                                <div>eyr.cl/pesos · {new Date().getFullYear()}</div>
+                            </div>
+                        </div>
+
+                        {/* Hint flip */}
+                        <div style={{ position:'absolute', bottom:s(4), left:0, right:0, textAlign:'center', fontSize:s(9), color:'rgba(14,27,64,0.3)', letterSpacing:1 }}>
+                            toca para ver frente
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Descargar */}
+            {/* Descargar QR */}
             <button
                 onClick={e => { e.stopPropagation(); handleDownload(); }}
                 style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.14)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:10, padding:'9px 20px', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff', fontFamily:'inherit', backdropFilter:'blur(4px)' }}
             >
-                <Download size={14} /> Descargar PNG
+                <Download size={14} /> Descargar QR
             </button>
         </div>
     , document.body);
@@ -760,7 +1068,7 @@ function AllStudentsView({ courses, estrellas, registrarMovimiento, getTransacci
             )}
             {giveModal && <GiveCoinsModal student={giveModal} onClose={() => setGiveModal(null)} onGive={handleGive} />}
             {takeModal && <TakeCoinsModal student={takeModal} currentCoins={estrellas[takeModal.id] ?? 0} onClose={() => setTakeModal(null)} onTake={handleTake} />}
-            {qrModal && <QrModal student={qrModal} coins={estrellas[qrModal.id] ?? 0} onClose={() => setQrModal(null)} />}
+            {qrModal && <QrModal student={qrModal} onClose={() => setQrModal(null)} />}
             {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
         </div>
     );
@@ -780,6 +1088,7 @@ function CourseDetailView({ course, color, onBack, estrellas, registrarMovimient
     const [takeModal, setTakeModal] = useState(null);
     const [qrModal, setQrModal] = useState(null);
     const [toast, setToast] = useState(null);
+    const [printingCards, setPrintingCards] = useState(false);
 
     const roster = useMemo(() =>
         course.alumnos.map(a => ({ ...a, coins: estrellas[a.id] ?? 0 })),
@@ -853,6 +1162,12 @@ function CourseDetailView({ course, color, onBack, estrellas, registrarMovimient
                 <div style={{ background:color.light, borderRadius:10, padding:'6px 14px', display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:17, fontWeight:900, color:color.dark }}>{course.name}</span>
                 </div>
+                <button
+                    onClick={() => setPrintingCards(true)}
+                    style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, background:AT.navy, border:'none', borderRadius:10, padding:'8px 16px', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff', fontFamily:'inherit' }}
+                >
+                    <Printer size={14} /> Imprimir tarjetas
+                </button>
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
@@ -983,8 +1298,15 @@ function CourseDetailView({ course, color, onBack, estrellas, registrarMovimient
             )}
             {giveModal && <GiveCoinsModal student={giveModal} onClose={() => setGiveModal(null)} onGive={handleGive} />}
             {takeModal && <TakeCoinsModal student={takeModal} currentCoins={estrellas[takeModal.id] ?? 0} onClose={() => setTakeModal(null)} onTake={handleTake} />}
-            {qrModal && <QrModal student={qrModal} coins={estrellas[qrModal.id] ?? 0} onClose={() => setQrModal(null)} />}
+            {qrModal && <QrModal student={qrModal} onClose={() => setQrModal(null)} />}
             {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+            {printingCards && (
+                <PrintCourseView
+                    roster={roster}
+                    courseName={course.name}
+                    onClose={() => setPrintingCards(false)}
+                />
+            )}
         </div>
     );
 }
