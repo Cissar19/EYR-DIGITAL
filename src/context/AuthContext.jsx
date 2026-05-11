@@ -40,8 +40,12 @@ const AuthContext = createContext();
  * - convivencia_head: Jefe Convivencia (Convivencia management + block scheduling)
  * - convivencia: Convivencia Escolar (Basic convivencia access)
  * - teacher: Docente (Reservations, prints, administrative days)
+ * - profesor_jefe: Profesor Jefe (Homeroom teacher, class administrative duties)
  * - staff: Asistente (Basic access, attendance, simple requests)
+ * - asistente_aula: Asistente de Aula (Classroom support)
  * - printer: Print Manager (Print request management only)
+ * - pie_head: Jefa PIE (PIE program coordination)
+ * - pie: PIE (Special education support)
  */
 export const ROLES = {
     SUPER_ADMIN: 'super_admin',
@@ -52,8 +56,11 @@ export const ROLES = {
     CONVIVENCIA_HEAD: 'convivencia_head',
     CONVIVENCIA: 'convivencia',
     TEACHER: 'teacher',
+    PROFESOR_JEFE: 'profesor_jefe',
     STAFF: 'staff',
+    ASISTENTE_AULA: 'asistente_aula',
     PRINTER: 'printer',
+    PIE_HEAD: 'pie_head',
     PIE: 'pie'
 };
 
@@ -69,8 +76,11 @@ export const ROLE_LABELS = {
     [ROLES.CONVIVENCIA_HEAD]: 'Jefe Convivencia',
     [ROLES.CONVIVENCIA]: 'Convivencia Escolar',
     [ROLES.TEACHER]: 'Docente',
+    [ROLES.PROFESOR_JEFE]: 'Profesor Jefe',
     [ROLES.STAFF]: 'Asistente',
+    [ROLES.ASISTENTE_AULA]: 'Asistente de Aula',
     [ROLES.PRINTER]: 'Encargado Impresiones',
+    [ROLES.PIE_HEAD]: 'Jefa PIE',
     [ROLES.PIE]: 'PIE'
 };
 

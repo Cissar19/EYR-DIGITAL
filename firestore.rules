@@ -517,6 +517,19 @@ service cloud.firestore {
     }
 
     // ============================================
+    // AVISOS PROFESOR JEFE (agenda semanal tabular)
+    // ============================================
+    match /avisos_profesor_jefe/{curso} {
+      allow read: if isAuthenticated();
+      // UTP y admins pueden escribir cualquier curso; el profesor jefe solo el suyo
+      allow write: if isUTP() || (
+        isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isHeadTeacher', false) == true &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('headTeacherOf', '') == curso
+      );
+    }
+
+    // ============================================
     // INTERFERIADOS (días sin clases institucionales)
     // ============================================
     match /interferiados/{dateStr} {

@@ -2,17 +2,17 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Pin, X,
     Clock, BookOpen, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle,
-    FileDown, Loader2, NotebookPen, Users, Layers, Flag, BanIcon,
+    FileDown, Loader2, NotebookPen, Users, Layers, Flag, BanIcon, Table2, Megaphone,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { collection, query, where, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth, canEdit, isAdmin } from '../context/AuthContext';
+import { useAuth, canEdit, isAdmin, isManagement } from '../context/AuthContext';
 import { useEvaluaciones } from '../context/EvaluacionesContext';
 import CrearEvaluacionModal from './CrearEvaluacionModal';
 import { AgendaSemanalModal } from './AgendaSemanal';
 import { CURSOS } from '../data/objetivosAprendizaje';
-import { exportCalendarioPDF, exportAgendaMensualCardPDF } from '../lib/pdfExport';
+import { exportCalendarioPDF, exportAgendaMensualCardPDF, exportAgendaTabularPDF, AVISOS_DEFAULT } from '../lib/pdfExport';
 import { useHolidays } from '../context/HolidaysContext';
 import { toast } from 'sonner';
 import { useSchedule } from '../context/ScheduleContext';
@@ -731,6 +731,74 @@ export default function CalendarioEvaluaciones() {
     });
     const [agendaExportCurso, setAgendaExportCurso] = useState(null);
 
+    // ── Estado modal exportación tabular (oficio horizontal) ──────────────────
+    const [showTabularExportModal, setShowTabularExportModal] = useState(false);
+    const [exportingTabular, setExportingTabular] = useState(false);
+
+    // ── Modal de avisos importantes ────────────────────────────────────────────
+    const [showAvisoModal, setShowAvisoModal] = useState(false);
+
+    // ── Avisos importantes del Profesor Jefe ──────────────────────────────────
+    const [avisosJefe, setAvisosJefe]       = useState([]);
+    const [nuevoAviso, setNuevoAviso]       = useState('');
+    const [savingAviso, setSavingAviso]     = useState(false);
+    const [editingAvisoId, setEditingAvisoId] = useState(null);
+    const [editingAvisoText, setEditingAvisoText] = useState('');
+    const nuevoAvisoRef                     = useRef(null);
+    // Profesor jefe ve su propio curso; UTP/admin ven el curso seleccionado en el filtro
+    const cursoJefe = user?.isHeadTeacher
+        ? user.headTeacherOf
+        : (isManagement(user) && selectedCurso ? selectedCurso : null);
+
+    useEffect(() => {
+        if (!cursoJefe) return;
+        const ref = doc(db, 'avisos_profesor_jefe', cursoJefe);
+        return onSnapshot(ref, snap => {
+            setAvisosJefe(snap.exists() ? (snap.data().avisos || []) : []);
+        });
+    }, [cursoJefe]);
+
+    const guardarAvisos = async (lista) => {
+        setSavingAviso(true);
+        try {
+            await setDoc(doc(db, 'avisos_profesor_jefe', cursoJefe), {
+                curso: cursoJefe,
+                avisos: lista,
+                updatedAt: new Date().toISOString(),
+            });
+        } catch {
+            toast.error('No se pudo guardar el aviso');
+        } finally {
+            setSavingAviso(false);
+        }
+    };
+
+    const agregarAviso = async () => {
+        const texto = nuevoAviso.trim();
+        if (!texto) return;
+        await guardarAvisos([...avisosJefe, { id: crypto.randomUUID(), texto }]);
+        setNuevoAviso('');
+        nuevoAvisoRef.current?.focus();
+    };
+
+    const eliminarAviso = (id) => guardarAvisos(avisosJefe.filter(a => a.id !== id));
+
+    const iniciarEdicionAviso = (a) => { setEditingAvisoId(a.id); setEditingAvisoText(a.texto); };
+    const cancelarEdicionAviso = () => { setEditingAvisoId(null); setEditingAvisoText(''); };
+    const guardarEdicionAviso = async (id) => {
+        const texto = editingAvisoText.trim();
+        if (!texto) return;
+        await guardarAvisos(avisosJefe.map(a => a.id === id ? { ...a, texto } : a));
+        cancelarEdicionAviso();
+    };
+    // Convierte los avisos por defecto en personalizados y pone el índice indicado en modo edición
+    const adoptarYEditarDefault = async (idx) => {
+        const nuevos = AVISOS_DEFAULT.map(texto => ({ id: crypto.randomUUID(), texto }));
+        setEditingAvisoId(nuevos[idx].id);
+        setEditingAvisoText(nuevos[idx].texto);
+        await guardarAvisos(nuevos);
+    };
+
     const agendaExportWeekLabel = useMemo(() => {
         const mon = new Date(agendaExportWeek + 'T12:00:00');
         const fri = new Date(mon);
@@ -986,12 +1054,130 @@ export default function CalendarioEvaluaciones() {
         }
     };
 
-    const [dropdownOpen, setDropdownOpen]             = useState(false);
-    const [cursoDropdownOpen, setCursoDropdownOpen]   = useState(false);
-    const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
-    const dropdownRef      = useRef(null);
-    const cursoDropdownRef = useRef(null);
-    const exportDropdownRef = useRef(null);
+    const handleTabularExportPDF = async () => {
+        setExportingTabular(true);
+        try {
+            const normalizeDay = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            // 1. Entradas de agenda_contenido de la semana seleccionada
+            const constraints = [where('weekStart', '==', agendaExportWeek)];
+            if (agendaExportCurso) constraints.push(where('curso', '==', agendaExportCurso));
+            const snap = await getDocs(query(collection(db, 'agenda_contenido'), ...constraints));
+            const agendaEntries = snap.docs.flatMap(d => d.data().entries || []);
+
+            // 2. Evaluaciones de la semana para el curso
+            const monDate = new Date(agendaExportWeek + 'T12:00:00');
+            const weekDates = Array.from({ length: 5 }, (_, i) => {
+                const d = new Date(monDate); d.setDate(monDate.getDate() + i);
+                return d.toISOString().slice(0, 10);
+            });
+            const weekEvals = relevantEvals.filter(ev =>
+                ev.date && weekDates.includes(ev.date) &&
+                (!agendaExportCurso || ev.curso === agendaExportCurso)
+            );
+
+            // 3. Materiales desde agenda_noticias tipo='materiales'
+            const noticiaConstraints = [where('weekStart', '==', agendaExportWeek)];
+            if (agendaExportCurso) noticiaConstraints.push(where('curso', '==', agendaExportCurso));
+            const noticiaSnap = await getDocs(query(collection(db, 'agenda_noticias'), ...noticiaConstraints));
+            const materialesTexto = noticiaSnap.docs
+                .map(d => d.data())
+                .filter(d => d.tipo === 'materiales' && d.texto)
+                .map(d => d.texto)
+                .join('\n');
+            const materialesByDay = materialesTexto
+                ? { lunes: materialesTexto, martes: materialesTexto, miercoles: materialesTexto, jueves: materialesTexto, viernes: materialesTexto }
+                : {};
+
+            // 4. Horario oficial por día
+            const officialBlocks = agendaExportCurso ? getCourseSchedule(agendaExportCurso) : null;
+            const schedByDay = {};
+            if (officialBlocks && officialBlocks.length > 0) {
+                officialBlocks.forEach(block => {
+                    const key = normalizeDay(block.day);
+                    if (!schedByDay[key]) schedByDay[key] = [];
+                    if (!schedByDay[key].some(b => b.startTime === block.startTime)) {
+                        schedByDay[key].push({ subject: block.subject, startTime: block.startTime });
+                    }
+                });
+            } else {
+                const allSchedules = getAllSchedules();
+                Object.values(allSchedules).forEach(blocks => {
+                    (blocks || []).forEach(block => {
+                        if (!agendaExportCurso || block.course === agendaExportCurso) {
+                            const key = normalizeDay(block.day);
+                            if (!schedByDay[key]) schedByDay[key] = [];
+                            const dup = schedByDay[key].some(
+                                b => b.subject === block.subject && b.startTime === block.startTime
+                            );
+                            if (!dup) schedByDay[key].push({ subject: block.subject, startTime: block.startTime });
+                        }
+                    });
+                });
+            }
+            Object.keys(schedByDay).forEach(key => {
+                schedByDay[key].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+            });
+
+            // 5. Profesores: profesor jefe + docentes con bloques en este curso
+            const allUsersData = getAllUsers();
+            const profJefe = allUsersData.find(u => u.isHeadTeacher && u.headTeacherOf === agendaExportCurso);
+            const allSchedules = getAllSchedules();
+            const docenteUids = new Set();
+            Object.entries(allSchedules).forEach(([uid, blocks]) => {
+                if ((blocks || []).some(b => b.course === agendaExportCurso)) docenteUids.add(uid);
+            });
+            const otrosDocentes = [...docenteUids]
+                .map(uid => allUsersData.find(u => u.id === uid)?.name)
+                .filter(n => n && n !== profJefe?.name);
+            const profesores = profJefe
+                ? [profJefe.name, ...otrosDocentes].slice(0, 2)
+                : otrosDocentes.slice(0, 2);
+
+            // 6. Asistente PIE/staff del establecimiento asignado al curso (si existe)
+            const asistentePIE = allUsersData.find(u =>
+                (u.role === 'pie' || u.role === 'staff') && u.assignedCourse === agendaExportCurso
+            );
+            const asistente = asistentePIE?.name || '';
+
+            // 7. Avisos del profesor jefe para este curso
+            let avisosExtra = [];
+            if (agendaExportCurso) {
+                const avisosSnap = await getDoc(doc(db, 'avisos_profesor_jefe', agendaExportCurso));
+                if (avisosSnap.exists()) {
+                    avisosExtra = (avisosSnap.data().avisos || []).map(a => a.texto).filter(Boolean);
+                }
+            }
+
+            await exportAgendaTabularPDF({
+                weekStart:       agendaExportWeek,
+                selectedCurso:   agendaExportCurso,
+                profesores,
+                asistente,
+                scheduleByDay:   schedByDay,
+                entries:         agendaEntries,
+                evaluaciones:    weekEvals,
+                materialesByDay,
+                salidaByDay:     {}, // auto-calculado en pdfExport desde el horario
+                holidays:        allHolidays,
+                avisosExtra,
+            });
+            setShowTabularExportModal(false);
+        } catch {
+            toast.error('Error al exportar');
+        } finally {
+            setExportingTabular(false);
+        }
+    };
+
+    const [dropdownOpen, setDropdownOpen]                         = useState(false);
+    const [cursoDropdownOpen, setCursoDropdownOpen]               = useState(false);
+    const [exportDropdownOpen, setExportDropdownOpen]             = useState(false);
+    const [agendaCursoDropdownOpen, setAgendaCursoDropdownOpen]   = useState(false);
+    const dropdownRef           = useRef(null);
+    const cursoDropdownRef      = useRef(null);
+    const exportDropdownRef     = useRef(null);
+    const agendaCursoDropdownRef = useRef(null);
 
     const cursoOptions = useMemo(() => {
         if (isTeacher) {
@@ -1010,11 +1196,17 @@ export default function CalendarioEvaluaciones() {
     const canPrevCurso = cursoIdx > 0;
     const canNextCurso = cursoIdx < cursoOptions.length - 1;
 
+    const realCursos          = cursoOptions.filter(c => c !== null);
+    const agendaCursoIdx      = realCursos.indexOf(agendaExportCurso);
+    const canPrevAgendaCurso  = agendaCursoIdx > 0;
+    const canNextAgendaCurso  = agendaCursoIdx < realCursos.length - 1;
+
     useEffect(() => {
         const handler = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
             if (cursoDropdownRef.current && !cursoDropdownRef.current.contains(e.target)) setCursoDropdownOpen(false);
             if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) setExportDropdownOpen(false);
+            if (agendaCursoDropdownRef.current && !agendaCursoDropdownRef.current.contains(e.target)) setAgendaCursoDropdownOpen(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -1045,7 +1237,7 @@ export default function CalendarioEvaluaciones() {
                             {canCreateEval ? 'Haz clic en un día para programar una evaluación' : 'Vista general de evaluaciones programadas'}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
+                    <div className="flex items-start gap-2 flex-wrap justify-start sm:justify-end w-full sm:w-auto">
                         {/* Export dropdown */}
                         <div className="relative" ref={exportDropdownRef}>
                             <button
@@ -1076,7 +1268,7 @@ export default function CalendarioEvaluaciones() {
                                                 d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
                                                 d.setHours(0, 0, 0, 0);
                                                 setAgendaExportWeek(d.toISOString().slice(0, 10));
-                                                setAgendaExportCurso(selectedCurso);
+                                                setAgendaExportCurso(selectedCurso ?? cursoOptions.find(c => c !== null) ?? null);
                                                 setShowAgendaExportModal(true);
                                             }}
                                             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50 text-left"
@@ -1109,6 +1301,24 @@ export default function CalendarioEvaluaciones() {
                                             <CalendarDays className="w-4 h-4 shrink-0" style={{ color: INK_3 }} />
                                             Calendario mensual
                                         </button>
+                                        <div style={{ height: 1, background: LINE, margin: '0 12px' }} />
+                                        <button
+                                            onClick={() => {
+                                                setExportDropdownOpen(false);
+                                                const d = new Date();
+                                                const day = d.getDay();
+                                                d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+                                                d.setHours(0, 0, 0, 0);
+                                                setAgendaExportWeek(d.toISOString().slice(0, 10));
+                                                setAgendaExportCurso(selectedCurso ?? cursoOptions.find(c => c !== null) ?? null);
+                                                setShowTabularExportModal(true);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50 text-left"
+                                            style={{ color: INK }}
+                                        >
+                                            <Table2 className="w-4 h-4 shrink-0" style={{ color: INK_3 }} />
+                                            Tabla de agenda (oficio horizontal)
+                                        </button>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -1123,32 +1333,52 @@ export default function CalendarioEvaluaciones() {
                             </button>
                         )}
                         {canCreateEval && (
-                            <>
-                                <button
-                                    onClick={() => setEvalModal({ type: 'list' })}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px"
-                                    style={{ background: '#fff', border: `1.5px solid ${PRIMARY}`, color: PRIMARY, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
-                                >
-                                    <Pencil className="w-4 h-4" /> Editar fechas
-                                </button>
-                                {isTeacher && (
+                            <button
+                                onClick={() => setEvalModal({ type: 'list' })}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px"
+                                style={{ background: '#fff', border: `1.5px solid ${PRIMARY}`, color: PRIMARY, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
+                            >
+                                <Pencil className="w-4 h-4" /> Editar fechas
+                            </button>
+                        )}
+                        {/* Bloque apilado: aviso arriba, fijar+agenda abajo */}
+                        {(cursoJefe || canCreateEval) && (
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: (canCreateEval && isTeacher) ? '1fr 1fr' : '1fr',
+                                    gap: 8,
+                                }}
+                            >
+                                {cursoJefe && (
+                                    <button
+                                        onClick={() => setShowAvisoModal(true)}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px"
+                                        style={{ gridColumn: '1 / -1', background: '#FFFBF2', border: '1px solid #F3E7C3', color: '#D97706', boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
+                                    >
+                                        <Megaphone className="w-4 h-4" /> Agregar aviso importante
+                                    </button>
+                                )}
+                                {canCreateEval && (
+                                    <button
+                                        onClick={() => setShowFijar(true)}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px active:translate-y-0"
+                                        style={{ background: HONEY, color: '#2a1f04', boxShadow: `0 6px 14px -6px ${HONEY}` }}
+                                    >
+                                        <Pin className="w-4 h-4" /> Fijar una prueba
+                                    </button>
+                                )}
+                                {canCreateEval && isTeacher && (
                                     <button
                                         onClick={() => setShowAgenda(true)}
-                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px active:translate-y-0"
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-px active:translate-y-0"
                                         style={{ background: '#fff', border: `1px solid ${LINE}`, color: INK_2, boxShadow: '0 1px 2px rgba(31,42,46,.04)' }}
                                     >
                                         <NotebookPen className="w-4 h-4" />
                                         Agenda Semanal
                                     </button>
                                 )}
-                                <button
-                                    onClick={() => setShowFijar(true)}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px active:translate-y-0"
-                                    style={{ background: HONEY, color: '#2a1f04', boxShadow: `0 6px 14px -6px ${HONEY}` }}
-                                >
-                                    <Pin className="w-4 h-4" /> Fijar una prueba
-                                </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -1209,7 +1439,7 @@ export default function CalendarioEvaluaciones() {
                 {/* ── Calendar grid ──────────────────────────────────────── */}
                 <div className="overflow-x-auto -mx-6 md:-mx-10 px-6 md:px-10">
                 <div
-                    className="rounded-3xl overflow-hidden min-w-[500px]"
+                    className="rounded-3xl overflow-hidden sm:min-w-[500px]"
                     style={{
                         background: 'rgba(255,255,255,0.82)',
                         backdropFilter: 'blur(14px)',
@@ -1343,9 +1573,8 @@ export default function CalendarioEvaluaciones() {
 
                                         {/* Sin clases — mensaje explicativo */}
                                         {noClass && (
-                                            <div style={{
+                                            <div className="hidden sm:flex" style={{
                                                 flex: 1,
-                                                display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 textAlign: 'center',
@@ -1389,25 +1618,33 @@ export default function CalendarioEvaluaciones() {
                                                             overflow: 'hidden',
                                                         }}
                                                     >
-                                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                                                            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                {e.curso} · {e.asignatura}
+                                                        {/* Mobile: solo sigla + punto pendiente */}
+                                                        <span className="sm:hidden" style={{ fontSize: 9, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                            {e.asignatura}
+                                                            {e.pendingChanges && <span style={{ width: 5, height: 5, borderRadius: '50%', background: HONEY, flexShrink: 0 }} />}
+                                                        </span>
+                                                        {/* Desktop: chip completo */}
+                                                        <div className="hidden sm:flex flex-col" style={{ gap: 2 }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                                                <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                    {e.curso} · {e.asignatura}
+                                                                </span>
+                                                                {e.pendingChanges && (
+                                                                    <span
+                                                                        title="Cambios pendientes"
+                                                                        style={{ width: 6, height: 6, borderRadius: '50%', background: HONEY, border: '1.5px solid rgba(255,255,255,0.8)', flexShrink: 0 }}
+                                                                    />
+                                                                )}
                                                             </span>
-                                                            {e.pendingChanges && (
-                                                                <span
-                                                                    title="Cambios pendientes"
-                                                                    style={{ width: 6, height: 6, borderRadius: '50%', background: HONEY, border: '1.5px solid rgba(255,255,255,0.8)', flexShrink: 0 }}
-                                                                />
+                                                            <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                                {e.name}
+                                                            </span>
+                                                            {e.createdBy?.name && (
+                                                                <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                    {shortName(e.createdBy.name)}
+                                                                </span>
                                                             )}
-                                                        </span>
-                                                        <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                            {e.name}
-                                                        </span>
-                                                        {e.createdBy?.name && (
-                                                            <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                {shortName(e.createdBy.name)}
-                                                            </span>
-                                                        )}
+                                                        </div>
                                                     </button>
                                                 );
                                             })}
@@ -1440,38 +1677,46 @@ export default function CalendarioEvaluaciones() {
                                                         position: 'relative',
                                                     }}
                                                 >
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        <NotebookPen style={{ width: 9, height: 9, flexShrink: 0 }} />
-                                                        {item.asignatura} · {item.curso}
-                                                        {canDeleteEntry && isHovered && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={e => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteAgendaEntry(item.agendaDocId, item.id, item.agendaEntries);
-                                                                }}
-                                                                style={{
-                                                                    marginLeft: 'auto',
-                                                                    flexShrink: 0,
-                                                                    width: 14, height: 14,
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    borderRadius: 3, border: 'none',
-                                                                    background: '#FEE2E2', color: '#DC2626',
-                                                                    cursor: 'pointer', padding: 0,
-                                                                }}
-                                                            >
-                                                                <Trash2 style={{ width: 9, height: 9 }} />
-                                                            </button>
-                                                        )}
+                                                    {/* Mobile: solo ícono */}
+                                                    <span className="sm:hidden" style={{ fontSize: 9, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <NotebookPen style={{ width: 8, height: 8, flexShrink: 0 }} />
+                                                        {item.asignatura}
                                                     </span>
-                                                    <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                        {item.texto}
-                                                    </span>
-                                                    {item.docenteName && (
-                                                        <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                            {shortName(item.docenteName)}
+                                                    {/* Desktop: chip completo */}
+                                                    <div className="hidden sm:flex flex-col" style={{ gap: 2 }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            <NotebookPen style={{ width: 9, height: 9, flexShrink: 0 }} />
+                                                            {item.asignatura} · {item.curso}
+                                                            {canDeleteEntry && isHovered && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteAgendaEntry(item.agendaDocId, item.id, item.agendaEntries);
+                                                                    }}
+                                                                    style={{
+                                                                        marginLeft: 'auto',
+                                                                        flexShrink: 0,
+                                                                        width: 14, height: 14,
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        borderRadius: 3, border: 'none',
+                                                                        background: '#FEE2E2', color: '#DC2626',
+                                                                        cursor: 'pointer', padding: 0,
+                                                                    }}
+                                                                >
+                                                                    <Trash2 style={{ width: 9, height: 9 }} />
+                                                                </button>
+                                                            )}
                                                         </span>
-                                                    )}
+                                                        <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                            {item.texto}
+                                                        </span>
+                                                        {item.docenteName && (
+                                                            <span style={{ fontSize: 10, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {shortName(item.docenteName)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 );
                                             })}
@@ -1479,16 +1724,6 @@ export default function CalendarioEvaluaciones() {
                                                 <span style={{ fontSize: 11, color: '#818CF8', fontWeight: 600, padding: '2px 4px' }}>
                                                     +{agendaItems.length - 2} agenda
                                                 </span>
-                                            )}
-                                            {canAdd && evals.length === 0 && agendaItems.length === 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedDate(dateStr); }}
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity mt-auto flex items-center gap-1 text-xs hover:underline"
-                                                    style={{ color: PRIMARY }}
-                                                >
-                                                    <Plus className="w-3 h-3" /> Agregar
-                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -1602,6 +1837,124 @@ export default function CalendarioEvaluaciones() {
                 </div>
             </div>
 
+
+            {/* ── Modal: Avisos importantes ───────────────────────────────── */}
+            {showAvisoModal && cursoJefe && (
+                <CalModal onClose={() => setShowAvisoModal(false)} width={480}>
+                    <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'center', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#FEF3C7', color: '#D97706', display: 'grid', placeItems: 'center' }}>
+                            <Megaphone className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h2 className="font-headline" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>Avisos importantes</h2>
+                            <p style={{ fontSize: 12, color: INK_3, marginTop: 2 }}>Curso {cursoJefe} · Aparecen en el pie del PDF de agenda</p>
+                        </div>
+                        <button onClick={() => setShowAvisoModal(false)} className="transition-colors hover:bg-slate-100 rounded-lg" style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <div className="cal-modal-body" style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                        {/* Vista previa — solo se muestra cuando NO hay personalizados */}
+                        {avisosJefe.length === 0 && (
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: INK_3 }}>
+                                    Avisos por defecto del establecimiento
+                                </p>
+                                <div className="space-y-1.5">
+                                    {AVISOS_DEFAULT.map((texto, i) => (
+                                        <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-xl group" style={{ background: '#FEF9EC', border: '1px solid #F3E7C3' }}>
+                                            <span className="text-xs font-bold mt-0.5 flex-shrink-0" style={{ color: '#D97706' }}>•</span>
+                                            <span className="flex-1 text-sm" style={{ color: INK }}>{texto}</span>
+                                            <button
+                                                onClick={() => adoptarYEditarDefault(i)}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 hover:text-amber-600 transition-colors"
+                                                style={{ color: INK_3 }}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs mt-2" style={{ color: INK_3 }}>
+                                    Edita cualquier aviso para personalizarlos. Los demás por defecto también se adoptarán.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Gestión de avisos personalizados */}
+                        <div style={{ borderTop: avisosJefe.length === 0 ? `1px solid ${LINE}` : 'none', paddingTop: avisosJefe.length === 0 ? 16 : 0 }}>
+                            {avisosJefe.length === 0 && (
+                                <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: INK_3 }}>
+                                    Agregar aviso personalizado
+                                </p>
+                            )}
+                            {avisosJefe.length > 0 && (
+                                <div className="space-y-1.5 mb-3">
+                                    {avisosJefe.map(a => (
+                                        <div key={a.id} className="rounded-xl group" style={{ border: `1px solid ${editingAvisoId === a.id ? '#F3E7C3' : LINE}`, background: editingAvisoId === a.id ? '#FFFBF2' : '#fff' }}>
+                                            {editingAvisoId === a.id ? (
+                                                <div className="flex flex-col gap-2 p-2">
+                                                    <textarea
+                                                        autoFocus
+                                                        rows={2}
+                                                        value={editingAvisoText}
+                                                        onChange={e => setEditingAvisoText(e.target.value)}
+                                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); guardarEdicionAviso(a.id); } if (e.key === 'Escape') cancelarEdicionAviso(); }}
+                                                        className="w-full text-sm px-2 py-1.5 rounded-lg resize-none focus:outline-none focus:ring-2"
+                                                        style={{ border: `1px solid #F3E7C3`, color: INK, '--tw-ring-color': '#F3E7C3' }}
+                                                    />
+                                                    <div className="flex gap-1.5 justify-end">
+                                                        <button onClick={cancelarEdicionAviso} className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-slate-100" style={{ color: INK_2 }}>Cancelar</button>
+                                                        <button onClick={() => guardarEdicionAviso(a.id)} disabled={savingAviso || !editingAvisoText.trim()} className="px-3 py-1 rounded-lg text-xs font-semibold transition-all hover:brightness-95 disabled:opacity-50" style={{ background: '#D97706', color: '#fff' }}>Guardar</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-start gap-2 px-3 py-2.5">
+                                                    <span className="flex-1 text-sm" style={{ color: INK }}>{a.texto}</span>
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                                                        <button onClick={() => iniciarEdicionAviso(a)} style={{ color: INK_3 }} className="hover:text-amber-600 transition-colors">
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button onClick={() => eliminarAviso(a.id)} style={{ color: INK_3 }} className="hover:text-red-500 transition-colors">
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex gap-2">
+                                <input
+                                    ref={nuevoAvisoRef}
+                                    value={nuevoAviso}
+                                    onChange={e => setNuevoAviso(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && agregarAviso()}
+                                    placeholder="Escribe un aviso y presiona Enter…"
+                                    className="flex-1 text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:ring-2"
+                                    style={{ border: `1px solid ${LINE}`, background: '#fff', color: INK, '--tw-ring-color': '#F3E7C3' }}
+                                />
+                                <button
+                                    onClick={agregarAviso}
+                                    disabled={savingAviso || !nuevoAviso.trim()}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-95 disabled:opacity-50"
+                                    style={{ background: '#D97706', color: '#fff' }}
+                                >
+                                    <Plus className="w-4 h-4" /> Agregar
+                                </button>
+                            </div>
+                            {avisosJefe.length === 0 && (
+                                <p className="text-xs mt-2" style={{ color: INK_3 }}>
+                                    Al agregar un aviso propio, los por defecto dejan de aparecer en el PDF.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </CalModal>
+            )}
+
             {/* ── Modals ─────────────────────────────────────────────────── */}
             {dayModal && (
                 <DayModal
@@ -1703,22 +2056,31 @@ export default function CalendarioEvaluaciones() {
                         {/* Curso dropdown */}
                         <div>
                             <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Curso</p>
-                            <select
+                            <div style={{ display: 'inline-flex' }}>
+                            <PillSelector
+                                label="curso"
                                 value={agendaExportCurso ?? ''}
-                                onChange={e => setAgendaExportCurso(e.target.value || null)}
-                                style={{
-                                    width: '100%', padding: '10px 14px', borderRadius: 10,
-                                    border: `1.5px solid ${LINE}`, background: '#fff',
-                                    fontSize: 13, fontWeight: 600, color: INK,
-                                    cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
-                                    appearance: 'auto',
-                                }}
+                                bg={PRIMARY}
+                                canPrev={canPrevAgendaCurso}
+                                canNext={canNextAgendaCurso}
+                                onPrev={() => canPrevAgendaCurso && setAgendaExportCurso(realCursos[agendaCursoIdx - 1])}
+                                onNext={() => canNextAgendaCurso && setAgendaExportCurso(realCursos[agendaCursoIdx + 1])}
+                                isOpen={agendaCursoDropdownOpen}
+                                onOpen={() => setAgendaCursoDropdownOpen(o => !o)}
+                                dropdownRef={agendaCursoDropdownRef}
                             >
-                                <option value="">Todos los cursos</option>
-                                {cursoOptions.filter(c => c !== null).map(c => (
-                                    <option key={c} value={c}>{c}</option>
+                                {realCursos.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => { setAgendaExportCurso(c); setAgendaCursoDropdownOpen(false); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50"
+                                        style={c === agendaExportCurso ? { background: PRIMARY, color: '#fff' } : { color: INK }}
+                                    >
+                                        {c}
+                                    </button>
                                 ))}
-                            </select>
+                            </PillSelector>
+                            </div>
                         </div>
 
                         {/* Semana */}
@@ -1777,6 +2139,100 @@ export default function CalendarioEvaluaciones() {
                             style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: PRIMARY, color: '#fff', opacity: exportingAgenda ? 0.7 : 1 }}>
                             {exportingAgenda ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
                             {exportingAgenda ? 'Exportando…' : 'Exportar PDF'}
+                        </button>
+                    </div>
+                </CalModal>
+            )}
+
+            {/* ── Modal: Exportar tabla de agenda (oficio horizontal) ── */}
+            {showTabularExportModal && (
+                <CalModal onClose={() => setShowTabularExportModal(false)} width={460}>
+                    {/* Head */}
+                    <div className="cal-modal-head" style={{ padding: '22px 24px 16px', display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: `1px solid ${LINE}`, flexShrink: 0 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#EEF0FF', color: '#3730A3', display: 'grid', placeItems: 'center' }}>
+                            <Table2 className="w-5 h-5" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h2 className="font-headline" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, color: INK }}>Exportar tabla de agenda</h2>
+                            <p style={{ fontSize: 13, color: INK_2, marginTop: 3 }}>Hoja oficio horizontal — datos auto-completados</p>
+                        </div>
+                        <button onClick={() => setShowTabularExportModal(false)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                            style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', color: INK_2, flexShrink: 0 }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="cal-modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                        {/* Curso */}
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Curso</p>
+                            <div style={{ display: 'inline-flex' }}>
+                                <PillSelector
+                                    label="curso"
+                                    value={agendaExportCurso ?? ''}
+                                    bg={PRIMARY}
+                                    canPrev={canPrevAgendaCurso}
+                                    canNext={canNextAgendaCurso}
+                                    onPrev={() => canPrevAgendaCurso && setAgendaExportCurso(realCursos[agendaCursoIdx - 1])}
+                                    onNext={() => canNextAgendaCurso && setAgendaExportCurso(realCursos[agendaCursoIdx + 1])}
+                                    isOpen={agendaCursoDropdownOpen}
+                                    onOpen={() => setAgendaCursoDropdownOpen(o => !o)}
+                                    dropdownRef={agendaCursoDropdownRef}
+                                >
+                                    {realCursos.map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => { setAgendaExportCurso(c); setAgendaCursoDropdownOpen(false); }}
+                                            className="w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-slate-50"
+                                            style={c === agendaExportCurso ? { background: PRIMARY, color: '#fff' } : { color: INK }}
+                                        >
+                                            {c}
+                                        </button>
+                                    ))}
+                                </PillSelector>
+                            </div>
+                        </div>
+
+                        {/* Semana */}
+                        <div>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: INK_3, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 7 }}>Semana</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button onClick={() => goAgendaExportWeek(-1)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                                    style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', color: PRIMARY, flexShrink: 0, border: `1px solid ${LINE}`, background: '#fff' }}>
+                                    <ChevronLeft size={15} />
+                                </button>
+                                <div style={{ flex: 1, textAlign: 'center', padding: '6px 0' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{agendaExportWeekLabel}</div>
+                                    <div style={{ fontSize: 11, color: INK_3, marginTop: 2 }}>{agendaExportWeekOfMonth}</div>
+                                </div>
+                                <button onClick={() => goAgendaExportWeek(1)} className="transition-colors hover:bg-slate-100 rounded-lg"
+                                    style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', color: PRIMARY, flexShrink: 0, border: `1px solid ${LINE}`, background: '#fff' }}>
+                                    <ChevronRight size={15} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Nota informativa */}
+                        <div style={{ padding: '10px 14px', borderRadius: 10, background: '#EEF0FF', border: '1px solid rgba(55,48,163,0.15)' }}>
+                            <p style={{ fontSize: 12, color: '#3730A3', margin: 0, lineHeight: 1.5 }}>
+                                El PDF se genera automáticamente con el horario oficial, los profesores del curso, las evaluaciones de la semana y los materiales registrados en agenda.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Foot */}
+                    <div className="cal-modal-foot" style={{ padding: '14px 24px', borderTop: `1px solid ${LINE}`, background: '#FAF6EE', display: 'flex', gap: 10, flexShrink: 0 }}>
+                        <button onClick={() => setShowTabularExportModal(false)} className="transition-colors hover:bg-slate-100 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 600, color: INK_2 }}>
+                            Cancelar
+                        </button>
+                        <button onClick={handleTabularExportPDF} disabled={exportingTabular}
+                            className="flex items-center justify-center gap-2 transition-all hover:brightness-95 rounded-xl"
+                            style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: '#3730A3', color: '#fff', opacity: exportingTabular ? 0.7 : 1 }}>
+                            {exportingTabular ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />}
+                            {exportingTabular ? 'Generando…' : 'Exportar PDF oficio'}
                         </button>
                     </div>
                 </CalModal>

@@ -564,14 +564,12 @@ export function AgendaSemanalModal({ user, onClose }) {
 
     return (
         <>
-        <div onClick={onClose} style={{
+        <div onClick={onClose} className="cal-modal-overlay" style={{
             position:'fixed', inset:0, zIndex:200,
             background:'rgba(28,18,50,0.45)',
             backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            padding:24,
         }}>
-            <div onClick={e => e.stopPropagation()} style={{
+            <div onClick={e => e.stopPropagation()} className="cal-modal-inner eval-modal-inner" style={{
                 width:960, maxWidth:'calc(100vw - 48px)',
                 maxHeight:'calc(100vh - 48px)',
                 background:'#FFFFFF',
@@ -584,7 +582,7 @@ export function AgendaSemanalModal({ user, onClose }) {
             }}>
 
                 {/* ── Sidebar ── */}
-                <div style={{
+                <div className="eval-modal-sidebar" style={{
                     position:'relative',
                     background:'linear-gradient(160deg, #7B5BE0 0%, #EC5BA1 100%)',
                     color:'white', padding:'24px 20px',
@@ -697,14 +695,14 @@ export function AgendaSemanalModal({ user, onClose }) {
                 <div style={{ display:'flex', flexDirection:'column', minHeight:0 }}>
 
                     {/* Top bar */}
-                    <div style={{
+                    <div className="agenda-modal-topbar" style={{
                         padding:'14px 20px',
                         display:'flex', alignItems:'center', justifyContent:'space-between',
                         borderBottom:'1px solid rgba(20,10,40,0.06)',
                         flexShrink:0, gap:8,
                     }}>
                         {/* Course dropdown */}
-                        <div style={{ flex:1, minWidth:0 }}>
+                        <div className="agenda-modal-course-select" style={{ flex:1, minWidth:0 }}>
                             {teacherCourses.length > 0 ? (
                                 <CustomSelect
                                     value={selectedCourse || ''}
@@ -723,7 +721,7 @@ export function AgendaSemanalModal({ user, onClose }) {
                         </div>
 
                         {/* Week nav */}
-                        <div style={{
+                        <div className="agenda-modal-week-nav" style={{
                             display:'flex', alignItems:'center', gap:2,
                             background:'rgba(0,0,0,0.04)', borderRadius:10,
                             padding:'4px', flexShrink:0,
@@ -810,7 +808,7 @@ export function AgendaSemanalModal({ user, onClose }) {
                             )}
 
                             {/* Indicador de auto-guardado */}
-                            <div style={{
+                            <div className="agenda-modal-save-indicator" style={{
                                 display:'flex', alignItems:'center', gap:5,
                                 padding:'6px 12px', borderRadius:10,
                                 background: saveStatus === 'saved' ? 'rgba(34,197,94,0.1)' : saveStatus === 'saving' ? 'rgba(123,91,224,0.08)' : 'transparent',
@@ -899,6 +897,7 @@ export function AgendaSemanalModal({ user, onClose }) {
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0, scale: 0.98 }}
                                             transition={{ duration: 0.16, ease: 'easeOut' }}
+                                            className="agenda-modal-days-grid"
                                             style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}
                                         >
                                             {DIAS.map(dia => {
@@ -941,25 +940,28 @@ export function AgendaSemanalModal({ user, onClose }) {
         {showExportModal && (
             <div
                 onClick={() => setShowExportModal(false)}
+                className="cal-modal-overlay"
                 style={{
                     position:'fixed', inset:0, zIndex:300,
                     background:'rgba(28,18,50,0.55)',
                     backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    padding:24,
+                    animation:'calFadeIn .2s ease-out',
                 }}
             >
                 <div
                     onClick={e => e.stopPropagation()}
+                    className="cal-modal-inner"
                     style={{
-                        width:380, maxWidth:'calc(100vw - 48px)',
+                        width:380, maxWidth:'100%',
                         background:'#fff',
                         borderRadius:20,
                         boxShadow:'0 24px 60px -16px rgba(40,20,80,0.4)',
                         overflow:'hidden',
                         border:'1px solid rgba(123,91,224,0.12)',
+                        display:'flex', flexDirection:'column',
                     }}
                 >
+                    <div className="cal-modal-pull" aria-hidden />
                     {/* Banda superior degradado */}
                     <div style={{ height:5, background:'linear-gradient(90deg, #7B5BE0, #EC5BA1)' }} />
 

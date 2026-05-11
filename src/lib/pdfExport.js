@@ -8,6 +8,60 @@ import { db } from './firebase';
 // Cache para el lookup de OAs de Firestore (colección curriculum)
 let _oaLookupCache = null;
 
+/**
+ * Renderiza una línea de texto coloreando las URLs/emails en azul y añadiendo
+ * anotaciones de link clickeables. Se llama recursivamente para múltiples links.
+ */
+function _renderLineWithLinks(doc, line, x, y, normalColor, lineH) {
+    const LINK_COLOR = [37, 99, 235]; // blue-600
+    const matchers = [
+        { re: /https?:\/\/[^\s)]+/,                                       mkHref: m => m },
+        { re: /www\.[^\s)]+/,                                              mkHref: m => `https://${m}` },
+        { re: /[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}/,                            mkHref: m => `mailto:${m}` },
+        { re: /[a-zA-Z0-9](?:[a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}(?:\/\S*)?/,  mkHref: m => `https://${m}` },
+    ];
+
+    // Encontrar el primer match entre todos los patrones
+    let best = null;
+    for (const { re, mkHref } of matchers) {
+        const m = line.match(re);
+        if (m && (best === null || m.index < best.index)) {
+            best = { index: m.index, text: m[0], href: mkHref(m[0]) };
+        }
+    }
+
+    if (!best) {
+        doc.setTextColor(...normalColor);
+        doc.text(line, x, y);
+        return;
+    }
+
+    let curX = x;
+    if (best.index > 0) {
+        const before = line.slice(0, best.index);
+        doc.setTextColor(...normalColor);
+        doc.text(before, curX, y);
+        curX += doc.getTextWidth(before);
+    }
+    doc.setTextColor(...LINK_COLOR);
+    doc.text(best.text, curX, y);
+    doc.link(curX, y - lineH * 0.78, doc.getTextWidth(best.text), lineH, { url: best.href });
+    curX += doc.getTextWidth(best.text);
+
+    const after = line.slice(best.index + best.text.length);
+    if (after) _renderLineWithLinks(doc, after, curX, y, normalColor, lineH);
+}
+
+// Avisos institucionales por defecto — aparecen en el pie del PDF de agenda tabular
+// cuando el profesor jefe no ha definido avisos personalizados
+export const AVISOS_DEFAULT = [
+    'Los estudiantes en su totalidad deberán asistir con buzo de colegio o en su defecto con buzo azul.',
+    'Supervisar estuche completo: lápiz grafito, goma, lápices de colores, tijera, pegamento, regla, sacapuntas.',
+    'Minuta JUNAEB: minutaspublicas.junaeb.cl',
+    'Justificar inasistencias a la Srta. Yasna Manzo (ymanzos@eyr.cl) con copia al profesor jefe.',
+    'Saludos cordiales, Equipo de aula.',
+];
+
 async function fetchOALookup() {
     if (_oaLookupCache) return _oaLookupCache;
     const snap = await getDocs(collection(db, 'curriculum'));
@@ -3445,5 +3499,528 @@ export async function exportAgendaMensualCardPDF({ agendaDocs, selectedCurso, me
     const cursoLabel = (selectedCurso || 'todos').replace(/[^\w]/g, '');
     const mesSlug    = (mesLabel || '').replace(/\s+/g, '_');
     doc.save(`AgendaSemanal_${cursoLabel}_${mesSlug}.pdf`);
+    return true;
+}
+
+// ─── exportAgendaTabularPDF ────────────────────────────────────────────────────
+/**
+ * Exporta la agenda semanal como grilla de tarjetas por día.
+ * Diseño basado en "Agenda Semanal.html": paleta pastel por día, bloques de
+ * asignatura con swatch de color, tarjeta oscura de evaluación, sección de
+ * avisos en ámbar y footer minimalista.
+ *
+ * @param {object}   params
+ * @param {string}   params.weekStart          ISO "YYYY-MM-DD" del lunes
+ * @param {string}   [params.selectedCurso]    Ej. "4° A Básico"
+ * @param {string[]} [params.profesores]        Hasta 2 nombres de profesores
+ * @param {string}   [params.asistente]         Nombre del asistente de aula
+ * @param {object}   [params.scheduleByDay]     { lunes:[{subject,startTime}], ... }
+ * @param {object[]} [params.entries]           [{dia, asignatura, texto}, ...]
+ * @param {object[]} [params.evaluaciones]      [{date, name|nombre, asignatura}, ...]
+ * @param {object}   [params.materialesByDay]   { lunes:'texto...', ... }
+ * @param {object}   [params.salidaByDay]       { lunes:'15:00', ... }
+ * @param {object}   [params.holidays]          { 'YYYY-MM-DD': 'nombre feriado' }
+ * @param {string[]} [params.avisosExtra]        Avisos del profesor jefe; reemplazan los institucionales
+ */
+export async function exportAgendaTabularPDF({
+    weekStart,
+    selectedCurso,
+    profesores        = [],
+    asistente         = '',
+    scheduleByDay     = {},
+    entries           = [],
+    evaluaciones      = [],
+    materialesByDay   = {},
+    salidaByDay       = {},
+    holidays          = {},
+    avisosExtra       = [],
+}) {
+    const logoDataUrl = await loadImageAsDataUrl(logoEyrUrl);
+
+    // Oficio landscape → 330.2 mm ancho × 215.9 mm alto
+    const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [215.9, 330.2] });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const mL    = 12;
+    const mR    = 12;
+    const cW    = pageW - mL - mR;
+
+    // ── Paleta (de "Agenda Semanal.html") ────────────────────────────────────
+    const C_INK       = [29,  31,  36];
+    const C_INK_SOFT  = [75,  79,  88];
+    const C_INK_MUTED = [122, 127, 138];
+    const C_LINE      = [232, 228, 220];
+    const C_LINE_STR  = [216, 211, 200];
+    const C_BG_LBL    = [251, 249, 244]; // fondo columna etiquetas
+
+    // Color pastel por día: { bg, bdr, txt }
+    const DAY_CLR = {
+        lunes:     { bg: [238,244,255], bdr: [201,216,255], txt: [ 37, 64,184] },
+        martes:    { bg: [255,241,238], bdr: [255,209,197], txt: [193, 74, 44] },
+        miercoles: { bg: [236,248,239], bdr: [188,230,196], txt: [ 25,109, 60] },
+        jueves:    { bg: [253,242,255], bdr: [236,201,243], txt: [111, 34,137] },
+        viernes:   { bg: [255,248,230], bdr: [255,228,154], txt: [148,100,  0] },
+    };
+
+    // Color de swatch por asignatura (de las variables CSS del HTML)
+    const ASIG_CLR_TAB = {
+        LE: [79,107,255], MA: [255,122, 89], IN: [ 20,184,166],
+        HI: [168, 73,196], CN: [ 46,160, 90], EF: [239, 68, 68],
+        MU: [245,158, 11], TE: [ 99,102,241], AV: [236, 72,153],
+        OR: [ 14,165,233], MUAV: [168, 73,196],
+        TLE: [79,107,255], TMA: [255,122,89], TCN: [46,160,90],
+    };
+
+    // ── Grid layout ───────────────────────────────────────────────────────────
+    const GAP   = 2.2;                         // espacio entre celdas (mm)
+    const LBCW  = 27;                          // ancho columna etiqueta
+    const DCOL  = (cW - LBCW - 5 * GAP) / 5;  // ~53 mm por columna día
+    const CR    = 2.5;                          // radio esquinas redondeadas
+
+    // Posición X de cada columna (0 = etiqueta, 1–5 = días)
+    const colX = idx => idx === 0 ? mL : mL + LBCW + GAP + (idx - 1) * (DCOL + GAP);
+
+    // ── Preparar datos ────────────────────────────────────────────────────────
+    const dayInfo   = _agendaWeekInfo(weekStart, holidays);
+    const weekLabel = _agendaWeekLabel(weekStart);
+
+    const evalsByIso = {};
+    (evaluaciones || []).forEach(ev => {
+        if (!ev.date) return;
+        if (!evalsByIso[ev.date]) evalsByIso[ev.date] = [];
+        evalsByIso[ev.date].push(ev);
+    });
+    const byDia = {};
+    (entries || []).forEach(e => {
+        if (!byDia[e.dia]) byDia[e.dia] = [];
+        byDia[e.dia].push(e);
+    });
+
+    // Bloques de asignatura fusionados por día
+    const subjByDay = {};
+    DIAS_ORDER_AGENDA.forEach(dia => {
+        const info = dayInfo[dia];
+        if (info.holiday) { subjByDay[dia] = []; return; }
+        const raw = (scheduleByDay[dia] || []).filter(b => !SCHEDULE_EXCLUDE_PDF.has(b.subject));
+        if (!raw.length) {
+            const codes = [...new Set((byDia[dia] || []).map(e => e.asignatura))];
+            subjByDay[dia] = codes.map(c => ({ code: c, name: ASIG_FULL_PDF[c] || c, start: '' }));
+            return;
+        }
+        const merged = [];
+        raw.forEach(b => {
+            const code = SCHEDULE_SUBJECT_TO_ASIG[b.subject] || b.subject;
+            const name = ASIG_FULL_PDF[code] || code;
+            const endT = BLOCK_END_PDF[b.startTime];
+            const last = merged[merged.length - 1];
+            if (last && last.code === code && last._end === b.startTime) {
+                last._end = endT || b.startTime;
+            } else {
+                merged.push({ code, name, start: b.startTime, _end: endT || b.startTime });
+            }
+        });
+        subjByDay[dia] = merged;
+    });
+
+    // Auto-calcular hora de salida
+    const salidaFinal = { ...salidaByDay };
+    DIAS_ORDER_AGENDA.forEach(dia => {
+        if (!salidaFinal[dia]) {
+            const bks = (scheduleByDay[dia] || []).filter(b => b.startTime && BLOCK_END_PDF[b.startTime]);
+            if (bks.length) salidaFinal[dia] = BLOCK_END_PDF[bks[bks.length - 1].startTime];
+        }
+    });
+
+    // ── Alturas de fila ───────────────────────────────────────────────────────
+    const SBH    = 7.5;
+    const LH_NT  = 4.3;  // mm por línea a 8.5–9pt en notas/eval
+    const maxS   = Math.max(...DIAS_ORDER_AGENDA.map(d => (subjByDay[d] || []).length), 2);
+    const H_AS   = Math.min(Math.max(maxS * SBH + 9, 22), 54);
+    const H_DH   = 14;
+    const H_MT   = 22;
+    const H_SL   = 11;
+
+    // H_NT: calculado dinámicamente midiendo el contenido real de cada día
+    let maxNotasH = 22;
+    DIAS_ORDER_AGENDA.forEach(dia => {
+        const info  = dayInfo[dia];
+        const evals = evalsByIso[info.iso] || [];
+        const notas = byDia[dia] || [];
+        if (!evals.length && !notas.length) return;
+        let h = 3; // padding superior
+        // Notas (máx 2, máx 2 líneas c/u)
+        notas.slice(0, 2).forEach(nota => {
+            const lbl = ASIG_FULL_PDF[nota.asignatura] || nota.asignatura || '';
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+            const ls = doc.splitTextToSize(`${lbl}: ${nota.texto || ''}`, DCOL - 8);
+            h += ls.slice(0, 2).length * 4.3 + 2;
+        });
+        // Tarjeta evaluación
+        if (evals.length > 0) {
+            const ev = evals[0];
+            const evLabel = (ASIG_FULL_PDF[ev.asignatura] || ev.asignatura || '') +
+                ((ev.name || ev.nombre) ? ': ' + (ev.name || ev.nombre) : '');
+            doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+            const evLines = doc.splitTextToSize(evLabel || '—', DCOL - 10);
+            h += (notas.length > 0 ? 2 : 0) + 5.5 + evLines.length * LH_NT + 2;
+        }
+        maxNotasH = Math.max(maxNotasH, h + 2); // +2 padding inferior
+    });
+    const H_NT = Math.min(maxNotasH, 42); // cap para no salir de página
+
+    // ── Helpers de dibujo ─────────────────────────────────────────────────────
+
+    // Fondo de celda día (color pastel + borde)
+    const cellBg = (cx, cy, w, h, dc) => {
+        doc.setFillColor(...dc.bg);
+        doc.setDrawColor(...dc.bdr);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(cx, cy, w, h, CR, CR, 'FD');
+    };
+
+    // Celda de etiqueta (columna izquierda)
+    const labelCell = (cy, h, emoji, label, hint) => {
+        doc.setFillColor(...C_BG_LBL);
+        doc.setDrawColor(...C_LINE);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(mL, cy, LBCW, h, CR, CR, 'FD');
+
+        const cx2 = mL + LBCW / 2;
+
+        if (h >= 22) {
+            // Caja con icono centrada en la parte superior
+            const isz = 7;
+            const ix  = mL + (LBCW - isz) / 2;
+            const iy  = cy + 3;
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(...C_LINE);
+            doc.roundedRect(ix, iy, isz, isz, 1.5, 1.5, 'FD');
+            _emojiAt(doc, emoji, ix + 0.5, iy + 0.5, isz - 1);
+
+            doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+            const lbls = doc.splitTextToSize(label, LBCW - 4);
+            const lblY = iy + isz + 4;
+            doc.text(lbls, cx2, lblY, { align: 'center', lineHeightFactor: 1.3 });
+
+            if (hint) {
+                const hintY = lblY + lbls.length * 3.5 + 1.5;
+                if (hintY + 4 < cy + h) {
+                    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_MUTED);
+                    doc.text(hint, cx2, hintY, { align: 'center', maxWidth: LBCW - 4 });
+                }
+            }
+        } else {
+            // Celda pequeña: solo texto centrado
+            doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+            const lbls = doc.splitTextToSize(label, LBCW - 4);
+            const midY = cy + h / 2 - (lbls.length - 1) * 1.75;
+            doc.text(lbls, cx2, midY, { align: 'center', lineHeightFactor: 1.3 });
+        }
+    };
+
+    // ── ENCABEZADO (1 fila · 3 columnas) ─────────────────────────────────────
+    let y = 8;
+    const HDR_H = 18;
+
+    // Col 1 — Logo + nombre establecimiento
+    doc.addImage(logoDataUrl, 'JPEG', mL + 1, y + 2, 13, 13, undefined, 'FAST');
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_MUTED);
+    doc.text('CENTRO EDUCACIONAL', mL + 17, y + 6);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+    doc.text('Ernesto Yáñez Rivera', mL + 17, y + 13);
+
+    // Col 3 — Píldora de semana (derecha)
+    const wpW = 108, wpH = 13, wpX = pageW - mR - wpW, wpY = y + 2.5;
+    doc.setFillColor(245, 243, 238);
+    doc.setDrawColor(...C_LINE);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(wpX, wpY, wpW, wpH, 6, 6, 'FD');
+    doc.setFillColor(46, 160, 90);
+    doc.circle(wpX + 8, wpY + 6.5, 2, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_SOFT);
+    const pillLbl = 'Semana en curso · ';
+    doc.text(pillLbl, wpX + 13, wpY + 8.2);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+    doc.text(weekLabel, wpX + 13 + doc.getTextWidth(pillLbl), wpY + 8.2, { maxWidth: wpW - 14 - doc.getTextWidth(pillLbl) });
+
+    // Col 2 — Título centrado entre col 1 y col 3
+    const c2X = mL + 72;
+    const c2W = wpX - c2X - 4;
+    const c2MidX = c2X + c2W / 2;
+    doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+    doc.text(`Agenda Semanal${selectedCurso ? ' · ' + selectedCurso : ''}`, c2MidX, y + 8, { align: 'center' });
+
+    const profLine = [profesores.filter(Boolean).join(' / '), asistente].filter(Boolean).join('  |  ');
+    if (profLine) {
+        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_MUTED);
+        doc.text(profLine, c2MidX, y + 14, { align: 'center', maxWidth: c2W });
+    }
+
+    y += HDR_H;
+
+    // Separador punteado
+    doc.setDrawColor(...C_LINE_STR);
+    doc.setLineWidth(0.3);
+    doc.setLineDashPattern([1.5, 1.5], 0);
+    doc.line(mL + 1, y, pageW - mR - 1, y);
+    doc.setLineDashPattern([], 0);
+    y += 5;
+
+    // ── FILA 0: Cabeceras de día ──────────────────────────────────────────────
+    DIAS_ORDER_AGENDA.forEach((dia, i) => {
+        const info = dayInfo[dia];
+        const dc   = DAY_CLR[dia];
+        const cx   = colX(i + 1);
+        const [, mm, dd] = info.iso.split('-');
+        const dayNum     = Number(dd);
+
+        doc.setFillColor(...dc.bg);
+        doc.setDrawColor(...dc.bdr);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(cx, y, DCOL, H_DH, CR, CR, 'FD');
+
+        // Nombre del día
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dc.txt);
+        doc.text(DAY_NAME_AGENDA[dia].toUpperCase(), cx + 4, y + 6.5);
+
+        // Fecha
+        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...dc.txt);
+        doc.text(`${dayNum} de ${MESES_ES_AGENDA[Number(mm) - 1]}`, cx + 4, y + 11.5);
+
+        // Badge número de día (esquina superior derecha)
+        const numStr = String(dayNum);
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+        const tw  = doc.getTextWidth(numStr);
+        const bW  = tw + 5;
+        const bX  = cx + DCOL - bW - 2;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(bX, y + 2, bW, 5, 1.5, 1.5, 'F');
+        doc.setTextColor(...dc.txt);
+        doc.text(numStr, bX + bW / 2, y + 5.8, { align: 'center' });
+    });
+
+    y += H_DH + GAP;
+
+    // ── FILA 1: Asignaturas ───────────────────────────────────────────────────
+    labelCell(y, H_AS, '📘', 'Asignaturas', 'Bloques del día');
+
+    DIAS_ORDER_AGENDA.forEach((dia, i) => {
+        const info = dayInfo[dia];
+        const dc   = DAY_CLR[dia];
+        const cx   = colX(i + 1);
+        const blks = subjByDay[dia] || [];
+
+        cellBg(cx, y, DCOL, H_AS, dc);
+
+        if (info.holiday) {
+            doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(...C_INK_MUTED);
+            doc.text(`Feriado: ${info.holiday}`, cx + 4, y + H_AS / 2, { maxWidth: DCOL - 8 });
+        } else {
+            let sy = y + 3;
+            blks.forEach(blk => {
+                if (sy + SBH > y + H_AS - 1) return; // recortar
+                const clr = ASIG_CLR_TAB[blk.code] || [100, 100, 120];
+
+                // Fondo bloque
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(...C_LINE);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(cx + 2.5, sy, DCOL - 5, SBH - 1, 1.5, 1.5, 'FD');
+
+                // Swatch de color (barra izquierda)
+                doc.setFillColor(...clr);
+                doc.roundedRect(cx + 2.5, sy, 2.2, SBH - 1, 1, 1, 'F');
+
+                // Badge de hora
+                let tX = cx + 7;
+                if (blk.start) {
+                    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK_SOFT);
+                    const timeTW = doc.getTextWidth(blk.start);
+                    doc.setFillColor(245, 243, 238);
+                    doc.roundedRect(cx + 6, sy + 1.4, timeTW + 4, 4.5, 1, 1, 'F');
+                    doc.text(blk.start, cx + 8, sy + 4.8);
+                    tX = cx + 8 + timeTW + 3;
+                }
+
+                // Nombre asignatura
+                doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
+                doc.text(blk.name, tX, sy + 5, { maxWidth: DCOL - (tX - cx) - 3 });
+
+                sy += SBH;
+            });
+        }
+    });
+
+    y += H_AS + GAP;
+
+    // ── FILA 2: Materiales base (solo si hay al menos un día con materiales) ───
+    const hasMateriales = DIAS_ORDER_AGENDA.some(d => ((materialesByDay || {})[d] || '').trim());
+    if (hasMateriales) {
+        labelCell(y, H_MT, '🎒', 'Materiales base', 'Lo que deben traer');
+
+        DIAS_ORDER_AGENDA.forEach((dia, i) => {
+            const dc  = DAY_CLR[dia];
+            const cx  = colX(i + 1);
+            const txt = (materialesByDay || {})[dia] || '';
+
+            cellBg(cx, y, DCOL, H_MT, dc);
+
+            const txtTrimmed = (txt || '').trim();
+            if (txtTrimmed) {
+                doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_SOFT);
+                const ls = doc.splitTextToSize(txtTrimmed, DCOL - 8);
+                if (ls.length > 0) doc.text(ls.slice(0, 5), cx + 4, y + 5, { lineHeightFactor: 1.4 });
+            }
+        });
+
+        y += H_MT + GAP;
+    }
+
+    // ── FILA 3: Notas y evaluaciones ──────────────────────────────────────────
+    labelCell(y, H_NT, '📝', 'Notas y evaluaciones', 'Pruebas y avisos');
+
+    DIAS_ORDER_AGENDA.forEach((dia, i) => {
+        const info  = dayInfo[dia];
+        const dc    = DAY_CLR[dia];
+        const cx    = colX(i + 1);
+        const evals = evalsByIso[info.iso] || [];
+        const notas = byDia[dia] || [];
+
+        cellBg(cx, y, DCOL, H_NT, dc);
+
+        if (!evals.length && !notas.length) {
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...C_INK_MUTED);
+            doc.text('Sin novedades.', cx + 4, y + H_NT / 2 + 2);
+        } else {
+            let ny = y + 3;
+
+            // Notas de agenda (máx 2)
+            notas.slice(0, 2).forEach(nota => {
+                if (ny + 4.3 > y + H_NT - 1) return;
+                const lbl = ASIG_FULL_PDF[nota.asignatura] || nota.asignatura || '';
+                const texto = (nota.texto || '').trim();
+                doc.setFontSize(8.5); doc.setTextColor(...C_INK_SOFT);
+
+                // Label en negrita + texto normal en la misma línea
+                doc.setFont('helvetica', 'bold');
+                const lblStr = lbl ? lbl + ': ' : '';
+                const lblW   = doc.getTextWidth(lblStr);
+                if (lblStr) doc.text(lblStr, cx + 4, ny + 4.3);
+
+                doc.setFont('helvetica', 'normal');
+                const firstLineParts = doc.splitTextToSize(texto, DCOL - 8 - lblW);
+                let lineCount = 0;
+                if (firstLineParts[0]) {
+                    doc.text(firstLineParts[0], cx + 4 + lblW, ny + 4.3);
+                    lineCount = 1;
+                    if (firstLineParts.length > 1) {
+                        const rest = doc.splitTextToSize(firstLineParts.slice(1).join(' '), DCOL - 8);
+                        if (rest[0]) {
+                            doc.text(rest[0], cx + 4, ny + 4.3 + 4.3);
+                            lineCount = 2;
+                        }
+                    }
+                } else if (lblStr) {
+                    lineCount = 1;
+                }
+                if (lineCount > 0) ny += lineCount * 4.3 + 2;
+            });
+
+            // Tarjeta de evaluación — alto dinámico, siempre debajo de las notas
+            evals.slice(0, 1).forEach(ev => {
+                const evLabel = (ASIG_FULL_PDF[ev.asignatura] || ev.asignatura || '') +
+                    ((ev.name || ev.nombre) ? ': ' + (ev.name || ev.nombre) : '');
+
+                doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+                const evLines = doc.splitTextToSize(evLabel || '—', DCOL - 10);
+                const EH     = 5.5 + evLines.length * LH_NT + 2;
+
+                // cardY siempre DESPUÉS de las notas — sin reposicionamiento
+                const cardY = ny + (notas.length > 0 ? 2 : 0);
+
+                doc.setFillColor(26, 29, 36);
+                doc.roundedRect(cx + 2.5, cardY, DCOL - 5, EH, 2, 2, 'F');
+
+                doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(140, 155, 190);
+                doc.text('EVALUACION', cx + 5, cardY + 4.2);
+
+                doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+                doc.text(evLines, cx + 5, cardY + 5.5 + LH_NT, { lineHeightFactor: 1.35 });
+            });
+        }
+    });
+
+    y += H_NT + GAP;
+
+    // ── FILA 4: Hora de salida ────────────────────────────────────────────────
+    labelCell(y, H_SL, '🏁', 'Hora de salida', '');
+
+    DIAS_ORDER_AGENDA.forEach((dia, i) => {
+        const dc   = DAY_CLR[dia];
+        const cx   = colX(i + 1);
+        const hora = salidaFinal[dia] || '';
+
+        cellBg(cx, y, DCOL, H_SL, dc);
+
+        if (hora) {
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dc.txt);
+            doc.text(hora, cx + DCOL / 2, y + H_SL / 2 + 3.5, { align: 'center' });
+        } else {
+            doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_MUTED);
+            doc.text('–', cx + DCOL / 2, y + H_SL / 2 + 2, { align: 'center' });
+        }
+    });
+
+    y += H_SL + 5;
+
+    // ── AVISOS ────────────────────────────────────────────────────────────────
+    const avisos = avisosExtra.length > 0 ? avisosExtra : AVISOS_DEFAULT;
+
+    const AVLH   = 5.2;  // line-height avisos
+    const avPad  = 5;
+    const colW2  = (cW - avPad * 2 - 10) / 2; // ancho de cada columna de avisos
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    const avisosWrap = avisos.map(a => doc.splitTextToSize(`• ${a}`, colW2));
+    let lH2 = 0, rH2 = 0;
+    avisosWrap.forEach((ls, idx) => {
+        const h = ls.length * AVLH + 1.5;
+        if (idx % 2 === 0) lH2 += h; else rH2 += h;
+    });
+    const totalAH = 13 + Math.max(lH2, rH2) + avPad;
+
+    if (y + totalAH > pageH - 8) { doc.addPage(); y = 14; }
+
+    // Fondo ámbar (similar a .avisos del HTML)
+    doc.setFillColor(255, 250, 240);
+    doc.setDrawColor(245, 227, 184);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(mL, y, cW, totalAH, CR, CR, 'FD');
+
+    // Badge "!" estilo pin
+    doc.setFillColor(229, 163, 0);
+    doc.roundedRect(mL + 4, y + 3.5, 7, 7, 1.5, 1.5, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+    doc.text('!', mL + 7.5, y + 9.2, { align: 'center' });
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 100, 0);
+    doc.text('AVISOS IMPORTANTES', mL + 15, y + 9);
+
+    // Dos columnas de avisos
+    let lyY = y + 15, ryY = y + 15;
+    const LINE_H_MM = 9 * 0.352778 * 1.35; // spacing real entre líneas en mm (~4.29)
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    avisosWrap.forEach((ls, idx) => {
+        const xStart = idx % 2 === 0 ? mL + avPad + 4 : mL + avPad + 4 + colW2 + 6;
+        const curY   = idx % 2 === 0 ? lyY : ryY;
+        ls.forEach((line, li) => {
+            _renderLineWithLinks(doc, line, xStart, curY + li * LINE_H_MM, C_INK_SOFT, LINE_H_MM);
+        });
+        const rowH   = ls.length * AVLH + 1.5;
+        if (idx % 2 === 0) lyY += rowH; else ryY += rowH;
+    });
+
+    const cursoSlug = (selectedCurso || 'agenda').replace(/[^\w]/g, '');
+    doc.save(`AgendaTabular_${cursoSlug}_${weekStart}.pdf`);
     return true;
 }

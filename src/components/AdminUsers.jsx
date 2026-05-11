@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 import { MODULE_REGISTRY } from '../data/moduleRegistry';
 import { resolvePermissions } from '../lib/permissionResolver';
-import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake, Tag, Users } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, GraduationCap, X, Sparkles, Edit, Search, ChevronLeft, ChevronRight, IdCard, UserPlus, Pencil, ShieldCheck, Briefcase, AlertTriangle, BookOpen, Eye, EyeOff, Shuffle, Heart, ChevronDown, RotateCcw, KeyRound, Copy, Check, Loader2, Dices, ShieldAlert, HeartHandshake, Tag, Users, Award, UserCheck, Stethoscope } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ModalContainer from './ModalContainer';
@@ -23,7 +23,7 @@ export default function AdminUsers() {
     const [isEditAttributesOpen, setIsEditAttributesOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
-    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
+    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher', accessLevel: 'view', headTeacherOf: '' });
     const [attributesData, setAttributesData] = useState({ id: null, headTeacherOf: '', subjects: '' });
     const [editingUserId, setEditingUserId] = useState(null);
     const [permOverrides, setPermOverrides] = useState({});
@@ -127,7 +127,7 @@ export default function AdminUsers() {
 
     const openCreateModal = () => {
         setEditingUserId(null);
-        setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
+        setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view', headTeacherOf: '' });
         setPermOverrides({});
         setShowPermissions(false);
         setIsModalOpen(true);
@@ -139,7 +139,8 @@ export default function AdminUsers() {
             name: userToEdit.name,
             email: userToEdit.email,
             role: userToEdit.role,
-            accessLevel: userToEdit.accessLevel || 'view'
+            accessLevel: userToEdit.accessLevel || 'view',
+            headTeacherOf: userToEdit.headTeacherOf || ''
         });
         setPermOverrides(userToEdit.permissionOverrides || {});
         setShowPermissions(false);
@@ -179,7 +180,7 @@ export default function AdminUsers() {
 
             setIsModalOpen(false);
             setEditingUserId(null);
-            setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
+            setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view', headTeacherOf: '' });
             setPermOverrides({});
             setTimeout(() => setNotification(null), 3000);
         } catch (error) {
@@ -341,6 +342,9 @@ export default function AdminUsers() {
         { value: ROLES.INSPECTOR, label: 'Inspectoría', icon: Eye, color: 'orange' },
         { value: ROLES.CONVIVENCIA_HEAD, label: 'Jefe Conv.', icon: ShieldAlert, color: 'fuchsia' },
         { value: ROLES.CONVIVENCIA, label: 'Convivencia', icon: Heart, color: 'rose' },
+        { value: ROLES.PROFESOR_JEFE, label: 'Prof. Jefe', icon: Award, color: 'violet' },
+        { value: ROLES.ASISTENTE_AULA, label: 'Asist. Aula', icon: UserCheck, color: 'emerald' },
+        { value: ROLES.PIE_HEAD, label: 'Jefa PIE', icon: Stethoscope, color: 'sky' },
         { value: ROLES.PIE, label: 'PIE', icon: HeartHandshake, color: 'cyan' },
     ];
 
@@ -451,6 +455,9 @@ export default function AdminUsers() {
                         orange: 'bg-orange-100 text-orange-700 border-orange-200',
                         fuchsia: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
                         rose: 'bg-rose-100 text-rose-700 border-rose-200',
+                        violet: 'bg-violet-100 text-violet-700 border-violet-200',
+                        emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                        sky: 'bg-sky-100 text-sky-700 border-sky-200',
                         cyan: 'bg-cyan-100 text-cyan-700 border-cyan-200',
                     };
                     const activeClass = rf.value === 'all'
@@ -625,6 +632,17 @@ export default function AdminUsers() {
                                             }`} />
                                         </div>
                                     </button>
+                                )}
+
+                                {/* Curso del Profesor Jefe */}
+                                {u.role === 'profesor_jefe' && u.headTeacherOf && (
+                                    <div className="flex items-center gap-3 text-sm bg-violet-50/50 p-3 rounded-xl border border-violet-100">
+                                        <Award className="w-4 h-4 text-violet-500 shrink-0" />
+                                        <div>
+                                            <span className="text-xs font-bold text-violet-600 uppercase tracking-wider">Profesor Jefe de</span>
+                                            <p className="text-slate-700 font-semibold">{u.headTeacherOf}</p>
+                                        </div>
+                                    </div>
                                 )}
 
                                 {/* Profesor Jefe Toggle */}
@@ -866,6 +884,39 @@ export default function AdminUsers() {
                                         </button>
                                         <button
                                             type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'profesor_jefe' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'profesor_jefe'
+                                                    ? 'bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <Award className="w-4 h-4" />
+                                            Prof. Jefe
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'asistente_aula' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'asistente_aula'
+                                                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <UserCheck className="w-4 h-4" />
+                                            Asist. Aula
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData({ ...formData, role: 'pie_head' }); setPermOverrides({}); }}
+                                            className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
+                                                        ${formData.role === 'pie_head'
+                                                    ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-200'
+                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <Stethoscope className="w-4 h-4" />
+                                            Jefa PIE
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={() => { setFormData({ ...formData, role: 'pie' }); setPermOverrides({}); }}
                                             className={`px-3 py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5
                                                         ${formData.role === 'pie'
@@ -892,6 +943,31 @@ export default function AdminUsers() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Curso del Profesor Jefe */}
+                                {formData.role === 'profesor_jefe' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Curso a Cargo</label>
+                                        <select
+                                            required
+                                            className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
+                                            value={formData.headTeacherOf}
+                                            onChange={(e) => setFormData({ ...formData, headTeacherOf: e.target.value })}
+                                        >
+                                            <option value="">-- Selecciona un curso --</option>
+                                            <option value="Pre-Kinder">Pre-Kinder</option>
+                                            <option value="Kinder">Kinder</option>
+                                            <option value="1° Básico">1° Básico</option>
+                                            <option value="2° Básico">2° Básico</option>
+                                            <option value="3° Básico">3° Básico</option>
+                                            <option value="4° Básico">4° Básico</option>
+                                            <option value="5° Básico">5° Básico</option>
+                                            <option value="6° Básico">6° Básico</option>
+                                            <option value="7° Básico">7° Básico</option>
+                                            <option value="8° Básico">8° Básico</option>
+                                        </select>
+                                    </div>
+                                )}
 
                                 {/* Access Level Toggle - hidden for admin/super_admin (they always edit) */}
                                 {formData.role !== 'admin' && formData.role !== 'super_admin' && (

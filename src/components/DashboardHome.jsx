@@ -189,6 +189,7 @@ const TeacherView = ({ user, notifications }) => {
                         )}
                     </div>
                 </BentoCard>
+
             </div>
         </div>
     );

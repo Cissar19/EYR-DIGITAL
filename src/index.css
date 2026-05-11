@@ -80,8 +80,17 @@
   .cal-modal-inner {
     border-radius: 22px 22px 0 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
     max-height: 92vh !important;
+    grid-template-columns: 1fr !important;
     animation: calSlideUp 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  /* Modales de pantalla completa (agenda/evaluacion): necesitan height fijo para scroll interno */
+  .eval-modal-inner {
+    height: 92vh !important;
+  }
+  .eval-modal-sidebar {
+    display: none !important;
   }
   .cal-modal-pull {
     display: block;
@@ -100,6 +109,26 @@
   }
   .cal-modal-foot {
     padding: 12px 16px !important;
+  }
+
+  /* ── AgendaSemanalModal — mobile overrides ── */
+  .agenda-modal-topbar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .agenda-modal-course-select {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  .agenda-modal-week-nav {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+  }
+  .agenda-modal-save-indicator {
+    display: none !important;
+  }
+  .agenda-modal-days-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 

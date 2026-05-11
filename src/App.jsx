@@ -34,6 +34,7 @@ import EntrevistasView from './views/EntrevistasView';
 import UTPView from './utp/UTPView';
 import EditorFormato from './utp/EditorFormato';
 import CalendarioEvaluaciones from './utp/CalendarioEvaluaciones';
+import CalendarioMobile from './utp/CalendarioMobile';
 import AgendaSemanal from './utp/AgendaSemanal';
 import TemarioView from './utp/TemarioView';
 import ControlSanoView from './views/ControlSanoView';
@@ -156,8 +157,8 @@ const ProtectedLayout = () => {
             <Menu className="w-6 h-6" />
           </button>
           <img
-            src="/assets/logo_eyr.png"
-            alt="School Logo"
+            src={logoEyr}
+            alt="EYR"
             className="h-8 w-auto object-contain"
           />
         </div>
@@ -265,7 +266,12 @@ export default function App() {
           <Route path="/utp/agenda" element={<PermissionGate moduleKey="utp_agenda"><AgendaSemanal /></PermissionGate>} />
 
           {/* ── Calendario de Evaluaciones — full-bleed (fondo animado propio) ── */}
-          <Route path="/utp/calendario" element={<PermissionGate moduleKey="utp_calendario"><CalendarioEvaluaciones /></PermissionGate>} />
+          <Route path="/utp/calendario" element={
+            <PermissionGate moduleKey="utp_calendario">
+              <div className="hidden sm:flex flex-1 min-h-0"><CalendarioEvaluaciones /></div>
+              <CalendarioMobile />
+            </PermissionGate>
+          } />
 
           {/* ── Todas las demás rutas — con padding estándar ── */}
           <Route element={<PaddedLayout />}>

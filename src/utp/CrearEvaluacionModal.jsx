@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { X, Loader2, ChevronLeft, ChevronRight, Sparkles, Pencil, Check } from 'lucide-react';
 import { ASIGNATURAS, CURSOS } from '../data/objetivosAprendizaje';
@@ -122,7 +123,9 @@ function DatePickerField({ value, onChange, allowedWeekdays, minDate }) {
       const pickerH = nextValidDates ? 340 : 360;
       const spaceBelow = window.innerHeight - rect.bottom - 8;
       const top = spaceBelow >= pickerH ? rect.bottom + 4 : rect.top - pickerH - 4;
-      setPos({ top, left: rect.left, width: Math.max(rect.width, nextValidDates ? 280 : 320) });
+      const pickerW = Math.max(rect.width, nextValidDates ? 280 : 320);
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - pickerW - 8));
+      setPos({ top, left, width: pickerW });
     }
     setOpen(o => !o);
   };
@@ -407,6 +410,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
   const { getSchedule } = useSchedule();
   const [saving, setSaving] = useState(false);
   const [tab, setTab]       = useState('detalles');
+  const [showOaError, setShowOaError] = useState(false);
   const isTeacher = user?.role === 'teacher';
 
   const teacherBlocks = useMemo(() => {
@@ -534,6 +538,11 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
       if (hasConflict)      { toast.error(`${curso} ya tiene una evaluación ese día. Solo Arte, Música y Tecnología pueden coincidir.`); return; }
       return;
     }
+    if (selectedOas.length === 0) {
+      setTab('oa');
+      setShowOaError(true);
+      return;
+    }
     setSaving(true);
     try {
       if (isEditing) {
@@ -588,17 +597,15 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
   const dateObj    = date ? new Date(date + 'T12:00:00') : null;
 
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} className="cal-modal-overlay" style={{
       position:'fixed', inset:0, zIndex:200,
       background:'rgba(28,18,50,0.45)',
       backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      padding:24,
       animation:'calFadeIn .25s ease-out',
     }}>
-      <div onClick={e=>e.stopPropagation()} style={{
+      <div onClick={e=>e.stopPropagation()} className="cal-modal-inner eval-modal-inner" style={{
         width:880, maxWidth:'calc(100vw - 48px)',
-        maxHeight:'calc(100vh - 48px)',
+        height:'calc(100vh - 48px)', maxHeight:720,
         background:'#FFFFFF',
         borderRadius:24,
         boxShadow:'0 30px 80px -20px rgba(40,20,80,0.5), 0 12px 30px -12px rgba(40,20,80,0.3)',
@@ -610,7 +617,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
       }}>
 
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-        <div style={{
+        <div className="eval-modal-sidebar" style={{
           position:'relative',
           background:'linear-gradient(160deg, #7B5BE0 0%, #EC5BA1 100%)',
           color:'white', padding:'28px 22px',
@@ -696,7 +703,7 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
         </div>
 
         {/* ── Form area ────────────────────────────────────────────────────── */}
-        <div style={{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden' }}>
+        <div style={{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden', height:'100%' }}>
 
           {/* Tabs + close */}
           <div style={{
@@ -907,13 +914,54 @@ export default function CrearEvaluacionModal({ onClose, onCreated, user, default
             )}
 
             {tab === 'oa' && (
-              <ObjetivosSelector
-                onSeleccion={(oas) => setSelectedOas(oas.map(oa => oa.codigo))}
-                seleccionados={selectedOas}
-                cursoNombreExterno={curso || undefined}
-                asignaturaNombreExterno={asignatura ? getAsigName(asignatura) : undefined}
-                embedded
-              />
+              <>
+                <AnimatePresence>
+                  {showOaError && selectedOas.length === 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        padding: '24px 20px 20px', marginBottom: 20,
+                        borderRadius: 16, background: '#FFF5F5',
+                        border: '2px solid #FCA5A5',
+                      }}
+                    >
+                      <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+                      <p style={{ fontSize: 22, fontWeight: 800, color: '#DC2626', textAlign: 'center', lineHeight: 1.2, margin: 0 }}>
+                        Falta asignar un OA
+                      </p>
+                      <p style={{ fontSize: 13, color: '#EF4444', marginTop: 6, textAlign: 'center' }}>
+                        Selecciona al menos un Objetivo de Aprendizaje para poder guardar la evaluación.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowOaError(false)}
+                        style={{
+                          marginTop: 14, padding: '8px 28px', borderRadius: 10, border: 'none',
+                          background: '#DC2626', color: 'white',
+                          fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        OK
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <ObjetivosSelector
+                  onSeleccion={(oas) => {
+                    const codes = oas.map(oa => oa.codigo);
+                    setSelectedOas(codes);
+                    if (codes.length > 0) setShowOaError(false);
+                  }}
+                  seleccionados={selectedOas}
+                  cursoNombreExterno={curso || undefined}
+                  asignaturaNombreExterno={asignatura ? getAsigName(asignatura) : undefined}
+                  embedded
+                />
+              </>
             )}
           </div>
 

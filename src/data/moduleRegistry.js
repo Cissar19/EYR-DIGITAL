@@ -16,7 +16,7 @@ import {
  *                 (null = everyone, array = only listed roles)
  */
 
-const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer', 'pie'];
+const ALL_ROLES = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];
 const MANAGEMENT = ['super_admin', 'admin', 'director', 'utp_head', 'inspector', 'convivencia_head'];
 
 export const MODULE_REGISTRY = [
@@ -314,4 +314,4 @@ export const getModuleByPath = (path) => MODULE_REGISTRY.find(m => m.path === pa
 export const ALL_MODULE_KEYS = MODULE_REGISTRY.map(m => m.key);
 
 /** Configurable roles (excludes super_admin and admin which always have full access) */
-export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'staff', 'printer', 'pie'];
+export const CONFIGURABLE_ROLES = ['director', 'utp_head', 'inspector', 'convivencia_head', 'convivencia', 'teacher', 'profesor_jefe', 'staff', 'asistente_aula', 'printer', 'pie_head', 'pie'];
