@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
     CalendarDays, ChevronLeft, ChevronRight, Plus, Pin, X, BookOpen,
     Clock, User, Pencil, Trash2, CheckCircle, XCircle, AlertCircle,
-    ChevronDown, FileDown, Loader2, NotebookPen, Table2,
+    ChevronDown, FileDown, Loader2, NotebookPen, Table2, GraduationCap,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
@@ -220,7 +220,7 @@ export default function CalendarioMobile() {
     const { evaluaciones, deleteEvaluacion, approvePendingChanges, rejectPendingChanges } = useEvaluaciones();
     const { allHolidays }                        = useHolidays();
     const { getSchedule, getAllSchedules }        = useSchedule();
-    const { getCourseSchedule, getCourseAssistant } = useCourseSchedule();
+    const { courseAssistants, getCourseSchedule, getCourseAssistant } = useCourseSchedule();
 
     const today       = useMemo(() => new Date(), []);
     const todayStr    = useMemo(() => today.toISOString().slice(0, 10), [today]);
@@ -230,6 +230,14 @@ export default function CalendarioMobile() {
     const canCreateEval = canEdit(user) || user?.role === 'teacher' || user?.role === 'utp_head';
     const canCRUD       = isAdmin(user) || user?.role === 'utp_head';
     const isTeacher     = user?.role === 'teacher';
+    const isAsistenteAula = user?.role === 'asistente_aula';
+
+    const asistenteAulaCurso = useMemo(() => {
+        if (!isAsistenteAula || !user?.uid) return null;
+        return Object.keys(courseAssistants).find(
+            course => courseAssistants[course]?.id === user.uid
+        ) || null;
+    }, [isAsistenteAula, courseAssistants, user?.uid]);
 
     const [selectedMonth, setSelectedMonth]   = useState(currentMonth);
     const [selectedCurso, setSelectedCurso]   = useState(null);
@@ -259,6 +267,9 @@ export default function CalendarioMobile() {
     const exportDropdownRef = useRef(null);
 
     const cursoOptions = useMemo(() => {
+        if (isAsistenteAula && asistenteAulaCurso) {
+            return [asistenteAulaCurso];
+        }
         if (isTeacher) {
             const blocks = getSchedule(user?.uid);
             const set = new Set(blocks.map(b => b.course).filter(c => CURSOS.includes(c)));
@@ -267,7 +278,7 @@ export default function CalendarioMobile() {
             return [null, ...CURSOS.filter(c => set.has(c))];
         }
         return [null, ...CURSOS];
-    }, [isTeacher, getSchedule, user?.uid, user?.isHeadTeacher, user?.headTeacherOf]);
+    }, [isAsistenteAula, asistenteAulaCurso, isTeacher, getSchedule, user?.uid, user?.isHeadTeacher, user?.headTeacherOf]);
 
     const realCursos         = useMemo(() => cursoOptions.filter(c => c !== null), [cursoOptions]);
     const agendaCursoIdx     = realCursos.indexOf(agendaExportCurso);
@@ -323,10 +334,20 @@ export default function CalendarioMobile() {
         if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
     }, [selectedDate]);
 
+    // Auto-seleccionar el curso de la asistente de aula
+    useEffect(() => {
+        if (isAsistenteAula && asistenteAulaCurso) {
+            setSelectedCurso(asistenteAulaCurso);
+        }
+    }, [isAsistenteAula, asistenteAulaCurso]);
+
     const filteredEvals = useMemo(() => {
+        if (isAsistenteAula && asistenteAulaCurso) {
+            return evaluaciones.filter(e => e.curso === asistenteAulaCurso);
+        }
         if (!selectedCurso) return evaluaciones;
         return evaluaciones.filter(e => e.curso === selectedCurso);
-    }, [evaluaciones, selectedCurso]);
+    }, [evaluaciones, selectedCurso, isAsistenteAula, asistenteAulaCurso]);
 
     const prefix = `${currentYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
     const monthEvals = useMemo(() => filteredEvals.filter(e => e.date?.startsWith(prefix)), [filteredEvals, prefix]);
@@ -670,6 +691,12 @@ export default function CalendarioMobile() {
                     </div>
 
                     {/* Selector de curso */}
+                    {isAsistenteAula && asistenteAulaCurso ? (
+                        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-1" style={{ background: PRIMARY, color: '#fff' }}>
+                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{asistenteAulaCurso}</span>
+                        </div>
+                    ) : (
                     <div className="relative flex-1" ref={cursoDropdownRef}>
                         <button
                             onClick={() => setCursoDropdown(o => !o)}
@@ -694,6 +721,7 @@ export default function CalendarioMobile() {
                             </div>
                         )}
                     </div>
+                    )}
                 </div>
 
                 {/* ── Mini calendario con puntos ────────────────────────── */}
