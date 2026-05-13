@@ -147,6 +147,21 @@ const ProfesorJefeView = ({ user }) => {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
+    // Diagnóstico temporal — ver en consola del navegador
+    React.useEffect(() => {
+        if (!coverageData.length) return;
+        const sample = coverageData[0];
+        console.log('[ProfesorJefe] year:', year, 'grade:', gradeCode, 'bloques:', coverageData.length);
+        console.log('[ProfesorJefe] muestra bloque:', {
+            subject: sample.subject,
+            grade: sample.grade,
+            migrationStatus: sample.migrationStatus,
+            basalesOasKeys: Object.keys(sample.basalesOas ?? {}),
+            legacyKeys: Object.keys(sample.legacyOaStatus ?? {}),
+            legacyTrueCount: Object.values(sample.legacyOaStatus ?? {}).filter(Boolean).length,
+        });
+    }, [coverageData, year, gradeCode]);
+
     const subjectStats = useMemo(() => buildSubjectStatsForGrade(coverageData), [coverageData]);
 
     const pct100 = subjectStats.length
