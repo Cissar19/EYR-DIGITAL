@@ -140,7 +140,19 @@ function buildSubjectStatsForGrade(coverageData) {
 const ProfesorJefeView = ({ user }) => {
     const { year } = useAcademicYear();
     const gradeCode = FULL_TO_GRADE[user.headTeacherOf];  // '2B'
-    const { data: coverageData } = useCoverageByGrade(year, gradeCode);
+
+    // Siempre cargamos el año activo y el anterior en paralelo
+    const { data: currentData,  loading: loadingCurrent  } = useCoverageByGrade(year,     gradeCode);
+    const { data: prevData,     loading: loadingPrev     } = useCoverageByGrade(year - 1, gradeCode);
+
+    // Si el año activo no tiene ningún OA marcado como pasado → mostrar año anterior
+    const currentHasData = currentData.some(b =>
+        Object.values(b.legacyOaStatus ?? {}).some(Boolean)
+    );
+    const coverageData  = currentHasData ? currentData  : prevData;
+    const displayYear   = currentHasData ? year         : year - 1;
+    const isFallback    = !currentHasData && prevData.length > 0;
+
     const { getBalance } = useAdministrativeDays();
     const navigate = useNavigate();
 
@@ -217,7 +229,14 @@ const ProfesorJefeView = ({ user }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
-                            <p className="text-[11px] text-slate-400 mt-0.5">OAs Basales</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <p className="text-[11px] text-slate-400">OAs Basales · {displayYear}</p>
+                                {isFallback && (
+                                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                                        sin datos {year}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
