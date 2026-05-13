@@ -18,19 +18,23 @@ function courseDocId(course) {
 export const CourseScheduleProvider = ({ children }) => {
     const [courseSchedules, setCourseSchedules] = useState({});
     const [courseAssistants, setCourseAssistants] = useState({});
+    const [coursePieAssistants, setCoursePieAssistants] = useState({});
 
     useEffect(() => {
         const unsubscribe = subscribeToCollection('course_schedules', (docs) => {
             const schedules = {};
             const assistants = {};
+            const pieAssistants = {};
             docs.forEach(doc => {
                 if (doc.course) {
                     schedules[doc.course] = doc.blocks || [];
                     assistants[doc.course] = doc.assistant || null;
+                    pieAssistants[doc.course] = doc.pieAssistant || null;
                 }
             });
             setCourseSchedules(schedules);
             setCourseAssistants(assistants);
+            setCoursePieAssistants(pieAssistants);
         });
         return () => unsubscribe();
     }, []);
@@ -51,6 +55,12 @@ export const CourseScheduleProvider = ({ children }) => {
         if (!course) return null;
         return courseAssistants[course] || null;
     }, [courseAssistants]);
+
+    /** Devuelve { id, name } del asistente PIE asignado al curso, o null. */
+    const getCoursePieAssistant = useCallback((course) => {
+        if (!course) return null;
+        return coursePieAssistants[course] || null;
+    }, [coursePieAssistants]);
 
     const updateCourseSchedule = useCallback(async (course, blocks, user) => {
         const docId = courseDocId(course);
@@ -83,13 +93,31 @@ export const CourseScheduleProvider = ({ children }) => {
         }
     }, []);
 
+    /** Actualiza solo el asistente PIE del curso sin tocar los bloques. */
+    const updateCoursePieAssistant = useCallback(async (course, pieAssistant) => {
+        const docId = courseDocId(course);
+        setCoursePieAssistants(prev => ({ ...prev, [course]: pieAssistant }));
+        try {
+            await setDocument('course_schedules', docId, {
+                course,
+                pieAssistant: pieAssistant || null,
+            }, { merge: true });
+        } catch (err) {
+            console.error('CourseSchedule pieAssistant save error:', err);
+            toast.error('Error al guardar asistente PIE');
+        }
+    }, []);
+
     const value = useMemo(() => ({
         courseAssistants,
+        coursePieAssistants,
         getCourseSchedule,
         getCourseAssistant,
+        getCoursePieAssistant,
         updateCourseSchedule,
         updateCourseAssistant,
-    }), [courseAssistants, getCourseSchedule, getCourseAssistant, updateCourseSchedule, updateCourseAssistant]);
+        updateCoursePieAssistant,
+    }), [courseAssistants, coursePieAssistants, getCourseSchedule, getCourseAssistant, getCoursePieAssistant, updateCourseSchedule, updateCourseAssistant, updateCoursePieAssistant]);
 
     return (
         <CourseScheduleContext.Provider value={value}>

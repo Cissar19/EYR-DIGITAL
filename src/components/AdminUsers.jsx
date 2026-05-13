@@ -23,8 +23,8 @@ export default function AdminUsers() {
     const [isEditAttributesOpen, setIsEditAttributesOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
-    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher', accessLevel: 'view', headTeacherOf: '' });
-    const [attributesData, setAttributesData] = useState({ id: null, headTeacherOf: '', subjects: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
+    const [attributesData, setAttributesData] = useState({ id: null, subjects: '' });
     const [editingUserId, setEditingUserId] = useState(null);
     const [permOverrides, setPermOverrides] = useState({});
     const [showPermissions, setShowPermissions] = useState(false);
@@ -140,7 +140,6 @@ export default function AdminUsers() {
             email: userToEdit.email,
             role: userToEdit.role,
             accessLevel: userToEdit.accessLevel || 'view',
-            headTeacherOf: userToEdit.headTeacherOf || ''
         });
         setPermOverrides(userToEdit.permissionOverrides || {});
         setShowPermissions(false);
@@ -150,7 +149,6 @@ export default function AdminUsers() {
     const openAttributesModal = (userToEdit) => {
         setAttributesData({
             id: userToEdit.id,
-            headTeacherOf: userToEdit.headTeacherOf || '',
             subjects: userToEdit.subjects || ''
         });
         setIsEditAttributesOpen(true);
@@ -180,7 +178,7 @@ export default function AdminUsers() {
 
             setIsModalOpen(false);
             setEditingUserId(null);
-            setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view', headTeacherOf: '' });
+            setFormData({ name: '', email: '', role: 'teacher', accessLevel: 'view' });
             setPermOverrides({});
             setTimeout(() => setNotification(null), 3000);
         } catch (error) {
@@ -195,7 +193,6 @@ export default function AdminUsers() {
         e.preventDefault();
         try {
             await updateUser(attributesData.id, {
-                headTeacherOf: attributesData.headTeacherOf,
                 subjects: attributesData.subjects
             });
             setNotification('Atributos académicos actualizados');
@@ -653,35 +650,6 @@ export default function AdminUsers() {
                                     </div>
                                 )}
 
-                                {/* Profesor Jefe Toggle */}
-                                {canManageUsers && (
-                                    <button
-                                        onClick={() => {
-                                            const current = !!u.isHeadTeacher;
-                                            updateUser(u.id, { isHeadTeacher: !current });
-                                        }}
-                                        className={`flex items-center justify-between w-full p-3 rounded-xl border transition-all ${
-                                            u.isHeadTeacher
-                                                ? 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'
-                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <GraduationCap className={`w-3.5 h-3.5 ${
-                                                u.isHeadTeacher ? 'text-indigo-600' : 'text-slate-400'
-                                            }`} />
-                                            <span className="text-xs font-semibold text-slate-600">Profesor Jefe</span>
-                                        </div>
-                                        <div className={`w-9 h-5 rounded-full transition-colors relative ${
-                                            u.isHeadTeacher ? 'bg-indigo-500' : 'bg-slate-300'
-                                        }`}>
-                                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                                                u.isHeadTeacher ? 'translate-x-4' : 'translate-x-0.5'
-                                            }`} />
-                                        </div>
-                                    </button>
-                                )}
-
                                 {/* Hace Clases Toggle */}
                                 {canManageUsers && (
                                     <button
@@ -963,31 +931,6 @@ export default function AdminUsers() {
                                     </div>
                                 </div>
 
-                                {/* Curso del Profesor Jefe */}
-                                {formData.role === 'profesor_jefe' && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Curso a Cargo</label>
-                                        <select
-                                            required
-                                            className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
-                                            value={formData.headTeacherOf}
-                                            onChange={(e) => setFormData({ ...formData, headTeacherOf: e.target.value })}
-                                        >
-                                            <option value="">-- Selecciona un curso --</option>
-                                            <option value="Pre-Kinder">Pre-Kinder</option>
-                                            <option value="Kinder">Kinder</option>
-                                            <option value="1° Básico">1° Básico</option>
-                                            <option value="2° Básico">2° Básico</option>
-                                            <option value="3° Básico">3° Básico</option>
-                                            <option value="4° Básico">4° Básico</option>
-                                            <option value="5° Básico">5° Básico</option>
-                                            <option value="6° Básico">6° Básico</option>
-                                            <option value="7° Básico">7° Básico</option>
-                                            <option value="8° Básico">8° Básico</option>
-                                        </select>
-                                    </div>
-                                )}
-
                                 {/* Access Level Toggle - hidden for admin/super_admin (they always edit) */}
                                 {formData.role !== 'admin' && formData.role !== 'super_admin' && (
                                     <div>
@@ -1154,27 +1097,6 @@ export default function AdminUsers() {
                         <form id="attributesForm" onSubmit={handleAttributesSubmit} className="px-7 pb-0 space-y-5 overflow-y-auto">
                             <div className="bg-eyr-surface-low p-4 rounded-2xl text-sm text-eyr-on-variant border border-eyr-outline-variant/30">
                                 Configura la carga académica para este docente. Esto afectará cómo se muestra en los horarios y reportes.
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-eyr-on-variant ml-1 mb-1">Profesor Jefe de:</label>
-                                <select
-                                    className="w-full px-5 py-4 rounded-2xl bg-eyr-surface-low border border-eyr-outline-variant/30 focus:border-eyr-primary focus:ring-4 focus:ring-eyr-primary/10 outline-none transition-all font-medium text-eyr-on-surface"
-                                    value={attributesData.headTeacherOf}
-                                    onChange={(e) => setAttributesData({ ...attributesData, headTeacherOf: e.target.value })}
-                                >
-                                    <option value="">-- No es Profesor Jefe --</option>
-                                    <option value="Pre-Kinder">Pre-Kinder</option>
-                                    <option value="Kinder">Kinder</option>
-                                    <option value="1° Básico">1° Básico</option>
-                                    <option value="2° Básico">2° Básico</option>
-                                    <option value="3° Básico">3° Básico</option>
-                                    <option value="4° Básico">4° Básico</option>
-                                    <option value="5° Básico">5° Básico</option>
-                                    <option value="6° Básico">6° Básico</option>
-                                    <option value="7° Básico">7° Básico</option>
-                                    <option value="8° Básico">8° Básico</option>
-                                </select>
                             </div>
 
                             <div>

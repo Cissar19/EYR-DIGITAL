@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock, GraduationCap, Users, Download } from 'lucide-react';
+import { CalendarClock, Save, Trash2, ChevronDown, Eye, Edit3, User, Coffee, X, ClipboardList, Search, BarChart2, BookOpen, Clock, GraduationCap, Users, Download, Heart, LayoutGrid } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext';
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
 import { useCourseSchedule } from '../context/CourseScheduleContext';
 
 export default function ScheduleAdminView() {
-    const { user, getAllUsers } = useAuth();
+    const { user, getAllUsers, updateUser } = useAuth();
     const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded, getAllSchedules } = useSchedule();
-    const { getCourseSchedule, getCourseAssistant, updateCourseSchedule, updateCourseAssistant } = useCourseSchedule();
+    const { getCourseSchedule, getCourseAssistant, getCoursePieAssistant, updateCourseSchedule, updateCourseAssistant, updateCoursePieAssistant } = useCourseSchedule();
     const userCanEdit = canEditHelper(user);
 
-    // View mode: 'teacher' | 'course'
+    // View mode: 'teacher' | 'course' | 'summary'
     const [viewMode, setViewMode] = useState('teacher');
 
     // Teacher view state
@@ -30,6 +31,8 @@ export default function ScheduleAdminView() {
     // localCourseData: { 'Lunes-08:10': 'Lenguaje', ... }
     const [localCourseData, setLocalCourseData] = useState({});
     const [localAssistantId, setLocalAssistantId] = useState('');
+    const [localHeadTeacherId, setLocalHeadTeacherId] = useState('');
+    const [localPieAssistantId, setLocalPieAssistantId] = useState('');
 
     const teachers = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.TEACHER);
@@ -37,6 +40,14 @@ export default function ScheduleAdminView() {
 
     const assistantesAula = React.useMemo(() => {
         return getAllUsers().filter(u => u.role === ROLES.ASISTENTE_AULA);
+    }, [getAllUsers]);
+
+    const profJefeUsers = React.useMemo(() => {
+        return getAllUsers().filter(u => u.role === ROLES.PROFESOR_JEFE);
+    }, [getAllUsers]);
+
+    const pieAssistantUsers = React.useMemo(() => {
+        return getAllUsers().filter(u => u.role === ROLES.PIE || u.role === ROLES.PIE_HEAD);
     }, [getAllUsers]);
 
     // Build course schedule by crossing all teacher schedules
@@ -71,6 +82,8 @@ export default function ScheduleAdminView() {
         setIsCourseEditMode(false);
         setLocalCourseData({});
         setLocalAssistantId('');
+        setLocalHeadTeacherId('');
+        setLocalPieAssistantId('');
     }, [selectedCourse]);
 
     // Sincronizar datos desde Firestore cada vez que lleguen (pero no durante edición)
@@ -86,7 +99,13 @@ export default function ScheduleAdminView() {
         }
         const savedAssistant = getCourseAssistant(selectedCourse);
         setLocalAssistantId(savedAssistant?.id || '');
-    }, [selectedCourse, getCourseSchedule, getCourseAssistant, isCourseEditMode]);
+
+        const currentHT = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
+        setLocalHeadTeacherId(currentHT?.id || '');
+
+        const savedPie = getCoursePieAssistant(selectedCourse);
+        setLocalPieAssistantId(savedPie?.id || '');
+    }, [selectedCourse, getCourseSchedule, getCourseAssistant, getCoursePieAssistant, getAllUsers, isCourseEditMode]);
 
     const handleImportFromTeachers = () => {
         const imported = {};
@@ -96,7 +115,7 @@ export default function ScheduleAdminView() {
         setLocalCourseData(imported);
     };
 
-    const handleSaveCourseSchedule = () => {
+    const handleSaveCourseSchedule = async () => {
         const blocks = Object.entries(localCourseData)
             .filter(([, subject]) => subject)
             .map(([key, subject]) => {
@@ -104,9 +123,30 @@ export default function ScheduleAdminView() {
                 return { day, startTime: rest.join('-'), subject };
             });
         updateCourseSchedule(selectedCourse, blocks, user);
+
         const assistantUser = assistantesAula.find(u => u.id === localAssistantId);
         const assistantData = assistantUser ? { id: assistantUser.id, name: assistantUser.name } : null;
         updateCourseAssistant(selectedCourse, assistantData);
+
+        const pieUser = pieAssistantUsers.find(u => u.id === localPieAssistantId);
+        const pieData = pieUser ? { id: pieUser.id, name: pieUser.name } : null;
+        updateCoursePieAssistant(selectedCourse, pieData);
+
+        const currentHT = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
+        if (localHeadTeacherId !== (currentHT?.id || '')) {
+            try {
+                if (currentHT) {
+                    await updateUser(currentHT.id, { headTeacherOf: '', isHeadTeacher: false });
+                }
+                if (localHeadTeacherId) {
+                    await updateUser(localHeadTeacherId, { headTeacherOf: selectedCourse, isHeadTeacher: true });
+                }
+            } catch (err) {
+                console.error('Error al guardar profesor jefe:', err);
+                toast.error('Error al guardar Profesor Jefe');
+            }
+        }
+
         setIsCourseEditMode(false);
     };
 
@@ -305,6 +345,18 @@ export default function ScheduleAdminView() {
                                 <GraduationCap className="w-4 h-4" />
                                 Por Curso
                             </button>
+                            <button
+                                onClick={() => setViewMode('summary')}
+                                className={cn(
+                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
+                                    viewMode === 'summary'
+                                        ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-200"
+                                        : "text-slate-600 hover:text-slate-900"
+                                )}
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                                Resumen
+                            </button>
                         </div>
 
                         {/* Edit Mode Toggle */}
@@ -344,27 +396,29 @@ export default function ScheduleAdminView() {
                 </motion.div>
 
                 {/* Selector Panel */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="relative z-20 bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
-                >
-                    {viewMode === 'teacher' ? (
-                        <div className="max-w-md">
-                            <TeacherCombobox
-                                teachers={teachers}
-                                selectedTeacherId={selectedTeacherId}
-                                onSelect={setSelectedTeacherId}
+                {viewMode !== 'summary' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="relative z-20 bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/20 mb-10"
+                    >
+                        {viewMode === 'teacher' ? (
+                            <div className="max-w-md">
+                                <TeacherCombobox
+                                    teachers={teachers}
+                                    selectedTeacherId={selectedTeacherId}
+                                    onSelect={setSelectedTeacherId}
+                                />
+                            </div>
+                        ) : (
+                            <CourseSelector
+                                selectedCourse={selectedCourse}
+                                onSelect={setSelectedCourse}
                             />
-                        </div>
-                    ) : (
-                        <CourseSelector
-                            selectedCourse={selectedCourse}
-                            onSelect={setSelectedCourse}
-                        />
-                    )}
-                </motion.div>
+                        )}
+                    </motion.div>
+                )}
 
                 {/* ─── Course Schedule View (editable oficial) ─ */}
                 {viewMode === 'course' && (
@@ -424,29 +478,79 @@ export default function ScheduleAdminView() {
                                 </div>
                             </div>
 
-                            {/* Asistente de Aula */}
-                            <div className="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3">
-                                <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                <span className="text-sm font-medium text-emerald-800 shrink-0">Asistente de Aula:</span>
-                                {isCourseEditMode && userCanEdit ? (
-                                    <div className="relative flex-1 max-w-xs">
-                                        <select
-                                            value={localAssistantId}
-                                            onChange={e => setLocalAssistantId(e.target.value)}
-                                            className="w-full px-3 py-1.5 rounded-xl border border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none text-sm appearance-none bg-white text-slate-800"
-                                        >
-                                            <option value="">Sin asistente asignada</option>
-                                            {assistantesAula.map(u => (
-                                                <option key={u.id} value={u.id}>{u.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400 pointer-events-none" />
-                                    </div>
-                                ) : (
-                                    <span className="text-sm text-emerald-700">
-                                        {assistantesAula.find(u => u.id === localAssistantId)?.name || getCourseAssistant(selectedCourse)?.name || 'No asignada'}
-                                    </span>
-                                )}
+                            {/* Asistente de Aula + Profe Jefe + PIE */}
+                            <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3">
+                                    <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-emerald-800 shrink-0">Asistente de Aula:</span>
+                                    {isCourseEditMode && userCanEdit ? (
+                                        <div className="relative flex-1 min-w-0">
+                                            <select
+                                                value={localAssistantId}
+                                                onChange={e => setLocalAssistantId(e.target.value)}
+                                                className="w-full px-3 py-1.5 rounded-xl border border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none text-sm appearance-none bg-white text-slate-800"
+                                            >
+                                                <option value="">Sin asistente asignada</option>
+                                                {assistantesAula.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400 pointer-events-none" />
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-emerald-700 truncate">
+                                            {assistantesAula.find(u => u.id === localAssistantId)?.name || getCourseAssistant(selectedCourse)?.name || 'No asignada'}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-5 py-3">
+                                    <GraduationCap className="w-4 h-4 text-violet-600 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-violet-800 shrink-0">Profesor Jefe:</span>
+                                    {isCourseEditMode && userCanEdit ? (
+                                        <div className="relative flex-1 min-w-0">
+                                            <select
+                                                value={localHeadTeacherId}
+                                                onChange={e => setLocalHeadTeacherId(e.target.value)}
+                                                className="w-full px-3 py-1.5 rounded-xl border border-violet-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-100 focus:outline-none text-sm appearance-none bg-white text-slate-800"
+                                            >
+                                                <option value="">Sin profesor jefe asignado</option>
+                                                {profJefeUsers.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400 pointer-events-none" />
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-violet-700 truncate">
+                                            {profJefeUsers.find(u => u.id === localHeadTeacherId)?.name || 'No asignado'}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-5 py-3">
+                                    <Heart className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-rose-800 shrink-0">Asistente PIE:</span>
+                                    {isCourseEditMode && userCanEdit ? (
+                                        <div className="relative flex-1 min-w-0">
+                                            <select
+                                                value={localPieAssistantId}
+                                                onChange={e => setLocalPieAssistantId(e.target.value)}
+                                                className="w-full px-3 py-1.5 rounded-xl border border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 focus:outline-none text-sm appearance-none bg-white text-slate-800"
+                                            >
+                                                <option value="">Sin asistente PIE asignada</option>
+                                                {pieAssistantUsers.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-rose-400 pointer-events-none" />
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-rose-700 truncate">
+                                            {pieAssistantUsers.find(u => u.id === localPieAssistantId)?.name || getCoursePieAssistant(selectedCourse)?.name || 'No asignada'}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Grilla */}
@@ -853,6 +957,73 @@ export default function ScheduleAdminView() {
                         </p>
                     </motion.div>
                 ))}
+                {/* ─── Summary View ─────────────────────────────── */}
+                {viewMode === 'summary' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-semibold text-slate-900 mb-1">Resumen por Curso</h2>
+                            <p className="text-sm text-slate-500">Profesor Jefe, Asistente de Aula y Asistente PIE por curso</p>
+                        </div>
+                        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Curso</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-violet-600 uppercase tracking-wider">
+                                            <div className="flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Profesor Jefe</div>
+                                        </th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                                            <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Asistente de Aula</div>
+                                        </th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-rose-600 uppercase tracking-wider">
+                                            <div className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" /> Asistente PIE</div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {COURSES_LIST.map((course, idx) => {
+                                        const hj = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === course && u.isHeadTeacher);
+                                        const asist = getCourseAssistant(course);
+                                        const pie = getCoursePieAssistant(course);
+                                        return (
+                                            <tr key={course} className={cn('border-b border-slate-100 transition-colors hover:bg-slate-50/80', idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30')}>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm font-semibold text-slate-800">{course}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {hj ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-sm text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full font-medium">{hj.name}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Sin asignar</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {asist ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full font-medium">{asist.name}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Sin asignar</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {pie ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-sm text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full font-medium">{pie.name}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Sin asignar</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Action Buttons */}
                 {
                     viewMode === 'teacher' && canShowSchedule && isEditMode && userCanEdit && (
