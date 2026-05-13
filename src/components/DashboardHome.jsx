@@ -43,8 +43,7 @@ import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
 import { subscribeToCollection } from '../lib/firestoreService';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import { useCoverageByGrade } from '../hooks/useCoverage';
-import { useCurriculumOasForGrade } from '../hooks/useCurriculumOas';
-import { SUBJECT_ORDER, SUBJECT_LABELS } from '../lib/coverageConstants';
+import { SUBJECT_ORDER, SUBJECT_LABELS, getBasalesMineduc } from '../lib/coverageConstants';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -111,35 +110,26 @@ const FULL_TO_GRADE = {
     '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
 };
 
-/** "OA 1" / "OA01" / "AR01 OA 01"  →  "OA01"  (igual que normOaCode en CoberturaAdminList) */
-function normOaCode(raw) {
-    const m = raw?.match(/OA\s*0*(\d+)/i);
-    return m ? `OA${String(parseInt(m[1])).padStart(2, '0')}` : raw;
-}
-
 /**
- * Igual que getCurriculumOaStats en CoberturaAdminList:
- * - Si hay OAs de currículum → pasados que cruzan con legacyOaStatus / total currículum
- * - Si no hay              → pasados legacyOaStatus / total keys legacyOaStatus
+ * Vista basal: igual que getBasalOaStats en CoberturaAdminList.
+ * Denominador = basalesOas del bloque; fallback a BASALES_MINEDUC si está vacío.
+ * Numerador   = intersección con legacyOaStatus (OAs marcados como pasados).
  */
-function blockPct(b, curriculumOas) {
-    const status = b.legacyOaStatus ?? {};
-    if (curriculumOas?.length) {
-        const seen    = new Set(Object.entries(status).filter(([, v]) => v === true).map(([k]) => k));
-        const pasados = curriculumOas.filter(oa => seen.has(normOaCode(oa.codigo))).length;
-        return pasados / curriculumOas.length;
-    }
-    const total   = Object.keys(status).length;
-    const pasados = Object.values(status).filter(v => v === true).length;
-    return total > 0 ? pasados / total : 0;
+function blockPct(b) {
+    const basalesMap = b.basalesOas ?? {};
+    let basales = Object.entries(basalesMap).filter(([, v]) => v === true).map(([k]) => k);
+    if (!basales.length) basales = [...getBasalesMineduc(b.subject, b.grade)];
+    if (!basales.length) return 0;
+    const seen    = new Set(Object.entries(b.legacyOaStatus ?? {}).filter(([, v]) => v === true).map(([k]) => k));
+    const pasados = basales.filter(c => seen.has(c)).length;
+    return pasados / basales.length;
 }
 
-function buildSubjectStatsForGrade(coverageData, oasBySubject) {
+function buildSubjectStatsForGrade(coverageData) {
     return SUBJECT_ORDER.map(s => {
         const blocks = coverageData.filter(b => b.subject === s);
         if (!blocks.length) return null;
-        const currOas = oasBySubject?.[s];
-        const pct = blocks.reduce((acc, b) => acc + blockPct(b, currOas), 0) / blocks.length;
+        const pct = blocks.reduce((acc, b) => acc + blockPct(b), 0) / blocks.length;
         const cfg = SUBJ_CFG[s] ?? DEFAULT_SUBJ_CFG;
         return { subject: s, label: SUBJECT_LABELS[s] ?? s, cfg, pct };
     }).filter(Boolean);
@@ -153,21 +143,11 @@ const ProfesorJefeView = ({ user }) => {
     const { getBalance } = useAdministrativeDays();
     const navigate = useNavigate();
 
-    // Misma carga de OAs del currículum que usa CoberturaAdminList
-    const presentSubjects = useMemo(
-        () => coverageData.map(b => b.subject),
-        [coverageData]
-    );
-    const { oasBySubject } = useCurriculumOasForGrade(year, gradeCode, presentSubjects);
-
     const balance = getBalance(user.id);
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
-    const subjectStats = useMemo(
-        () => buildSubjectStatsForGrade(coverageData, oasBySubject),
-        [coverageData, oasBySubject]
-    );
+    const subjectStats = useMemo(() => buildSubjectStatsForGrade(coverageData), [coverageData]);
 
     const pct100 = subjectStats.length
         ? Math.round(subjectStats.reduce((s, x) => s + x.pct, 0) / subjectStats.length * 100)
@@ -234,7 +214,10 @@ const ProfesorJefeView = ({ user }) => {
                         <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600">
                             <BookOpen className="w-4 h-4" />
                         </div>
-                        <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
+                        <div>
+                            <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
+                            <p className="text-[11px] text-slate-400 mt-0.5">OAs Basales · {year}</p>
+                        </div>
                     </div>
                     <button
                         onClick={() => navigate('/cobertura')}
