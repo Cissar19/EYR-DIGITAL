@@ -43,7 +43,7 @@ import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
 import { subscribeToCollection } from '../lib/firestoreService';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import { useCoverageByGrade } from '../hooks/useCoverage';
-import { SUBJECT_ORDER, SUBJECT_LABELS, getBasalesMineduc } from '../lib/coverageConstants';
+import { SUBJECT_ORDER, SUBJECT_LABELS } from '../lib/coverageConstants';
 import YearSelector from './coverage/YearSelector';
 
 // Helper for Role Labels (Critical Requirement)
@@ -111,19 +111,12 @@ const FULL_TO_GRADE = {
     '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
 };
 
-/**
- * Vista basal: igual que getBasalOaStats en CoberturaAdminList.
- * Denominador = basalesOas del bloque; fallback a BASALES_MINEDUC si está vacío.
- * Numerador   = intersección con legacyOaStatus (OAs marcados como pasados).
- */
+// Igual que getOaStats en CoberturaAdminList: OAs pasados / total OAs del bloque
 function blockPct(b) {
-    const basalesMap = b.basalesOas ?? {};
-    let basales = Object.entries(basalesMap).filter(([, v]) => v === true).map(([k]) => k);
-    if (!basales.length) basales = [...getBasalesMineduc(b.subject, b.grade)];
-    if (!basales.length) return 0;
-    const seen    = new Set(Object.entries(b.legacyOaStatus ?? {}).filter(([, v]) => v === true).map(([k]) => k));
-    const pasados = basales.filter(c => seen.has(c)).length;
-    return pasados / basales.length;
+    const status  = b.legacyOaStatus ?? {};
+    const total   = Object.keys(status).length;
+    const pasados = Object.values(status).filter(v => v === true).length;
+    return total > 0 ? pasados / total : 0;
 }
 
 function buildSubjectStatsForGrade(coverageData) {
@@ -230,7 +223,7 @@ const ProfesorJefeView = ({ user }) => {
                         <div>
                             <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <p className="text-[11px] text-slate-400">OAs Basales · {displayYear}</p>
+                                <p className="text-[11px] text-slate-400">Avance OAs · {displayYear}</p>
                                 {isFallback && (
                                     <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
                                         sin datos {year}
