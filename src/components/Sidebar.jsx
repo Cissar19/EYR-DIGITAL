@@ -33,7 +33,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     }, [location.pathname]);
 
     // Filter modules by permission, split by category
-    const dashboardItem = MODULE_REGISTRY.find(m => m.key === 'dashboard' && canAccess(m.key));
+    const dashboardItem = MODULE_REGISTRY.find(m => m.key === 'dashboard');
     const commonItems = MODULE_REGISTRY
         .filter(m => m.category === 'common' && m.key !== 'dashboard' && canAccess(m.key));
     const roleSpecificItems = MODULE_REGISTRY
