@@ -44,6 +44,7 @@ import { subscribeToCollection } from '../lib/firestoreService';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import { useCoverageByGrade } from '../hooks/useCoverage';
 import { SUBJECT_ORDER, SUBJECT_LABELS, getBasalesMineduc } from '../lib/coverageConstants';
+import YearSelector from './coverage/YearSelector';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -147,21 +148,6 @@ const ProfesorJefeView = ({ user }) => {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
-    // Diagnóstico temporal — ver en consola del navegador
-    React.useEffect(() => {
-        if (!coverageData.length) return;
-        const sample = coverageData[0];
-        console.log('[ProfesorJefe] year:', year, 'grade:', gradeCode, 'bloques:', coverageData.length);
-        console.log('[ProfesorJefe] muestra bloque:', {
-            subject: sample.subject,
-            grade: sample.grade,
-            migrationStatus: sample.migrationStatus,
-            basalesOasKeys: Object.keys(sample.basalesOas ?? {}),
-            legacyKeys: Object.keys(sample.legacyOaStatus ?? {}),
-            legacyTrueCount: Object.values(sample.legacyOaStatus ?? {}).filter(Boolean).length,
-        });
-    }, [coverageData, year, gradeCode]);
-
     const subjectStats = useMemo(() => buildSubjectStatsForGrade(coverageData), [coverageData]);
 
     const pct100 = subjectStats.length
@@ -231,15 +217,18 @@ const ProfesorJefeView = ({ user }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
-                            <p className="text-[11px] text-slate-400 mt-0.5">OAs Basales · {year}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">OAs Basales</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => navigate('/cobertura')}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                    >
-                        Ver detalle <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <YearSelector />
+                        <button
+                            onClick={() => navigate('/cobertura')}
+                            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                            Ver detalle <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
                 </div>
 
                 {subjectStats.length === 0 ? (
