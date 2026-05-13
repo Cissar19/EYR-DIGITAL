@@ -66,13 +66,11 @@ export const AcademicYearProvider = ({ children }) => {
         setAvailableYears(years);
         setClosedYears(closed);
 
-        // Si el año almacenado no está disponible, usar el más reciente
+        // Usar siempre el año más reciente disponible
         if (years.length > 0) {
-          const stored = getStoredYear();
-          if (!years.includes(stored)) {
-            setYearState(years[0]);
-            try { localStorage.setItem(STORAGE_KEY, String(years[0])); } catch { /* ignore */ }
-          }
+          const latest = years[0]; // ya ordenado descendente
+          setYearState(latest);
+          try { localStorage.setItem(STORAGE_KEY, String(latest)); } catch { /* ignore */ }
         }
       })
       .catch((err) => {
