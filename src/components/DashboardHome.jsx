@@ -44,7 +44,6 @@ import { subscribeToCollection } from '../lib/firestoreService';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import { useCoverageByGrade } from '../hooks/useCoverage';
 import { SUBJECT_ORDER, SUBJECT_LABELS } from '../lib/coverageConstants';
-import { getPorcentajeFallback, getPorcentajeLegacy } from '../lib/coverageMath';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -111,10 +110,12 @@ const FULL_TO_GRADE = {
     '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
 };
 
+// Igual que getOaStats en CoberturaAdminList — lee legacyOaStatus (campo que edita la jefa UTP)
 function blockPct(b) {
-    return b.migrationStatus === 'complete'
-        ? getPorcentajeFallback(b.unitTracking ?? {}, b.excelTotalBasales)
-        : getPorcentajeLegacy(b.legacyOaStatus, b.excelTotalBasales);
+    const status = b.legacyOaStatus ?? {};
+    const total  = Object.keys(status).length;
+    const pasados = Object.values(status).filter(v => v === true).length;
+    return total > 0 ? pasados / total : 0;
 }
 
 function buildSubjectStatsForGrade(coverageData) {
