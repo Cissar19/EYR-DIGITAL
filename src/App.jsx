@@ -234,10 +234,11 @@ const PermissionGate = ({ moduleKey, children }) => {
   return children;
 };
 
-// Home redirect: teachers and convivencia go straight to Convivencia
+// Home redirect: teachers (no jefatura) and convivencia go straight to Convivencia
 const HomeRedirect = () => {
   const { user } = useAuth();
-  if (user?.role === 'teacher' || user?.role === 'convivencia' || user?.role === 'convivencia_head') return <Navigate to="/convivencia" replace />;
+  const isProfesorJefe = !!(user?.isHeadTeacher && user?.headTeacherOf);
+  if (!isProfesorJefe && (user?.role === 'teacher' || user?.role === 'convivencia' || user?.role === 'convivencia_head')) return <Navigate to="/convivencia" replace />;
   return <DashboardHome />;
 };
 
@@ -281,7 +282,7 @@ export default function App() {
             <Route path="/users" element={<PermissionGate moduleKey="users"><AdminUsers /></PermissionGate>} />
             <Route path="/administrative-days" element={<AdministrativeDaysView />} />
             <Route path="/labs" element={<PermissionGate moduleKey="labs"><LabReservation /></PermissionGate>} />
-            <Route path="/schedule" element={<PlaceholderView title="Mi Horario" />} />
+            <Route path="/schedule" element={<ScheduleAdminView selfView />} />
             <Route path="/inventory" element={<InventoryView />} />
             <Route path="/prints" element={<PrintsView />} />
             <Route path="/tickets" element={<PermissionGate moduleKey="tickets"><TicketsView /></PermissionGate>} />

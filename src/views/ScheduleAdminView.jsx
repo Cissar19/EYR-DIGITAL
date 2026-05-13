@@ -7,7 +7,7 @@ import { useAuth, ROLES, canEdit as canEditHelper } from '../context/AuthContext
 import { useSchedule, SCHEDULE_BLOCKS, DAYS, COURSES_LIST, SUBJECTS_LIST } from '../context/ScheduleContext';
 import { useCourseSchedule } from '../context/CourseScheduleContext';
 
-export default function ScheduleAdminView() {
+export default function ScheduleAdminView({ selfView = false }) {
     const { user, getAllUsers, updateUser } = useAuth();
     const { getSchedule, updateSchedule, deleteSchedule, loadDefaultIfNeeded, getAllSchedules } = useSchedule();
     const { getCourseSchedule, getCourseAssistant, getCoursePieAssistant, updateCourseSchedule, updateCourseAssistant, updateCoursePieAssistant } = useCourseSchedule();
@@ -17,7 +17,7 @@ export default function ScheduleAdminView() {
     const [viewMode, setViewMode] = useState('teacher');
 
     // Teacher view state
-    const [selectedTeacherId, setSelectedTeacherId] = useState('');
+    const [selectedTeacherId, setSelectedTeacherId] = useState(selfView ? (user?.id || '') : '');
     const [selectedTeacher, setSelectedTeacher] = useState(null);
     const [scheduleData, setScheduleData] = useState({});
     const [isEditMode, setIsEditMode] = useState(false);
@@ -153,7 +153,7 @@ export default function ScheduleAdminView() {
     // Load schedule when teacher is selected
     useEffect(() => {
         if (selectedTeacherId) {
-            const teacher = teachers.find(t => t.id === selectedTeacherId);
+            const teacher = teachers.find(t => t.id === selectedTeacherId) || (selfView ? user : null);
             setSelectedTeacher(teacher);
 
             loadDefaultIfNeeded(selectedTeacherId, teacher?.email);
@@ -311,16 +311,16 @@ export default function ScheduleAdminView() {
                             </div>
                             <div>
                                 <h1 className="text-2xl md:text-4xl font-light text-slate-900 tracking-tight">
-                                    Gestión de Horarios
+                                    {selfView ? 'Mi Horario' : 'Gestión de Horarios'}
                                 </h1>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    Vista semanal • Curso + Asignatura por bloque
+                                    {selfView ? `${user?.name} • Vista semanal` : 'Vista semanal • Curso + Asignatura por bloque'}
                                 </p>
                             </div>
                         </div>
 
-                        {/* View Mode Tabs */}
-                        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl border border-white/20 shadow-lg">
+                        {/* View Mode Tabs — ocultos en selfView */}
+                        {!selfView && <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl border border-white/20 shadow-lg">
                             <button
                                 onClick={() => setViewMode('teacher')}
                                 className={cn(
@@ -357,10 +357,10 @@ export default function ScheduleAdminView() {
                                 <LayoutGrid className="w-4 h-4" />
                                 Resumen
                             </button>
-                        </div>
+                        </div>}
 
                         {/* Edit Mode Toggle */}
-                        {canShowSchedule && viewMode === 'teacher' && userCanEdit && (
+                        {!selfView && canShowSchedule && viewMode === 'teacher' && userCanEdit && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -396,7 +396,7 @@ export default function ScheduleAdminView() {
                 </motion.div>
 
                 {/* Selector Panel */}
-                {viewMode !== 'summary' && (
+                {!selfView && viewMode !== 'summary' && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1026,7 +1026,7 @@ export default function ScheduleAdminView() {
 
                 {/* Action Buttons */}
                 {
-                    viewMode === 'teacher' && canShowSchedule && isEditMode && userCanEdit && (
+                    !selfView && viewMode === 'teacher' && canShowSchedule && isEditMode && userCanEdit && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
