@@ -303,6 +303,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     {isMinimalRole ? 'Menu' : 'Mi Area'}
                                 </p>
 
+                                {/* Para roles minimales (docentes): UTP primero */}
+                                {isMinimalRole && renderGroup({
+                                    label: 'UTP',
+                                    icon: GraduationCap,
+                                    items: utpItems,
+                                    isOpen: utpOpen,
+                                    setOpen: setUtpOpen,
+                                    hasActive: hasActiveUtpChild,
+                                })}
+
                                 {/* Ungrouped items */}
                                 {ungroupedItems.map(renderMenuItem)}
 
@@ -326,8 +336,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     hasActive: hasActiveInspChild,
                                 })}
 
-                                {/* UTP folder */}
-                                {renderGroup({
+                                {/* UTP folder — para roles no-minimales */}
+                                {!isMinimalRole && renderGroup({
                                     label: 'UTP',
                                     icon: GraduationCap,
                                     items: utpItems,
