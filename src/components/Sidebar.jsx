@@ -33,8 +33,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     }, [location.pathname]);
 
     // Filter modules by permission, split by category
+    const dashboardItem = MODULE_REGISTRY.find(m => m.key === 'dashboard' && canAccess(m.key));
     const commonItems = MODULE_REGISTRY
-        .filter(m => m.category === 'common' && canAccess(m.key));
+        .filter(m => m.category === 'common' && m.key !== 'dashboard' && canAccess(m.key));
     const roleSpecificItems = MODULE_REGISTRY
         .filter(m => m.category === 'role_specific' && canAccess(m.key));
 
@@ -259,6 +260,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 {/* Navigation */}
                 <div className={cn("flex-1 py-4", isCollapsed ? "md:px-2 px-6" : "px-6")}>
                     <nav className={cn("space-y-1", isCollapsed && "md:flex md:flex-col md:items-center")}>
+                        {/* Inicio — siempre visible para todos los roles */}
+                        {dashboardItem && renderMenuItem(dashboardItem)}
+
                         {/* Common section */}
                         {!isMinimalRole && commonItems.length > 0 && (
                             <>
