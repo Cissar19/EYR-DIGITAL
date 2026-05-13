@@ -19,7 +19,7 @@ import { db } from '../lib/firebase';
 
 const SCHOOL_ID   = 'eyr';
 const STORAGE_KEY = 'eyr_academic_year';
-const DEFAULT_YEAR = 2025;
+const DEFAULT_YEAR = 2026;
 
 const AcademicYearContext = createContext({
   year:           DEFAULT_YEAR,
