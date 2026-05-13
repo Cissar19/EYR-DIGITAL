@@ -43,6 +43,7 @@ import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
 import { subscribeToCollection } from '../lib/firestoreService';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import { useCoverageByGrade } from '../hooks/useCoverage';
+import { useCurriculumOasForGrade } from '../hooks/useCurriculumOas';
 import { SUBJECT_ORDER, SUBJECT_LABELS } from '../lib/coverageConstants';
 
 // Helper for Role Labels (Critical Requirement)
@@ -110,19 +111,35 @@ const FULL_TO_GRADE = {
     '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
 };
 
-// Igual que getOaStats en CoberturaAdminList — lee legacyOaStatus (campo que edita la jefa UTP)
-function blockPct(b) {
+/** "OA 1" / "OA01" / "AR01 OA 01"  →  "OA01"  (igual que normOaCode en CoberturaAdminList) */
+function normOaCode(raw) {
+    const m = raw?.match(/OA\s*0*(\d+)/i);
+    return m ? `OA${String(parseInt(m[1])).padStart(2, '0')}` : raw;
+}
+
+/**
+ * Igual que getCurriculumOaStats en CoberturaAdminList:
+ * - Si hay OAs de currículum → pasados que cruzan con legacyOaStatus / total currículum
+ * - Si no hay              → pasados legacyOaStatus / total keys legacyOaStatus
+ */
+function blockPct(b, curriculumOas) {
     const status = b.legacyOaStatus ?? {};
-    const total  = Object.keys(status).length;
+    if (curriculumOas?.length) {
+        const seen    = new Set(Object.entries(status).filter(([, v]) => v === true).map(([k]) => k));
+        const pasados = curriculumOas.filter(oa => seen.has(normOaCode(oa.codigo))).length;
+        return pasados / curriculumOas.length;
+    }
+    const total   = Object.keys(status).length;
     const pasados = Object.values(status).filter(v => v === true).length;
     return total > 0 ? pasados / total : 0;
 }
 
-function buildSubjectStatsForGrade(coverageData) {
+function buildSubjectStatsForGrade(coverageData, oasBySubject) {
     return SUBJECT_ORDER.map(s => {
         const blocks = coverageData.filter(b => b.subject === s);
         if (!blocks.length) return null;
-        const pct = blocks.reduce((acc, b) => acc + blockPct(b), 0) / blocks.length;
+        const currOas = oasBySubject?.[s];
+        const pct = blocks.reduce((acc, b) => acc + blockPct(b, currOas), 0) / blocks.length;
         const cfg = SUBJ_CFG[s] ?? DEFAULT_SUBJ_CFG;
         return { subject: s, label: SUBJECT_LABELS[s] ?? s, cfg, pct };
     }).filter(Boolean);
@@ -136,11 +153,21 @@ const ProfesorJefeView = ({ user }) => {
     const { getBalance } = useAdministrativeDays();
     const navigate = useNavigate();
 
+    // Misma carga de OAs del currículum que usa CoberturaAdminList
+    const presentSubjects = useMemo(
+        () => coverageData.map(b => b.subject),
+        [coverageData]
+    );
+    const { oasBySubject } = useCurriculumOasForGrade(year, gradeCode, presentSubjects);
+
     const balance = getBalance(user.id);
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
 
-    const subjectStats = useMemo(() => buildSubjectStatsForGrade(coverageData), [coverageData]);
+    const subjectStats = useMemo(
+        () => buildSubjectStatsForGrade(coverageData, oasBySubject),
+        [coverageData, oasBySubject]
+    );
 
     const pct100 = subjectStats.length
         ? Math.round(subjectStats.reduce((s, x) => s + x.pct, 0) / subjectStats.length * 100)
