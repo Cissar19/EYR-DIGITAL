@@ -29,6 +29,7 @@ import {
     Shuffle,
     FileDown,
     HeartPulse,
+    BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -40,6 +41,10 @@ import { useReplacementLogs } from '../context/ReplacementLogsContext';
 import UserDetailPanel from './UserDetailPanel';
 import { exportWeeklyAbsencesPDF } from '../lib/pdfExport';
 import { subscribeToCollection } from '../lib/firestoreService';
+import { useAcademicYear } from '../context/AcademicYearContext';
+import { useCoverageByGrade } from '../hooks/useCoverage';
+import { SUBJECT_ORDER, SUBJECT_LABELS } from '../lib/coverageConstants';
+import { getPorcentajeFallback, getPorcentajeLegacy } from '../lib/coverageMath';
 
 // Helper for Role Labels (Critical Requirement)
 const getRoleLabel = (role) => {
@@ -81,6 +86,227 @@ const BentoCard = ({ children, className, delay = 0, onClick }) => (
         {children}
     </motion.div>
 );
+
+// ─── Cobertura helpers (misma fuente que CoberturaDashboard) ─────────────────
+const SUBJ_CFG = {
+    lenguaje:            { c1: '#4f7dd8', c2: '#7aa3e8', glyph: 'Aa' },
+    lengua_y_literatura: { c1: '#4f7dd8', c2: '#7aa3e8', glyph: 'Aa' },
+    matematica:          { c1: '#7c5bd8', c2: '#a08be8', glyph: 'π'  },
+    ciencias:            { c1: '#2bae7e', c2: '#52c49a', glyph: '✿'  },
+    historia:            { c1: '#e8853c', c2: '#f0a468', glyph: 'H'  },
+    educacion_fisica:    { c1: '#e44d5c', c2: '#f07a85', glyph: '✮'  },
+    musica:              { c1: '#c95fb8', c2: '#dc8cd0', glyph: '♪'  },
+    artes:               { c1: '#f0a742', c2: '#f8c468', glyph: '✦'  },
+    tecnologia:          { c1: '#2bb0cb', c2: '#58c8df', glyph: '{}'  },
+    ingles:              { c1: '#6b7585', c2: '#9aa0ac', glyph: 'En' },
+    orientacion:         { c1: '#1f9d4f', c2: '#52b87a', glyph: 'Or' },
+    religion_evangelica: { c1: '#d4a853', c2: '#e8c47a', glyph: '✝'  },
+    religion_catolica:   { c1: '#c47a3d', c2: '#d9a068', glyph: '†'  },
+};
+const DEFAULT_SUBJ_CFG = { c1: '#64748b', c2: '#94a3b8', glyph: '?' };
+
+// Mapeo headTeacherOf → código de curso en colección coverage (cursos B)
+const FULL_TO_GRADE = {
+    '1° Básico': '1B', '2° Básico': '2B', '3° Básico': '3B', '4° Básico': '4B',
+    '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
+};
+
+function blockPct(b) {
+    return b.migrationStatus === 'complete'
+        ? getPorcentajeFallback(b.unitTracking ?? {}, b.excelTotalBasales)
+        : getPorcentajeLegacy(b.legacyOaStatus, b.excelTotalBasales);
+}
+
+function buildSubjectStatsForGrade(coverageData) {
+    return SUBJECT_ORDER.map(s => {
+        const blocks = coverageData.filter(b => b.subject === s);
+        if (!blocks.length) return null;
+        const pct = blocks.reduce((acc, b) => acc + blockPct(b), 0) / blocks.length;
+        const cfg = SUBJ_CFG[s] ?? DEFAULT_SUBJ_CFG;
+        return { subject: s, label: SUBJECT_LABELS[s] ?? s, cfg, pct };
+    }).filter(Boolean);
+}
+
+// ─── Profesor Jefe Home View ──────────────────────────────────────────────────
+const ProfesorJefeView = ({ user }) => {
+    const { year } = useAcademicYear();
+    const gradeCode = FULL_TO_GRADE[user.headTeacherOf];  // '2B'
+    const { data: coverageData } = useCoverageByGrade(year, gradeCode);
+    const { getBalance } = useAdministrativeDays();
+    const navigate = useNavigate();
+
+    const balance = getBalance(user.id);
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+
+    const subjectStats = useMemo(() => buildSubjectStatsForGrade(coverageData), [coverageData]);
+
+    const pct100 = subjectStats.length
+        ? Math.round(subjectStats.reduce((s, x) => s + x.pct, 0) / subjectStats.length * 100)
+        : 0;
+    const withData   = subjectStats.filter(s => s.pct > 0).length;
+    const sinInicio  = subjectStats.filter(s => s.pct === 0).length;
+
+    return (
+        <div className="space-y-5">
+
+            {/* ── Saludo ── */}
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">
+                    {greeting}, {user.name}
+                </h1>
+                <p className="text-slate-400 mt-1">
+                    Profesor/a Jefe ·{' '}
+                    <span className="font-semibold text-slate-600">{user.headTeacherOf}</span>
+                </p>
+            </motion.div>
+
+            {/* ── Fila de stats ── */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Promedio global */}
+                <BentoCard delay={0.1} className="col-span-2 md:col-span-1 bg-gradient-to-br from-indigo-600 to-indigo-500 !border-indigo-400/30 min-h-[110px]">
+                    <>
+                        <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest mb-1">Promedio del curso</p>
+                        <div className="flex items-end gap-1">
+                            <span className="text-5xl font-black text-white tabular-nums leading-none">{pct100}</span>
+                            <span className="text-2xl font-bold text-indigo-200 mb-1">%</span>
+                        </div>
+                        <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden">
+                            <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${pct100}%` }} />
+                        </div>
+                        <p className="text-indigo-200 text-[10px] mt-1.5 font-medium">{year}</p>
+                    </>
+                </BentoCard>
+
+                {/* Con avance */}
+                <BentoCard delay={0.15} className="bg-gradient-to-br from-white to-emerald-50/40 min-h-[110px]">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <p className="text-emerald-700 text-xs font-bold uppercase tracking-wider">Con avance</p>
+                    </div>
+                    <p className="text-4xl font-black text-slate-800">{withData}</p>
+                    <p className="text-slate-400 text-xs mt-1">asignatura{withData !== 1 ? 's' : ''} con OAs cubiertos</p>
+                </BentoCard>
+
+                {/* Sin inicio */}
+                <BentoCard delay={0.2} className="bg-gradient-to-br from-white to-slate-50/60 min-h-[110px]">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Sin inicio</p>
+                    </div>
+                    <p className="text-4xl font-black text-slate-800">{sinInicio}</p>
+                    <p className="text-slate-400 text-xs mt-1">asignatura{sinInicio !== 1 ? 's' : ''} sin datos aún</p>
+                </BentoCard>
+            </div>
+
+            {/* ── Grid de asignaturas ── */}
+            <BentoCard delay={0.3} className="!p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600">
+                            <BookOpen className="w-4 h-4" />
+                        </div>
+                        <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
+                    </div>
+                    <button
+                        onClick={() => navigate('/cobertura')}
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                        Ver detalle <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+
+                {subjectStats.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400">
+                        <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+                        <p className="text-sm font-medium">Sin datos de cobertura para {user.headTeacherOf}</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {subjectStats.map(({ subject, label, cfg, pct }, i) => {
+                            const p100 = Math.round(pct * 100);
+                            return (
+                                <motion.div
+                                    key={subject}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.35, delay: 0.32 + i * 0.04 }}
+                                    className="rounded-2xl overflow-hidden flex flex-col border border-[#f0e3c8] shadow-sm"
+                                >
+                                    <div className="relative p-4 overflow-hidden" style={{ background: `linear-gradient(135deg, ${cfg.c1} 0%, ${cfg.c2} 100%)`, minHeight: 120 }}>
+                                        <div style={{ position: 'absolute', right: -30, bottom: -40, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,.12)', pointerEvents: 'none' }} />
+                                        <div className="flex items-center gap-2 relative z-10">
+                                            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-sm text-white shrink-0 select-none"
+                                                style={{ background: 'rgba(255,255,255,.25)', border: '1.5px solid rgba(255,255,255,.35)' }}>
+                                                {cfg.glyph}
+                                            </div>
+                                            <p className="text-[11px] font-extrabold text-white leading-tight truncate flex-1">{label}</p>
+                                        </div>
+                                        <div className="mt-3 relative z-10">
+                                            <span className="font-black text-white tabular-nums" style={{ fontSize: 40, letterSpacing: '-0.04em', lineHeight: 1 }}>
+                                                {p100}<span style={{ fontSize: 18, opacity: 0.8, marginLeft: 1 }}>%</span>
+                                            </span>
+                                        </div>
+                                        <div className="relative mt-2 h-1.5 rounded-full z-10 overflow-hidden" style={{ background: 'rgba(255,255,255,.22)' }}>
+                                            <div className="absolute left-0 top-0 bottom-0 rounded-full bg-white" style={{ width: `${p100}%` }} />
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                )}
+            </BentoCard>
+
+            {/* ── Fila inferior: Días administrativos + Próxima clase ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Días administrativos */}
+                <BentoCard delay={0.5} className="bg-gradient-to-br from-white to-purple-50/40">
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="p-3 bg-purple-100 rounded-2xl text-purple-600">
+                            <Calendar className="w-5 h-5" />
+                        </div>
+                        <span className="text-purple-900/60 font-bold text-xs uppercase tracking-wider">Días Administrativos</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mb-4">
+                        <span className={cn('text-6xl font-black tracking-tighter', balance > 0 ? 'text-slate-800' : 'text-red-500')}>
+                            {balance}
+                        </span>
+                        <span className="text-lg text-slate-400 font-medium">disponibles</span>
+                    </div>
+                    <Link to="/administrative-days">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white py-3 rounded-xl font-semibold shadow-lg shadow-slate-200 hover:from-slate-800 hover:to-slate-700 transition-all"
+                        >
+                            Solicitar Día <ArrowUpRight className="w-4 h-4" />
+                        </motion.button>
+                    </Link>
+                </BentoCard>
+
+                {/* Próxima clase */}
+                <BentoCard delay={0.55} className="border-indigo-100/50 bg-gradient-to-br from-white to-indigo-50/30">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2.5 bg-indigo-100 rounded-xl text-indigo-600">
+                            <Sparkles className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-bold text-slate-700">Tu Próxima Clase</h3>
+                    </div>
+                    <NextClassWidget />
+                    <div className="mt-4 pt-4 border-t border-indigo-100/50">
+                        <button
+                            onClick={() => navigate('/schedule')}
+                            className="w-full py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            Ver Horario Completo <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </BentoCard>
+            </div>
+        </div>
+    );
+};
 
 // Teacher View (Preserved Logic)
 const TeacherView = ({ user, notifications }) => {
@@ -189,6 +415,7 @@ const TeacherView = ({ user, notifications }) => {
                         )}
                     </div>
                 </BentoCard>
+
 
             </div>
         </div>
@@ -1491,6 +1718,7 @@ export default function DashboardHome() {
         { id: 1, text: "Sistema actualizado a modo cloud.", read: false },
     ];
     const isAdmin = user?.role === 'director' || user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'utp_head' || user?.role === 'inspector';
+    const isProfesorJefe = !!(user?.isHeadTeacher && user?.headTeacherOf);
 
     if (user?.role === 'printer') {
         return (
@@ -1514,6 +1742,8 @@ export default function DashboardHome() {
         <div className="max-w-7xl mx-auto space-y-8 pb-10">
             {isAdmin ? (
                 <AdminDashboardView />
+            ) : isProfesorJefe ? (
+                <ProfesorJefeView user={user} />
             ) : (
                 <TeacherView user={user} notifications={notifications} />
             )}
