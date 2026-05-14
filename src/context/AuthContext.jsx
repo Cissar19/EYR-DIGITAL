@@ -23,6 +23,9 @@ import {
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { sendPasswordResetNotification } from '../lib/emailService';
+import { FLAGS } from '../lib/featureFlags';
+import { apiClient } from '../lib/apiClient';
+import { connectSocket, disconnectSocket } from '../lib/socket';
 
 const AuthContext = createContext();
 
@@ -116,6 +119,13 @@ export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMI
 // AUTH PROVIDER
 // ============================================
 
+const normalizeUser = (user) => ({
+    ...user,
+    displayName: user.display_name,
+    photoURL: user.avatar_url,
+    uid: user.id,
+});
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [users, setUsers] = useState([]);
@@ -129,7 +139,16 @@ export const AuthProvider = ({ children }) => {
      * Only called for management roles. Unsubscribes previous listener if any.
      */
     const subscribeUsers = React.useCallback(() => {
-        // Cancel any existing subscription first
+        if (FLAGS.USE_NEW_API_AUTH) {
+            apiClient.get('/users').then(usersList => {
+                setUsers(usersList.map(normalizeUser));
+            }).catch(err => {
+                console.error('Error cargando usuarios:', err);
+            });
+            return;
+        }
+
+        // Firebase original
         if (usersUnsub.current) {
             usersUnsub.current();
             usersUnsub.current = null;
@@ -153,6 +172,14 @@ export const AuthProvider = ({ children }) => {
      */
     const fetchUsers = React.useCallback(async () => {
         try {
+            if (FLAGS.USE_NEW_API_AUTH) {
+                const usersList = await apiClient.get('/users');
+                const normalized = usersList.map(normalizeUser);
+                setUsers(normalized);
+                return normalized;
+            }
+
+            // Firebase original
             const snapshot = await getDocs(collection(db, 'users'));
             const usersList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             setUsers(usersList);
@@ -163,38 +190,85 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
+    // Ref for the current user's own document listener
+    const profileUnsub = useRef(null);
+
     // Listen for auth state changes
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (FLAGS.USE_NEW_API_AUTH) {
+            const token = localStorage.getItem('eyr_token');
+            if (!token) {
+                setUser(null);
+                setUsers([]);
+                setLoading(false);
+                return;
+            }
+
+            let cancelled = false;
+            apiClient.get('/auth/me').then(raw => {
+                if (cancelled) return;
+                const profile = normalizeUser(raw);
+                setUser(profile);
+                connectSocket(token);
+
+                const managementRoles = [
+                    'super_admin', 'admin', 'director', 'utp_head',
+                    'inspector', 'convivencia_head', 'convivencia',
+                ];
+                if (managementRoles.includes(profile.role)) {
+                    subscribeUsers();
+                }
+                setLoading(false);
+            }).catch(() => {
+                if (cancelled) return;
+                localStorage.removeItem('eyr_token');
+                setUser(null);
+                setLoading(false);
+            });
+
+            return () => { cancelled = true; };
+        }
+
+        // Firebase original
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            // Tear down previous profile listener on any auth change
+            if (profileUnsub.current) {
+                profileUnsub.current();
+                profileUnsub.current = null;
+            }
+
             if (firebaseUser) {
                 setLoading(true);
-                try {
-                    // Direct document read — uid is the Firestore doc id, no query needed
-                    const profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+                // Subscribe to the user's own document so Firestore changes
+                // (e.g. isHeadTeacher, headTeacherOf, role) reflect immediately
+                // without requiring a logout/login.
+                profileUnsub.current = onSnapshot(
+                    doc(db, 'users', firebaseUser.uid),
+                    (profileDoc) => {
+                        if (profileDoc.exists()) {
+                            const profile = { id: profileDoc.id, ...profileDoc.data() };
+                            setUser(profile);
 
-                    if (profileDoc.exists()) {
-                        const profile = { id: profileDoc.id, ...profileDoc.data() };
-                        setUser(profile);
-
-                        // Only subscribe to the full user list for management roles —
-                        // teacher/staff/printer don't need it and an extra onSnapshot
-                        // per non-management login doesn't scale.
-                        const managementRoles = [
-                            'super_admin', 'admin', 'director', 'utp_head',
-                            'inspector', 'convivencia_head', 'convivencia',
-                        ];
-                        if (managementRoles.includes(profile.role)) {
-                            subscribeUsers();
+                            // Only subscribe to the full user list for management roles
+                            const managementRoles = [
+                                'super_admin', 'admin', 'director', 'utp_head',
+                                'inspector', 'convivencia_head', 'convivencia',
+                            ];
+                            if (managementRoles.includes(profile.role)) {
+                                subscribeUsers();
+                            }
+                        } else {
+                            console.warn('Auth user has no Firestore profile:', firebaseUser.uid);
+                            setUser(null);
                         }
-                    } else {
-                        // User exists in Auth but not in Firestore — unusual
-                        console.warn('Auth user has no Firestore profile:', firebaseUser.uid);
+                        setLoading(false);
+                    },
+                    (error) => {
+                        console.error('Error en listener de perfil:', error);
                         setUser(null);
+                        setLoading(false);
                     }
-                } catch (error) {
-                    console.error('Error fetching user profile:', error);
-                    setUser(null);
-                }
+                );
             } else {
                 // Tear down the users listener on logout
                 if (usersUnsub.current) {
@@ -203,12 +277,16 @@ export const AuthProvider = ({ children }) => {
                 }
                 setUser(null);
                 setUsers([]);
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => {
             unsubscribe();
+            if (profileUnsub.current) {
+                profileUnsub.current();
+                profileUnsub.current = null;
+            }
             if (usersUnsub.current) {
                 usersUnsub.current();
                 usersUnsub.current = null;
@@ -220,15 +298,42 @@ export const AuthProvider = ({ children }) => {
      * Login with email and password
      */
     const login = React.useCallback(async (email, password) => {
+        if (FLAGS.USE_NEW_API_AUTH) {
+            const data = await apiClient.post('/auth/login', { email, password });
+            localStorage.setItem('eyr_token', data.token);
+            const normalized = normalizeUser(data.user);
+            setUser(normalized);
+            connectSocket(data.token);
+
+            const managementRoles = [
+                'super_admin', 'admin', 'director', 'utp_head',
+                'inspector', 'convivencia_head', 'convivencia',
+            ];
+            if (managementRoles.includes(normalized.role)) {
+                subscribeUsers();
+            }
+            return normalized;
+        }
+
+        // Firebase original
         const credential = await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle setting the user
         return credential.user;
-    }, []);
+    }, [subscribeUsers]);
 
     /**
      * Logout
      */
     const logout = React.useCallback(async () => {
+        if (FLAGS.USE_NEW_API_AUTH) {
+            localStorage.removeItem('eyr_token');
+            disconnectSocket();
+            setUser(null);
+            setUsers([]);
+            window.location.href = '/login';
+            return;
+        }
+
+        // Firebase original
         await signOut(auth);
         setUser(null);
         window.location.href = '/login';

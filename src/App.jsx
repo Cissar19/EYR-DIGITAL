@@ -168,7 +168,7 @@ const ProtectedLayout = () => {
           {user?.avatar ? (
             <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
           ) : (
-            user?.name.charAt(0)
+            (user?.name || user?.displayName || '?').charAt(0)
           )}
         </div>
       </div>

@@ -4,24 +4,69 @@ import { serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { validateRequiredString, validateUserId, sanitizeText, sanitizeName } from '../lib/validation';
 import { useAuth } from './AuthContext';
+import { FLAGS } from '../lib/featureFlags';
+import { apiClient } from '../lib/apiClient';
+import { getSocket } from '../lib/socket';
 
 const TasksContext = createContext();
 export const useTasks = () => useContext(TasksContext);
+
+const normalizeTask = (t) => ({
+    ...t,
+    title: t.title ?? t.name ?? '',
+    status: t.status ?? 'pending',
+    createdBy: t.created_by ?? t.createdBy,
+    createdByName: t.created_by_name ?? t.createdByName,
+    createdAt: t.created_at ?? t.createdAt,
+    dueDate: t.due_date ?? t.dueDate,
+});
 
 export const TasksProvider = ({ children }) => {
     const [tasks, setTasks] = useState([]);
     const { user } = useAuth();
 
+    const sortTasks = (list) => list.sort((a, b) => {
+        const pOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+        const pDiff = (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2);
+        if (pDiff !== 0) return pDiff;
+        const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return bTime - aTime;
+    });
+
     useEffect(() => {
-        const unsubscribe = subscribeToCollection('tasks', (docs) => {
-            const sorted = docs.sort((a, b) => {
-                // Priority order: urgent > high > normal > low
-                const pOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-                const pDiff = (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2);
-                if (pDiff !== 0) return pDiff;
-                return new Date(b.createdAt?.toDate?.() || 0) - new Date(a.createdAt?.toDate?.() || 0);
+        if (FLAGS.USE_NEW_API_TASKS) {
+            let cancelled = false;
+            apiClient.get('/tasks').then(data => {
+                if (!cancelled) {
+                    const normalized = data.map(normalizeTask);
+                    console.log('Tasks normalizadas:', normalized);
+                    setTasks(sortTasks(normalized));
+                }
+            }).catch(err => {
+                console.error('Error cargando tasks:', err);
             });
-            setTasks(sorted);
+
+            const socket = getSocket();
+            const onCreated = (task) => setTasks(prev => sortTasks([...prev, normalizeTask(task)]));
+            const onUpdated = (task) => setTasks(prev => sortTasks(prev.map(t => t.id === task.id ? normalizeTask(task) : t)));
+            const onDeleted = ({ id }) => setTasks(prev => prev.filter(t => t.id !== id));
+
+            socket?.on('tasks:created', onCreated);
+            socket?.on('tasks:updated', onUpdated);
+            socket?.on('tasks:deleted', onDeleted);
+
+            return () => {
+                cancelled = true;
+                socket?.off('tasks:created', onCreated);
+                socket?.off('tasks:updated', onUpdated);
+                socket?.off('tasks:deleted', onDeleted);
+            };
+        }
+
+        // Firebase original
+        const unsubscribe = subscribeToCollection('tasks', (docs) => {
+            setTasks(sortTasks(docs));
         });
         return () => unsubscribe();
     }, []);
@@ -33,20 +78,31 @@ export const TasksProvider = ({ children }) => {
             return { id: a.id, name: sanitizeName(a.name) };
         });
 
-        const newTask = {
-            title: sanitizeText(title),
-            description: description ? sanitizeText(description) : '',
-            assignees: safeAssignees,
-            createdBy: user.uid,
-            createdByName: sanitizeName(user.displayName || user.email),
-            status: 'pending',
-            priority: priority || 'normal',
-            dueDate: dueDate || null,
-            notes: [],
-        };
-
         try {
-            await createDocument('tasks', newTask);
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.post('/tasks', {
+                    title: sanitizeText(title),
+                    description: description ? sanitizeText(description) : '',
+                    assignees: safeAssignees,
+                    priority: priority || 'normal',
+                    due_date: dueDate || null,
+                });
+                const data = await apiClient.get('/tasks');
+                setTasks(sortTasks(data.map(normalizeTask)));
+            } else {
+                const newTask = {
+                    title: sanitizeText(title),
+                    description: description ? sanitizeText(description) : '',
+                    assignees: safeAssignees,
+                    createdBy: user.uid,
+                    createdByName: sanitizeName(user.displayName || user.email),
+                    status: 'pending',
+                    priority: priority || 'normal',
+                    dueDate: dueDate || null,
+                    notes: [],
+                };
+                await createDocument('tasks', newTask);
+            }
             toast.success('Tarea creada');
             return true;
         } catch (error) {
@@ -58,7 +114,11 @@ export const TasksProvider = ({ children }) => {
 
     const updateTaskStatus = React.useCallback(async (taskId, status) => {
         try {
-            await updateDocument('tasks', taskId, { status });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { status });
+            } else {
+                await updateDocument('tasks', taskId, { status });
+            }
         } catch (error) {
             console.error('Error actualizando estado:', error);
             toast.error('Error al actualizar estado');
@@ -67,7 +127,11 @@ export const TasksProvider = ({ children }) => {
 
     const updateTask = React.useCallback(async (taskId, updates) => {
         try {
-            await updateDocument('tasks', taskId, updates);
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, updates);
+            } else {
+                await updateDocument('tasks', taskId, updates);
+            }
             toast.success('Tarea actualizada');
         } catch (error) {
             console.error('Error actualizando tarea:', error);
@@ -77,7 +141,11 @@ export const TasksProvider = ({ children }) => {
 
     const deleteTask = React.useCallback(async (taskId) => {
         try {
-            await removeDocument('tasks', taskId);
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.delete(`/tasks/${taskId}`);
+            } else {
+                await removeDocument('tasks', taskId);
+            }
             toast.success('Tarea eliminada');
         } catch (error) {
             console.error('Error eliminando tarea:', error);
@@ -100,7 +168,11 @@ export const TasksProvider = ({ children }) => {
 
         const updatedNotes = [...(task.notes || []), note];
         try {
-            await updateDocument('tasks', taskId, { notes: updatedNotes });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { notes: updatedNotes });
+            } else {
+                await updateDocument('tasks', taskId, { notes: updatedNotes });
+            }
         } catch (error) {
             console.error('Error agregando nota:', error);
             toast.error('Error al agregar nota');
@@ -120,7 +192,11 @@ export const TasksProvider = ({ children }) => {
             }
         );
         try {
-            await updateDocument('tasks', taskId, { notes: updatedNotes });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { notes: updatedNotes });
+            } else {
+                await updateDocument('tasks', taskId, { notes: updatedNotes });
+            }
         } catch (error) {
             console.error('Error eliminando nota:', error);
             toast.error('Error al eliminar nota');
@@ -139,7 +215,11 @@ export const TasksProvider = ({ children }) => {
             n.id !== noteId ? n : { ...n, text: sanitizeText(newText), editedAt: new Date().toISOString() }
         );
         try {
-            await updateDocument('tasks', taskId, { notes: updatedNotes });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { notes: updatedNotes });
+            } else {
+                await updateDocument('tasks', taskId, { notes: updatedNotes });
+            }
         } catch (error) {
             console.error('Error editando nota:', error);
             toast.error('Error al editar nota');
@@ -153,7 +233,11 @@ export const TasksProvider = ({ children }) => {
         if (already) return;
         const updated = [...(task.collaborators || []), { id: collabUser.id, name: collabUser.name }];
         try {
-            await updateDocument('tasks', taskId, { collaborators: updated });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { collaborators: updated });
+            } else {
+                await updateDocument('tasks', taskId, { collaborators: updated });
+            }
         } catch (error) {
             console.error('Error agregando colaborador:', error);
             toast.error('Error al agregar colaborador');
@@ -165,7 +249,11 @@ export const TasksProvider = ({ children }) => {
         if (!task) return;
         const updated = (task.collaborators || []).filter(c => c.id !== collabId);
         try {
-            await updateDocument('tasks', taskId, { collaborators: updated });
+            if (FLAGS.USE_NEW_API_TASKS) {
+                await apiClient.patch(`/tasks/${taskId}`, { collaborators: updated });
+            } else {
+                await updateDocument('tasks', taskId, { collaborators: updated });
+            }
         } catch (error) {
             console.error('Error eliminando colaborador:', error);
             toast.error('Error al eliminar colaborador');
