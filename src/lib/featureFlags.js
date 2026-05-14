@@ -1,0 +1,15 @@
+export const FLAGS = {
+    USE_NEW_API_AUTH: import.meta.env.VITE_USE_NEW_API_AUTH === 'true',
+    USE_NEW_API_TASKS: import.meta.env.VITE_USE_NEW_API_TASKS === 'true',
+    USE_NEW_API_TODOS: import.meta.env.VITE_USE_NEW_API_TODOS === 'true',
+    USE_NEW_API_USERS: import.meta.env.VITE_USE_NEW_API_USERS === 'true',
+    USE_NEW_API_INVENTORY: import.meta.env.VITE_USE_NEW_API_INVENTORY === 'true',
+    USE_NEW_API_STUDENTS: import.meta.env.VITE_USE_NEW_API_STUDENTS === 'true',
+    USE_NEW_API_ATTENDANCE: import.meta.env.VITE_USE_NEW_API_ATTENDANCE === 'true',
+    USE_NEW_API_CONVIVENCIA: import.meta.env.VITE_USE_NEW_API_CONVIVENCIA === 'true',
+    USE_NEW_API_EVALUACIONES: import.meta.env.VITE_USE_NEW_API_EVALUACIONES === 'true',
+    USE_NEW_API_RETOS: import.meta.env.VITE_USE_NEW_API_RETOS === 'true',
+    USE_NEW_API_WORKSHOPS: import.meta.env.VITE_USE_NEW_API_WORKSHOPS === 'true',
+    USE_NEW_API_NOTIFICATIONS: import.meta.env.VITE_USE_NEW_API_NOTIFICATIONS === 'true',
+    USE_NEW_API_ADMIN_DAYS: import.meta.env.VITE_USE_NEW_API_ADMIN_DAYS === 'true',
+};
