@@ -168,7 +168,10 @@ export default function AdminUsers() {
             if (editingUserId) {
                 await updateUser(editingUserId, { ...submitData, permissionOverrides: permOverrides });
                 setNotification('Usuario actualizado correctamente');
-                loadUsers(null, false);
+                // Update local list directly — onSnapshot already syncs AuthContext
+                setMockUsers(prev => prev.map(u =>
+                    u.id === editingUserId ? { ...u, ...submitData, permissionOverrides: permOverrides } : u
+                ));
             } else {
                 const result = await addUser(submitData);
                 setTempPasswordData({ name: formData.name, email: formData.email, tempPassword: result.tempPassword });
@@ -215,7 +218,7 @@ export default function AdminUsers() {
             try {
                 await deleteUser(userToDelete.id);
                 toast.success('Usuario eliminado');
-                loadUsers(null, false);
+                setMockUsers(prev => prev.filter(u => u.id !== userToDelete.id));
             } catch (error) {
                 toast.error(error.message);
             }
