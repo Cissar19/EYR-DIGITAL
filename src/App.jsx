@@ -243,6 +243,18 @@ const HomeRedirect = () => {
 };
 
 export default function App() {
+  if (import.meta.env.VITE_MAINTENANCE_MODE === 'true') {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center p-10 bg-white rounded-2xl shadow-lg border border-slate-200 max-w-md">
+          <div className="text-5xl mb-4">🔧</div>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Sistema en mantención</h1>
+          <p className="text-slate-500">Volvemos el lunes</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" richColors />
