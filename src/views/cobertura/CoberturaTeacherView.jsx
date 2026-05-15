@@ -8,12 +8,33 @@ import CoverageCard from '../../components/coverage/CoverageCard';
 import CoverageBarChart from '../../components/coverage/CoverageBarChart';
 import YearSelector from '../../components/coverage/YearSelector';
 import { GRADE_ORDER, SUBJECT_ORDER, GRADE_LABELS, SUBJECT_LABELS } from '../../lib/coverageConstants';
-import { getPorcentajeFallback, getPorcentajeLegacy } from '../../lib/coverageMath';
-
+// Combina legacyOaStatus (OADetailDrawer) y unitTracking (OAUnitEditor/addYear)
+// para calcular el porcentaje de OAs pasados sobre el TOTAL de OAs conocidos.
 function blockPct(b) {
-  return b.migrationStatus === 'complete'
-    ? getPorcentajeFallback(b.unitTracking, b.excelTotalBasales)
-    : getPorcentajeLegacy(b.legacyOaStatus, b.excelTotalBasales);
+  const legacy = b.legacyOaStatus ?? {};
+  const ut = b.unitTracking;
+
+  const allCodes = new Set();
+  const passedCodes = new Set();
+
+  for (const [code, val] of Object.entries(legacy)) {
+    allCodes.add(code);
+    if (val === true) passedCodes.add(code);
+  }
+
+  if (ut) {
+    for (const u of ['u1','u2','u3','u4']) {
+      for (const [code, val] of Object.entries(ut[u] ?? {})) {
+        allCodes.add(code);
+        if (val === true && !(code in legacy)) {
+          passedCodes.add(code);
+        }
+      }
+    }
+  }
+
+  if (allCodes.size === 0) return 0;
+  return passedCodes.size / allCodes.size;
 }
 
 export default function CoberturaTeacherView() {

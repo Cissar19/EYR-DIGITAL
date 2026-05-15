@@ -2,10 +2,30 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { subscribeToCollection, createDocument, updateDocument, setDocument, removeDocument } from '../lib/firestoreService';
 import { toast } from 'sonner';
 import { validateDate, validateRequiredString, validateUserId, sanitizeText, sanitizeName } from '../lib/validation';
+import { FLAGS } from '../lib/featureFlags';
+import { apiClient } from '../lib/apiClient';
+import { getSocket } from '../lib/socket';
 
 const AdministrativeDaysContext = createContext();
 
 export const useAdministrativeDays = () => useContext(AdministrativeDaysContext);
+
+const normalizeRequest = (r) => ({
+    ...r,
+    userId: r.user_id ?? r.userId,
+    userName: r.user_name ?? r.userName,
+    createdAt: r.created_at ?? r.createdAt,
+    isHalfDay: r.is_half_day ?? r.isHalfDay,
+    minutesUsed: r.minutes_used ?? r.minutesUsed,
+    minutesReturned: r.minutes_returned ?? r.minutesReturned,
+});
+
+const normalizeMetric = (m) => ({
+    ...m,
+    hoursUsed: m.hours_used ?? m.hoursUsed ?? 0,
+    discountDays: m.discount_days ?? m.discountDays ?? 0,
+    balance: m.balance !== undefined ? m.balance : 6,
+});
 
 export const AdministrativeDaysProvider = ({ children }) => {
     const [requests, setRequests] = useState([]);
@@ -13,10 +33,37 @@ export const AdministrativeDaysProvider = ({ children }) => {
     const [hoursUsedState, setHoursUsedState] = useState({});
     const [discountDaysState, setDiscountDaysState] = useState({});
 
+    const sortRequests = (list) => list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
     // 1. Suscribirse a las solicitudes
     useEffect(() => {
+        if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+            let cancelled = false;
+            apiClient.get('/admin-requests').then(data => {
+                if (!cancelled) setRequests(sortRequests(data.map(normalizeRequest)));
+            }).catch(err => {
+                console.error('Error cargando solicitudes:', err);
+            });
+
+            const socket = getSocket();
+            const onCreated = (r) => setRequests(prev => sortRequests([...prev, normalizeRequest(r)]));
+            const onUpdated = (r) => setRequests(prev => sortRequests(prev.map(x => x.id === r.id ? normalizeRequest(r) : x)));
+            const onDeleted = ({ id }) => setRequests(prev => prev.filter(x => x.id !== id));
+
+            socket?.on('administrative_days:created', onCreated);
+            socket?.on('administrative_days:updated', onUpdated);
+            socket?.on('administrative_days:deleted', onDeleted);
+
+            return () => {
+                cancelled = true;
+                socket?.off('administrative_days:created', onCreated);
+                socket?.off('administrative_days:updated', onUpdated);
+                socket?.off('administrative_days:deleted', onDeleted);
+            };
+        }
+
+        // Firebase original
         const unsubscribe = subscribeToCollection('admin_requests', (docs) => {
-            // Sort by createdAt desc by default
             const sorted = docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setRequests(sorted);
         });
@@ -25,6 +72,30 @@ export const AdministrativeDaysProvider = ({ children }) => {
 
     // 2. Suscribirse a las metricas (balances, hours, discounts)
     useEffect(() => {
+        if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+            let cancelled = false;
+            apiClient.get('/admin-metrics').then(data => {
+                if (cancelled) return;
+                const bal = {};
+                const hrs = {};
+                const disc = {};
+                data.forEach(d => {
+                    const m = normalizeMetric(d);
+                    const uid = m.id ?? m.userId;
+                    bal[uid] = m.balance;
+                    hrs[uid] = m.hoursUsed;
+                    disc[uid] = m.discountDays;
+                });
+                setBalances(bal);
+                setHoursUsedState(hrs);
+                setDiscountDaysState(disc);
+            }).catch(err => {
+                console.error('Error cargando métricas:', err);
+            });
+            return () => { cancelled = true; };
+        }
+
+        // Firebase original
         const unsubscribe = subscribeToCollection('admin_metrics', (docs) => {
             const bal = {};
             const hrs = {};
@@ -45,7 +116,11 @@ export const AdministrativeDaysProvider = ({ children }) => {
     // Helpers para metricas persistentes
     const updateMetrics = async (userId, updates) => {
         try {
-            await setDocument('admin_metrics', userId, updates, { merge: true });
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.patch(`/admin-metrics/${userId}`, updates);
+            } else {
+                await setDocument('admin_metrics', userId, updates, { merge: true });
+            }
         } catch (error) {
             console.error('Error actualizando metricas', error);
         }
@@ -96,7 +171,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             toast.success('Solicitud enviada correctamente');
             return true;
         } catch (error) {
@@ -111,8 +192,11 @@ export const AdministrativeDaysProvider = ({ children }) => {
         if (!request || request.status !== 'pending') return;
 
         try {
-            // Update request
-            await updateDocument('admin_requests', requestId, { status: 'approved' });
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.patch(`/admin-requests/${requestId}`, { status: 'approved' });
+            } else {
+                await updateDocument('admin_requests', requestId, { status: 'approved' });
+            }
 
             // Decrement balance (respect isHalfDay)
             const decrement = request.isHalfDay ? 0.5 : 1;
@@ -131,7 +215,11 @@ export const AdministrativeDaysProvider = ({ children }) => {
         if (!request) return;
 
         try {
-            await updateDocument('admin_requests', requestId, { status: 'rejected' });
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.patch(`/admin-requests/${requestId}`, { status: 'rejected' });
+            } else {
+                await updateDocument('admin_requests', requestId, { status: 'rejected' });
+            }
             toast.success('Solicitud rechazada');
         } catch (error) {
             console.error('Error rejecting request', error);
@@ -155,7 +243,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             toast.success('Día asignado — pendiente de aprobación');
             return true;
         } catch (error) {
@@ -181,7 +275,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             toast.success('Permiso especial asignado');
             return true;
         } catch (error) {
@@ -210,7 +310,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             const hoursToAdd = validMinutes / 60;
             const currentUsage = hoursUsedState[userId] !== undefined ? hoursUsedState[userId] : 0;
             await updateMetrics(userId, { hoursUsed: currentUsage + hoursToAdd });
@@ -242,7 +348,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             const hoursToSubtract = validMinutes / 60;
             const currentUsage = hoursUsedState[userId] !== undefined ? hoursUsedState[userId] : 0;
             await updateMetrics(userId, { hoursUsed: currentUsage - hoursToSubtract });
@@ -275,7 +387,13 @@ export const AdministrativeDaysProvider = ({ children }) => {
         };
 
         try {
-            await createDocument('admin_requests', newRequest);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.post('/admin-requests', newRequest);
+                const data = await apiClient.get('/admin-requests');
+                setRequests(sortRequests(data.map(normalizeRequest)));
+            } else {
+                await createDocument('admin_requests', newRequest);
+            }
             const currentCount = discountDaysState[userId] !== undefined ? discountDaysState[userId] : 0;
             await updateMetrics(userId, { discountDays: currentCount + 1 });
             toast.success('Dia de descuento registrado');
@@ -292,7 +410,11 @@ export const AdministrativeDaysProvider = ({ children }) => {
         if (!request) return;
 
         try {
-            await removeDocument('admin_requests', requestId);
+            if (FLAGS.USE_NEW_API_ADMIN_DAYS) {
+                await apiClient.delete(`/admin-requests/${requestId}`);
+            } else {
+                await removeDocument('admin_requests', requestId);
+            }
 
             // Revert metrics if the record was approved
             if (request.status === 'approved') {
@@ -347,4 +469,3 @@ export const AdministrativeDaysProvider = ({ children }) => {
         </AdministrativeDaysContext.Provider>
     );
 };
-

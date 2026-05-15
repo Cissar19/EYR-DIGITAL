@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { subscribeToCollection, createDocument, updateDocument, removeDocument } from '../lib/firestoreService';
+import { FLAGS } from '../lib/featureFlags';
+import { apiClient } from '../lib/apiClient';
+import { getSocket } from '../lib/socket';
 
 const InventoryContext = createContext();
 
@@ -15,12 +18,54 @@ const initialItems = [
 
 const INITIAL_CATEGORIES = ['Tecnología', 'Audio', 'Computación', 'Electricidad', 'Llaves', 'Otros'];
 
+const normalizeItem = (item) => ({
+    ...item,
+    borrowedBy: item.borrowed_by ?? item.borrowedBy,
+    borrowedByName: item.borrowed_by_name ?? item.borrowedByName,
+    borrowedAt: item.borrowed_at ?? item.borrowedAt,
+    createdAt: item.created_at ?? item.createdAt,
+});
+
 export const InventoryProvider = ({ children }) => {
     const [categories, setCategories] = useState([]);
     const [items, setItems] = useState([]);
 
-    // Persistence with Firestore
+    const sortItems = (list) => list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    // Persistence with Firestore / API
     useEffect(() => {
+        if (FLAGS.USE_NEW_API_INVENTORY) {
+            let cancelled = false;
+
+            Promise.all([
+                apiClient.get('/inventory'),
+                apiClient.get('/inventory/categories'),
+            ]).then(([itemsData, catsData]) => {
+                if (cancelled) return;
+                setItems(sortItems(itemsData.map(normalizeItem)));
+                setCategories(catsData.map(c => c.name ?? c));
+            }).catch(err => {
+                console.error('Error cargando inventario:', err);
+            });
+
+            const socket = getSocket();
+            const onCreated = (item) => setItems(prev => sortItems([...prev, normalizeItem(item)]));
+            const onUpdated = (item) => setItems(prev => sortItems(prev.map(i => i.id === item.id ? normalizeItem(item) : i)));
+            const onDeleted = ({ id }) => setItems(prev => prev.filter(i => i.id !== id));
+
+            socket?.on('inventory:created', onCreated);
+            socket?.on('inventory:updated', onUpdated);
+            socket?.on('inventory:deleted', onDeleted);
+
+            return () => {
+                cancelled = true;
+                socket?.off('inventory:created', onCreated);
+                socket?.off('inventory:updated', onUpdated);
+                socket?.off('inventory:deleted', onDeleted);
+            };
+        }
+
+        // Firebase original
         let unsubscribeCategories;
         let unsubscribeItems;
 
@@ -72,7 +117,13 @@ export const InventoryProvider = ({ children }) => {
             createdAt: new Date().toISOString()
         };
         try {
-            await createDocument('inventory', item);
+            if (FLAGS.USE_NEW_API_INVENTORY) {
+                await apiClient.post('/inventory', item);
+                const data = await apiClient.get('/inventory');
+                setItems(sortItems(data.map(normalizeItem)));
+            } else {
+                await createDocument('inventory', item);
+            }
         } catch (error) {
             console.error("Error al agregar ítem:", error);
         }
@@ -80,7 +131,11 @@ export const InventoryProvider = ({ children }) => {
 
     const updateItem = async (id, validUpdates) => {
         try {
-            await updateDocument('inventory', String(id), validUpdates);
+            if (FLAGS.USE_NEW_API_INVENTORY) {
+                await apiClient.patch(`/inventory/${id}`, validUpdates);
+            } else {
+                await updateDocument('inventory', String(id), validUpdates);
+            }
         } catch (error) {
             console.error("Error al actualizar ítem:", error);
         }
@@ -88,7 +143,11 @@ export const InventoryProvider = ({ children }) => {
 
     const deleteItem = async (id) => {
         try {
-            await removeDocument('inventory', String(id));
+            if (FLAGS.USE_NEW_API_INVENTORY) {
+                await apiClient.delete(`/inventory/${id}`);
+            } else {
+                await removeDocument('inventory', String(id));
+            }
         } catch (error) {
             console.error("Error al eliminar ítem:", error);
         }
@@ -98,13 +157,18 @@ export const InventoryProvider = ({ children }) => {
     const borrowItem = async (itemId, userId, userName) => {
         const item = items.find(i => i.id === itemId);
         if (item && item.status === 'available') {
+            const updates = {
+                status: 'borrowed',
+                borrowedBy: userId,
+                borrowedByName: userName,
+                borrowedAt: new Date().toISOString()
+            };
             try {
-                await updateDocument('inventory', String(itemId), {
-                    status: 'borrowed',
-                    borrowedBy: userId,
-                    borrowedByName: userName,
-                    borrowedAt: new Date().toISOString()
-                });
+                if (FLAGS.USE_NEW_API_INVENTORY) {
+                    await apiClient.patch(`/inventory/${itemId}`, updates);
+                } else {
+                    await updateDocument('inventory', String(itemId), updates);
+                }
             } catch (error) {
                 console.error("Error al pedir prestado:", error);
             }
@@ -114,13 +178,18 @@ export const InventoryProvider = ({ children }) => {
     const returnItem = async (itemId) => {
         const item = items.find(i => i.id === itemId);
         if (item) {
+            const updates = {
+                status: 'available',
+                borrowedBy: null,
+                borrowedByName: null,
+                borrowedAt: null
+            };
             try {
-                await updateDocument('inventory', String(itemId), {
-                    status: 'available',
-                    borrowedBy: null,
-                    borrowedByName: null,
-                    borrowedAt: null
-                });
+                if (FLAGS.USE_NEW_API_INVENTORY) {
+                    await apiClient.patch(`/inventory/${itemId}`, updates);
+                } else {
+                    await updateDocument('inventory', String(itemId), updates);
+                }
             } catch (error) {
                 console.error("Error al devolver:", error);
             }
@@ -132,7 +201,13 @@ export const InventoryProvider = ({ children }) => {
     const addCategory = async (name) => {
         if (!categories.includes(name)) {
             try {
-                await createDocument('inventory_categories', { name }, name);
+                if (FLAGS.USE_NEW_API_INVENTORY) {
+                    await apiClient.post('/inventory/categories', { name });
+                    const data = await apiClient.get('/inventory/categories');
+                    setCategories(data.map(c => c.name ?? c));
+                } else {
+                    await createDocument('inventory_categories', { name }, name);
+                }
             } catch (error) {
                 console.error("Error al agregar categoría:", error);
             }
@@ -145,7 +220,12 @@ export const InventoryProvider = ({ children }) => {
             return false;
         }
         try {
-            await removeDocument('inventory_categories', name);
+            if (FLAGS.USE_NEW_API_INVENTORY) {
+                await apiClient.delete(`/inventory/categories/${encodeURIComponent(name)}`);
+                setCategories(prev => prev.filter(c => c !== name));
+            } else {
+                await removeDocument('inventory_categories', name);
+            }
             return true;
         } catch (error) {
             console.error("Error al eliminar categoría:", error);

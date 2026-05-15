@@ -4,10 +4,6 @@ import { cn } from '../../lib/utils';
 import UnitProgressBar from './UnitProgressBar';
 import {
   getCoverageLevel,
-  getPorcentaje,
-  getTotalPasados,
-  getPorcentajeFallback,
-  getPorcentajeLegacy,
   getPorcentajePorUnidadFallback,
   LEVEL_CLASSES,
 } from '../../lib/coverageMath';
@@ -39,24 +35,31 @@ export default function CoverageCard({ block, basalesOas, compact = false }) {
   } = block;
 
   const Icon = SUBJECT_ICONS[subject] ?? BookOpen;
+  const isComplete = migrationStatus === 'complete';
 
-  // Cálculo de progreso
-  const isComplete  = migrationStatus === 'complete';
-  const totalBase   = basalesOas?.length || excelTotalBasales || 0;
+  // Combina legacyOaStatus + unitTracking para total y pasados.
+  const legacy = legacyOaStatus ?? {};
+  const allCodes = new Set();
+  const passedCodes = new Set();
 
-  let pct, pasados;
-  if (isComplete) {
-    if (basalesOas?.length) {
-      pct    = getPorcentaje(unitTracking, basalesOas);
-      pasados = getTotalPasados(unitTracking, basalesOas);
-    } else {
-      pct    = getPorcentajeFallback(unitTracking, excelTotalBasales);
-      pasados = Math.round(pct * (excelTotalBasales || 0));
-    }
-  } else {
-    pct    = getPorcentajeLegacy(legacyOaStatus, excelTotalBasales);
-    pasados = Object.values(legacyOaStatus || {}).filter(Boolean).length;
+  for (const [code, val] of Object.entries(legacy)) {
+    allCodes.add(code);
+    if (val === true) passedCodes.add(code);
   }
+  if (unitTracking) {
+    for (const u of ['u1','u2','u3','u4']) {
+      for (const [code, val] of Object.entries(unitTracking[u] ?? {})) {
+        allCodes.add(code);
+        if (val === true && !(code in legacy)) {
+          passedCodes.add(code);
+        }
+      }
+    }
+  }
+
+  const totalBase = allCodes.size;
+  const pasados   = passedCodes.size;
+  const pct       = totalBase > 0 ? pasados / totalBase : 0;
 
   const level   = getCoverageLevel(pct);
   const colors  = LEVEL_CLASSES[level];

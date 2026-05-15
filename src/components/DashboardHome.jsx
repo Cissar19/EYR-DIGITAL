@@ -111,12 +111,36 @@ const FULL_TO_GRADE = {
     '5° Básico': '5B', '6° Básico': '6B', '7° Básico': '7B', '8° Básico': '8B',
 };
 
-// Igual que getOaStats en CoberturaAdminList: OAs pasados / total OAs del bloque
+// Combina legacyOaStatus (OADetailDrawer) y unitTracking (OAUnitEditor/addYear)
+// para calcular el porcentaje de OAs pasados sobre el TOTAL de OAs conocidos.
+// legacyOaStatus tiene prioridad sobre unitTracking para un mismo código.
 function blockPct(b) {
-    const status  = b.legacyOaStatus ?? {};
-    const total   = Object.keys(status).length;
-    const pasados = Object.values(status).filter(v => v === true).length;
-    return total > 0 ? pasados / total : 0;
+    const legacy = b.legacyOaStatus ?? {};
+    const ut = b.unitTracking;
+
+    const allCodes = new Set();
+    const passedCodes = new Set();
+
+    // Desde legacyOaStatus (prioridad)
+    for (const [code, val] of Object.entries(legacy)) {
+        allCodes.add(code);
+        if (val === true) passedCodes.add(code);
+    }
+
+    // Desde unitTracking (agrega al total; pasados solo si no están en legacy)
+    if (ut) {
+        for (const u of ['u1','u2','u3','u4']) {
+            for (const [code, val] of Object.entries(ut[u] ?? {})) {
+                allCodes.add(code);
+                if (val === true && !(code in legacy)) {
+                    passedCodes.add(code);
+                }
+            }
+        }
+    }
+
+    if (allCodes.size === 0) return 0;
+    return passedCodes.size / allCodes.size;
 }
 
 function buildSubjectStatsForGrade(coverageData) {
@@ -134,17 +158,8 @@ const ProfesorJefeView = ({ user }) => {
     const { year } = useAcademicYear();
     const gradeCode = FULL_TO_GRADE[user.headTeacherOf];  // '2B'
 
-    // Siempre cargamos el año activo y el anterior en paralelo
-    const { data: currentData,  loading: loadingCurrent  } = useCoverageByGrade(year,     gradeCode);
-    const { data: prevData,     loading: loadingPrev     } = useCoverageByGrade(year - 1, gradeCode);
-
-    // Si el año activo no tiene ningún OA marcado como pasado → mostrar año anterior
-    const currentHasData = currentData.some(b =>
-        Object.values(b.legacyOaStatus ?? {}).some(Boolean)
-    );
-    const coverageData  = currentHasData ? currentData  : prevData;
-    const displayYear   = currentHasData ? year         : year - 1;
-    const isFallback    = !currentHasData && prevData.length > 0;
+    const { data: currentData,  loading: loadingCurrent  } = useCoverageByGrade(year, gradeCode);
+    const coverageData = currentData;
 
     const { getBalance } = useAdministrativeDays();
     const navigate = useNavigate();
@@ -223,12 +238,7 @@ const ProfesorJefeView = ({ user }) => {
                         <div>
                             <h3 className="font-bold text-slate-700">Cobertura por Asignatura</h3>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <p className="text-[11px] text-slate-400">Avance OAs · {displayYear}</p>
-                                {isFallback && (
-                                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                                        sin datos {year}
-                                    </span>
-                                )}
+                                <p className="text-[11px] text-slate-400">Avance OAs · {year}</p>
                             </div>
                         </div>
                     </div>

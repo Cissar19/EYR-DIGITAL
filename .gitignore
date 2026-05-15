@@ -43,3 +43,4 @@ backups/
 *.sln
 *.sw?
 .vercel
+video/

@@ -25,7 +25,7 @@ import { getAuth } from 'firebase/auth';
 import { sendPasswordResetNotification } from '../lib/emailService';
 import { FLAGS } from '../lib/featureFlags';
 import { apiClient } from '../lib/apiClient';
-import { connectSocket, disconnectSocket } from '../lib/socket';
+import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
 
 const AuthContext = createContext();
 
@@ -119,11 +119,17 @@ export const canEdit = (user) => hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMI
 // AUTH PROVIDER
 // ============================================
 
-const normalizeUser = (user) => ({
-    ...user,
-    displayName: user.display_name,
-    photoURL: user.avatar_url,
-    uid: user.id,
+const normalizeUser = (u) => ({
+    ...u,
+    name: u.name ?? u.display_name ?? '',
+    displayName: u.display_name ?? u.displayName,
+    photoURL: u.avatar_url ?? u.photoURL,
+    uid: u.id ?? u.uid,
+    accessLevel: u.access_level ?? u.accessLevel,
+    hoursUsed: u.hours_used ?? u.hoursUsed,
+    createdAt: u.created_at ?? u.createdAt,
+    lastSetPassword: u.last_set_password ?? u.lastSetPassword,
+    passwordSetAt: u.password_set_at ?? u.passwordSetAt,
 });
 
 export const AuthProvider = ({ children }) => {
@@ -139,12 +145,33 @@ export const AuthProvider = ({ children }) => {
      * Only called for management roles. Unsubscribes previous listener if any.
      */
     const subscribeUsers = React.useCallback(() => {
-        if (FLAGS.USE_NEW_API_AUTH) {
+        if (FLAGS.USE_NEW_API_AUTH || FLAGS.USE_NEW_API_USERS) {
             apiClient.get('/users').then(usersList => {
                 setUsers(usersList.map(normalizeUser));
             }).catch(err => {
                 console.error('Error cargando usuarios:', err);
             });
+
+            const socket = getSocket();
+            const onCreated = (u) => setUsers(prev => [...prev, normalizeUser(u)]);
+            const onUpdated = (u) => {
+                const n = normalizeUser(u);
+                setUsers(prev => prev.map(x => x.id === n.id ? n : x));
+                // Update current session if it's the logged-in user
+                setUser(prev => prev?.id === n.id ? { ...prev, ...n } : prev);
+            };
+            const onDeleted = ({ id }) => setUsers(prev => prev.filter(x => x.id !== id));
+
+            socket?.on('users:created', onCreated);
+            socket?.on('users:updated', onUpdated);
+            socket?.on('users:deleted', onDeleted);
+
+            // Store cleanup in ref so it can be torn down on logout
+            usersUnsub.current = () => {
+                socket?.off('users:created', onCreated);
+                socket?.off('users:updated', onUpdated);
+                socket?.off('users:deleted', onDeleted);
+            };
             return;
         }
 
@@ -172,7 +199,7 @@ export const AuthProvider = ({ children }) => {
      */
     const fetchUsers = React.useCallback(async () => {
         try {
-            if (FLAGS.USE_NEW_API_AUTH) {
+            if (FLAGS.USE_NEW_API_AUTH || FLAGS.USE_NEW_API_USERS) {
                 const usersList = await apiClient.get('/users');
                 const normalized = usersList.map(normalizeUser);
                 setUsers(normalized);
@@ -376,7 +403,20 @@ export const AuthProvider = ({ children }) => {
             throw new Error('Rol invalido');
         }
 
-        // Create a secondary app instance to avoid signing out current user
+        if (FLAGS.USE_NEW_API_USERS) {
+            const result = await apiClient.post('/users', {
+                name: newUserData.name?.trim().slice(0, 100) || '',
+                email: newUserData.email,
+                role: newUserData.role,
+                accessLevel: newUserData.accessLevel || 'view',
+            });
+            const normalized = normalizeUser(result);
+            const data = await apiClient.get('/users');
+            setUsers(data.map(normalizeUser));
+            return normalized;
+        }
+
+        // Firebase original
         const secondaryApp = initializeApp(auth.app.options, 'secondary-' + Date.now());
         const secondaryAuth = getAuth(secondaryApp);
 
@@ -539,54 +579,58 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // Always sync email to Firebase Auth when email field is present
-            if (safeFields.email) {
-                const targetUser = users.find(u => u.id === userId);
-                if (targetUser) {
-                    const firebaseUser = auth.currentUser;
-                    if (firebaseUser) {
-                        const idToken = await firebaseUser.getIdToken();
-                        const res = await fetch('/api/update-user-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${idToken}`,
-                            },
-                            body: JSON.stringify({ uid: targetUser.uid, newEmail: safeFields.email }),
-                        });
-                        let data;
-                        const text = await res.text();
-                        try { data = JSON.parse(text); } catch {
-                            throw new Error('Error del servidor al actualizar correo en Authentication');
-                        }
-                        if (!res.ok) {
-                            throw new Error(data.error || 'Error al actualizar correo en Authentication');
+            if (FLAGS.USE_NEW_API_USERS) {
+                await apiClient.patch(`/users/${userId}`, safeFields);
+            } else {
+                // Always sync email to Firebase Auth when email field is present
+                if (safeFields.email) {
+                    const targetUser = users.find(u => u.id === userId);
+                    if (targetUser) {
+                        const firebaseUser = auth.currentUser;
+                        if (firebaseUser) {
+                            const idToken = await firebaseUser.getIdToken();
+                            const res = await fetch('/api/update-user-email', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`,
+                                },
+                                body: JSON.stringify({ uid: targetUser.uid, newEmail: safeFields.email }),
+                            });
+                            let data;
+                            const text = await res.text();
+                            try { data = JSON.parse(text); } catch {
+                                throw new Error('Error del servidor al actualizar correo en Authentication');
+                            }
+                            if (!res.ok) {
+                                throw new Error(data.error || 'Error al actualizar correo en Authentication');
+                            }
                         }
                     }
                 }
-            }
 
-            // Sync role claim if role changed
-            if (safeFields.role) {
-                try {
-                    const firebaseUser = auth.currentUser;
-                    if (firebaseUser) {
-                        const idToken = await firebaseUser.getIdToken();
-                        await fetch('/api/sync-role-claim', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${idToken}`,
-                            },
-                            body: JSON.stringify({ uid: userId, role: safeFields.role }),
-                        });
+                // Sync role claim if role changed
+                if (safeFields.role) {
+                    try {
+                        const firebaseUser = auth.currentUser;
+                        if (firebaseUser) {
+                            const idToken = await firebaseUser.getIdToken();
+                            await fetch('/api/sync-role-claim', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`,
+                                },
+                                body: JSON.stringify({ uid: userId, role: safeFields.role }),
+                            });
+                        }
+                    } catch (claimErr) {
+                        console.warn('No se pudo sincronizar claim de rol (no crítico):', claimErr);
                     }
-                } catch (claimErr) {
-                    console.warn('No se pudo sincronizar claim de rol (no crítico):', claimErr);
                 }
-            }
 
-            await updateDoc(doc(db, 'users', userId), safeFields);
+                await updateDoc(doc(db, 'users', userId), safeFields);
+            }
 
             // Update local state
             setUsers(prev => prev.map(u =>
@@ -619,22 +663,26 @@ export const AuthProvider = ({ children }) => {
             throw new Error('No puedes eliminar tu propia cuenta');
         }
 
-        const firebaseUser = auth.currentUser;
-        if (!firebaseUser) throw new Error('No hay sesión activa');
+        if (FLAGS.USE_NEW_API_USERS) {
+            await apiClient.delete(`/users/${userId}`);
+        } else {
+            const firebaseUser = auth.currentUser;
+            if (!firebaseUser) throw new Error('No hay sesión activa');
 
-        const idToken = await firebaseUser.getIdToken();
-        const res = await fetch('/api/delete-user', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ uid: userId }),
-        });
+            const idToken = await firebaseUser.getIdToken();
+            const res = await fetch('/api/delete-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ uid: userId }),
+            });
 
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'Error al eliminar usuario');
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Error al eliminar usuario');
+            }
         }
 
         setUsers(prev => prev.filter(u => u.id !== userId));
@@ -664,6 +712,12 @@ export const AuthProvider = ({ children }) => {
      * Tries branded email via Apps Script first, falls back to Firebase built-in.
      */
     const resetPassword = React.useCallback(async (email, userName) => {
+        if (FLAGS.USE_NEW_API_USERS) {
+            await apiClient.post('/users/reset-password', { email, userName: userName || '' });
+            return;
+        }
+
+        // Firebase original
         const sent = await sendPasswordResetNotification({ toEmail: email, toName: userName || '' });
         if (!sent) {
             await sendPasswordResetEmail(auth, email);
@@ -674,6 +728,16 @@ export const AuthProvider = ({ children }) => {
      * Set password for another user (admin only, via serverless function)
      */
     const setUserPassword = React.useCallback(async (uid, newPassword) => {
+        if (FLAGS.USE_NEW_API_USERS) {
+            const data = await apiClient.post(`/users/${uid}/set-password`, { newPassword });
+            const now = new Date().toISOString();
+            setUsers(prev => prev.map(u =>
+                (u.uid === uid || u.id === uid) ? { ...u, lastSetPassword: newPassword, passwordSetAt: now } : u
+            ));
+            return data;
+        }
+
+        // Firebase original
         const firebaseUser = auth.currentUser;
         if (!firebaseUser) throw new Error('No hay sesión activa');
 
@@ -713,6 +777,17 @@ export const AuthProvider = ({ children }) => {
      * Change password for current user (requires re-authentication)
      */
     const changePassword = React.useCallback(async (currentPassword, newPassword) => {
+        if (FLAGS.USE_NEW_API_USERS) {
+            await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+            if (user?.id) {
+                setUsers(prev => prev.map(u =>
+                    u.id === user.id ? { ...u, lastSetPassword: null, passwordSetAt: null, passwordSetBy: null } : u
+                ));
+            }
+            return;
+        }
+
+        // Firebase original
         const firebaseUser = auth.currentUser;
         if (!firebaseUser) throw new Error('No hay sesion activa');
         const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);

@@ -38,14 +38,14 @@ const SUBJECT_META = {
 
 /* ─── Colores por curso ──────────────────────────────────────────────────── */
 const GRADE_COLORS = {
-  '1A': { pill: 'bg-violet-500', light: 'bg-violet-50',  border: 'border-violet-200', text: 'text-violet-700',  active: 'bg-violet-500 text-white' },
-  '2A': { pill: 'bg-blue-500',   light: 'bg-blue-50',    border: 'border-blue-200',   text: 'text-blue-700',    active: 'bg-blue-500 text-white'   },
-  '3A': { pill: 'bg-cyan-500',   light: 'bg-cyan-50',    border: 'border-cyan-200',   text: 'text-cyan-700',    active: 'bg-cyan-500 text-white'   },
-  '4A': { pill: 'bg-teal-500',   light: 'bg-teal-50',    border: 'border-teal-200',   text: 'text-teal-700',    active: 'bg-teal-500 text-white'   },
-  '5A': { pill: 'bg-emerald-500',light: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-700', active: 'bg-emerald-500 text-white' },
-  '6A': { pill: 'bg-amber-500',  light: 'bg-amber-50',   border: 'border-amber-200',  text: 'text-amber-700',   active: 'bg-amber-500 text-white'  },
-  '7A': { pill: 'bg-orange-500', light: 'bg-orange-50',  border: 'border-orange-200', text: 'text-orange-700',  active: 'bg-orange-500 text-white' },
-  '8A': { pill: 'bg-rose-500',   light: 'bg-rose-50',    border: 'border-rose-200',   text: 'text-rose-700',    active: 'bg-rose-500 text-white'   },
+  '1B': { pill: 'bg-violet-500', light: 'bg-violet-50',  border: 'border-violet-200', text: 'text-violet-700',  active: 'bg-violet-500 text-white' },
+  '2B': { pill: 'bg-blue-500',   light: 'bg-blue-50',    border: 'border-blue-200',   text: 'text-blue-700',    active: 'bg-blue-500 text-white'   },
+  '3B': { pill: 'bg-cyan-500',   light: 'bg-cyan-50',    border: 'border-cyan-200',   text: 'text-cyan-700',    active: 'bg-cyan-500 text-white'   },
+  '4B': { pill: 'bg-teal-500',   light: 'bg-teal-50',    border: 'border-teal-200',   text: 'text-teal-700',    active: 'bg-teal-500 text-white'   },
+  '5B': { pill: 'bg-emerald-500',light: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-700', active: 'bg-emerald-500 text-white' },
+  '6B': { pill: 'bg-amber-500',  light: 'bg-amber-50',   border: 'border-amber-200',  text: 'text-amber-700',   active: 'bg-amber-500 text-white'  },
+  '7B': { pill: 'bg-orange-500', light: 'bg-orange-50',  border: 'border-orange-200', text: 'text-orange-700',  active: 'bg-orange-500 text-white' },
+  '8B': { pill: 'bg-rose-500',   light: 'bg-rose-50',    border: 'border-rose-200',   text: 'text-rose-700',    active: 'bg-rose-500 text-white'   },
 };
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -165,7 +165,7 @@ export default function CoberturaAdminList() {
     }))
   , [grouped, statsFn]);
 
-  const gc = GRADE_COLORS[activeGrade] ?? GRADE_COLORS['1A'];
+  const gc = GRADE_COLORS[activeGrade] ?? GRADE_COLORS['1B'];
 
   // ── Vista Docentes ──────────────────────────────────────────────────────
   const teacherList = useMemo(() => {
@@ -449,7 +449,7 @@ export default function CoberturaAdminList() {
           ) : (
             GRADE_ORDER.map(g => {
               const kpi = gradeKpis[g];
-              const c   = GRADE_COLORS[g] ?? GRADE_COLORS['1A'];
+              const c   = GRADE_COLORS[g] ?? GRADE_COLORS['1B'];
               const isActive = g === activeGrade;
               return (
                 <button
@@ -753,14 +753,14 @@ const SUBJECT_GRADIENTS = {
 };
 
 const GRADE_GRADIENTS = {
-  '1A': 'from-violet-500 to-purple-600',
-  '2A': 'from-blue-500 to-indigo-600',
-  '3A': 'from-cyan-500 to-sky-600',
-  '4A': 'from-teal-500 to-emerald-600',
-  '5A': 'from-emerald-500 to-green-600',
-  '6A': 'from-amber-500 to-orange-500',
-  '7A': 'from-orange-500 to-red-500',
-  '8A': 'from-rose-500 to-pink-600',
+  '1B': 'from-violet-500 to-purple-600',
+  '2B': 'from-blue-500 to-indigo-600',
+  '3B': 'from-cyan-500 to-sky-600',
+  '4B': 'from-teal-500 to-emerald-600',
+  '5B': 'from-emerald-500 to-green-600',
+  '6B': 'from-amber-500 to-orange-500',
+  '7B': 'from-orange-500 to-red-500',
+  '8B': 'from-rose-500 to-pink-600',
 };
 
 function SubjectCard({ block, onDetail, viewMode = 'general', curriculumOas }) {
