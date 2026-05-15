@@ -43,7 +43,7 @@ export default function ScheduleAdminView({ selfView = false }) {
     }, [getAllUsers]);
 
     const profJefeUsers = React.useMemo(() => {
-        return getAllUsers().filter(u => u.role === ROLES.PROFESOR_JEFE);
+        return getAllUsers().filter(u => u.role === ROLES.PROFESOR_JEFE || u.role === ROLES.TEACHER);
     }, [getAllUsers]);
 
     const pieAssistantUsers = React.useMemo(() => {
@@ -100,7 +100,7 @@ export default function ScheduleAdminView({ selfView = false }) {
         const savedAssistant = getCourseAssistant(selectedCourse);
         setLocalAssistantId(savedAssistant?.id || '');
 
-        const currentHT = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
+        const currentHT = getAllUsers().find(u => (u.role === ROLES.PROFESOR_JEFE || u.role === ROLES.TEACHER) && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
         setLocalHeadTeacherId(currentHT?.id || '');
 
         const savedPie = getCoursePieAssistant(selectedCourse);
@@ -132,7 +132,7 @@ export default function ScheduleAdminView({ selfView = false }) {
         const pieData = pieUser ? { id: pieUser.id, name: pieUser.name } : null;
         updateCoursePieAssistant(selectedCourse, pieData);
 
-        const currentHT = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
+        const currentHT = getAllUsers().find(u => (u.role === ROLES.PROFESOR_JEFE || u.role === ROLES.TEACHER) && u.headTeacherOf === selectedCourse && u.isHeadTeacher);
         if (localHeadTeacherId !== (currentHT?.id || '')) {
             try {
                 if (currentHT) {
@@ -171,8 +171,8 @@ export default function ScheduleAdminView({ selfView = false }) {
         }
     }, [selectedTeacherId, getSchedule, teachers, loadDefaultIfNeeded]);
 
-    // Update a cell with course + subject
-    const updateCell = (day, startTime, course, subject) => {
+    // Update a cell with course + subject + optional extra fields
+    const updateCell = (day, startTime, course, subject, extra = {}) => {
         const key = `${day}-${startTime}`;
 
         if (!course) {
@@ -185,7 +185,7 @@ export default function ScheduleAdminView({ selfView = false }) {
         } else {
             setScheduleData(prev => ({
                 ...prev,
-                [key]: { day, startTime, subject: subject || '', course }
+                [key]: { ...prev[key], day, startTime, subject: subject || '', course, ...extra }
             }));
         }
     };
@@ -840,6 +840,7 @@ export default function ScheduleAdminView({ selfView = false }) {
                                                                             isSpecial={isSpecial}
                                                                             updateCell={updateCell}
                                                                             clearCell={clearCell}
+                                                                            teachers={isSpecial ? teachers : undefined}
                                                                         />
                                                                     ) : (
                                                                         <ViewCell
@@ -986,7 +987,7 @@ export default function ScheduleAdminView({ selfView = false }) {
                                 </thead>
                                 <tbody>
                                     {COURSES_LIST.map((course, idx) => {
-                                        const hj = getAllUsers().find(u => u.role === ROLES.PROFESOR_JEFE && u.headTeacherOf === course && u.isHeadTeacher);
+                                        const hj = getAllUsers().find(u => (u.role === ROLES.PROFESOR_JEFE || u.role === ROLES.TEACHER) && u.headTeacherOf === course && u.isHeadTeacher);
                                         const asist = getCourseAssistant(course);
                                         const pie = getCoursePieAssistant(course);
                                         return (
@@ -1113,14 +1114,20 @@ function ViewCell({ cellData, isSpecial, hasData }) {
             <span className={cn("text-[10px] leading-tight mt-0.5", color.sub)}>
                 {cellData.subject}
             </span>
+            {isSpecial && cellData.headTeacher && (
+                <span className="text-[9px] leading-tight mt-0.5 text-orange-500 font-medium truncate max-w-full">
+                    {cellData.headTeacher}
+                </span>
+            )}
         </div>
     );
 }
 
 // ─── Edit-mode cell ────────────────────────────────────────
-function EditCell({ cellData, day, startTime, isSpecial, updateCell, clearCell }) {
+function EditCell({ cellData, day, startTime, isSpecial, updateCell, clearCell, teachers }) {
     const currentCourse = cellData?.course || '';
     const currentSubject = cellData?.subject || '';
+    const currentHeadTeacher = cellData?.headTeacher || '';
 
     const editColor = currentSubject ? getSubjectColor(currentSubject) : null;
 
@@ -1162,6 +1169,23 @@ function EditCell({ cellData, day, startTime, isSpecial, updateCell, clearCell }
                         ))}
                     </select>
                     <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                </div>
+            )}
+
+            {/* Profesor Jefe dropdown — only on Jefatura block when course selected */}
+            {isSpecial && currentCourse && teachers && (
+                <div className="relative mt-1">
+                    <select
+                        value={currentHeadTeacher}
+                        onChange={(e) => updateCell(day, startTime, currentCourse, currentSubject, { headTeacher: e.target.value })}
+                        className="w-full px-2 py-1 rounded-lg border border-orange-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 focus:outline-none text-[11px] appearance-none bg-white text-slate-700 truncate"
+                    >
+                        <option value="">Profesor Jefe...</option>
+                        {teachers.map(t => (
+                            <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-orange-400 pointer-events-none" />
                 </div>
             )}
 

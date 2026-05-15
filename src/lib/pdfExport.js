@@ -1988,7 +1988,7 @@ const SCHEDULE_SUBJECT_TO_ASIG = {
 };
 
 // Asignaturas que no deben aparecer en el PDF de agenda
-const SCHEDULE_EXCLUDE_PDF = new Set(['Jefatura', 'PAE', 'Religión', 'Religión / FC']);
+const SCHEDULE_EXCLUDE_PDF = new Set(['Jefatura', 'PAE']);
 
 // Mapeo hora inicio → hora fin para los bloques del colegio
 const BLOCK_END_PDF = {
@@ -3631,6 +3631,20 @@ export async function exportAgendaTabularPDF({
         }
     });
 
+    // Overrides excepcionales de hora de salida por fecha específica
+    const SALIDA_OVERRIDES = {
+        '2026-05-20': '13:10',  // miércoles 20 mayo — salida anticipada
+    };
+    if (weekStart) {
+        const mon = new Date(weekStart + 'T12:00:00');
+        DIAS_ORDER_AGENDA.forEach((dia, i) => {
+            const d = new Date(mon);
+            d.setDate(mon.getDate() + i);
+            const iso = d.toISOString().slice(0, 10);
+            if (SALIDA_OVERRIDES[iso]) salidaFinal[dia] = SALIDA_OVERRIDES[iso];
+        });
+    }
+
     // ── Alturas de fila ───────────────────────────────────────────────────────
     const SBH    = 7.5;
     const LH_NT  = 4.3;  // mm por línea a 8.5–9pt en notas/eval
@@ -3750,10 +3764,14 @@ export async function exportAgendaTabularPDF({
     doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK);
     doc.text(`Agenda Semanal${selectedCurso ? ' · ' + selectedCurso : ''}`, c2MidX, y + 8, { align: 'center' });
 
-    const profLine = [profesores.filter(Boolean).join(' / '), asistente].filter(Boolean).join('  |  ');
-    if (profLine) {
+    const profJefeName = profesores.length > 0 ? profesores[0] : '';
+    if (profJefeName) {
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C_INK_MUTED);
+        doc.text(`Profesor Jefe: ${profJefeName}`, c2MidX, y + 13, { align: 'center', maxWidth: c2W });
+    }
+    if (asistente) {
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C_INK_MUTED);
-        doc.text(profLine, c2MidX, y + 14, { align: 'center', maxWidth: c2W });
+        doc.text(`Asistente de Aula: ${asistente}`, c2MidX, y + 16.5, { align: 'center', maxWidth: c2W });
     }
 
     y += HDR_H;
