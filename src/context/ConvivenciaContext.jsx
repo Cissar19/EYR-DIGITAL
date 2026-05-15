@@ -4,6 +4,9 @@ import { toast } from 'sonner';
 import { subscribeToCollection, createDocument, removeDocument, fetchCollection } from '../lib/firestoreService';
 import { validateDate, validateRequiredString, validateEnum, sanitizeText } from '../lib/validation';
 import { sendConvivenciaEmail } from '../lib/emailService';
+import { FLAGS } from '../lib/featureFlags';
+import { apiClient } from '../lib/apiClient';
+import { getSocket } from '../lib/socket';
 
 const ConvivenciaContext = createContext();
 const ADMIN_ROLES = [ROLES.DIRECTOR, ROLES.ADMIN, ROLES.SUPER_ADMIN];
@@ -28,6 +31,19 @@ export const TIME_BLOCKS = [
 
 export const DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 
+const normalizeReservation = (r) => ({
+    ...r,
+    blockId: r.block_id ?? r.blockId,
+    userId: r.user_id ?? r.userId,
+});
+
+const normalizeBlock = (b) => ({
+    ...b,
+    blockId: b.block_id ?? b.blockId,
+    blockedBy: b.blocked_by ?? b.blockedBy,
+    blockedByName: b.blocked_by_name ?? b.blockedByName,
+});
+
 export function ConvivenciaProvider({ children }) {
     const { user, users } = useAuth();
     const [reservations, setReservations] = useState([]);
@@ -44,6 +60,32 @@ export function ConvivenciaProvider({ children }) {
     };
 
     useEffect(() => {
+        if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+            let cancelled = false;
+            apiClient.get('/convivencia-reservations').then(data => {
+                if (!cancelled) setReservations(data.map(normalizeReservation));
+            }).catch(err => {
+                console.error('Error cargando reservas convivencia:', err);
+            });
+
+            const socket = getSocket();
+            const onCreated = (r) => setReservations(prev => [...prev, normalizeReservation(r)]);
+            const onUpdated = (r) => setReservations(prev => prev.map(x => x.id === r.id ? normalizeReservation(r) : x));
+            const onDeleted = ({ id }) => setReservations(prev => prev.filter(x => x.id !== id));
+
+            socket?.on('convivencia-reservations:created', onCreated);
+            socket?.on('convivencia-reservations:updated', onUpdated);
+            socket?.on('convivencia-reservations:deleted', onDeleted);
+
+            return () => {
+                cancelled = true;
+                socket?.off('convivencia-reservations:created', onCreated);
+                socket?.off('convivencia-reservations:updated', onUpdated);
+                socket?.off('convivencia-reservations:deleted', onDeleted);
+            };
+        }
+
+        // Firebase original
         const unsubscribe = subscribeToCollection('convivencia_reservations', (docs) => {
             setReservations(docs);
         });
@@ -51,6 +93,32 @@ export function ConvivenciaProvider({ children }) {
     }, []);
 
     useEffect(() => {
+        if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+            let cancelled = false;
+            apiClient.get('/convivencia-blocks').then(data => {
+                if (!cancelled) setBlockedSlots(data.map(normalizeBlock));
+            }).catch(err => {
+                console.error('Error cargando bloques convivencia:', err);
+            });
+
+            const socket = getSocket();
+            const onCreated = (b) => setBlockedSlots(prev => [...prev, normalizeBlock(b)]);
+            const onUpdated = (b) => setBlockedSlots(prev => prev.map(x => x.id === b.id ? normalizeBlock(b) : x));
+            const onDeleted = ({ id }) => setBlockedSlots(prev => prev.filter(x => x.id !== id));
+
+            socket?.on('convivencia-blocks:created', onCreated);
+            socket?.on('convivencia-blocks:updated', onUpdated);
+            socket?.on('convivencia-blocks:deleted', onDeleted);
+
+            return () => {
+                cancelled = true;
+                socket?.off('convivencia-blocks:created', onCreated);
+                socket?.off('convivencia-blocks:updated', onUpdated);
+                socket?.off('convivencia-blocks:deleted', onDeleted);
+            };
+        }
+
+        // Firebase original
         const unsubscribe = subscribeToCollection('convivencia_blocks', (docs) => {
             setBlockedSlots(docs);
         });
@@ -84,13 +152,23 @@ export function ConvivenciaProvider({ children }) {
                 return false;
             }
 
-            await createDocument('convivencia_blocks', {
-                blockId,
-                date,
-                reason: sanitizeText(reason),
-                blockedBy: user.id,
-                blockedByName: user.name,
-            });
+            if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+                await apiClient.post('/convivencia-blocks', {
+                    block_id: blockId,
+                    date,
+                    reason: sanitizeText(reason),
+                    blocked_by: user.id,
+                    blocked_by_name: user.name,
+                });
+            } else {
+                await createDocument('convivencia_blocks', {
+                    blockId,
+                    date,
+                    reason: sanitizeText(reason),
+                    blockedBy: user.id,
+                    blockedByName: user.name,
+                });
+            }
             toast.success('Bloque bloqueado.');
             return true;
         } catch (error) {
@@ -108,7 +186,11 @@ export function ConvivenciaProvider({ children }) {
         }
 
         try {
-            await removeDocument('convivencia_blocks', blockedSlotId);
+            if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+                await apiClient.delete(`/convivencia-blocks/${blockedSlotId}`);
+            } else {
+                await removeDocument('convivencia_blocks', blockedSlotId);
+            }
             toast.success('Bloque desbloqueado.');
         } catch (error) {
             console.error('Error en unblockSlot:', error);
@@ -134,24 +216,44 @@ export function ConvivenciaProvider({ children }) {
                 return false;
             }
 
-            const currentData = await fetchCollection('convivencia_reservations');
-            const isOccupied = currentData.some(r => r.date === date && r.blockId === blockId);
+            if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+                const currentData = await apiClient.get('/convivencia-reservations');
+                const isOccupied = currentData.some(r => {
+                    const norm = normalizeReservation(r);
+                    return norm.date === date && norm.blockId === blockId;
+                });
 
-            if (isOccupied) {
-                toast.error("Bloque ya reservado por otro usuario!");
-                return false;
+                if (isOccupied) {
+                    toast.error("Bloque ya reservado por otro usuario!");
+                    return false;
+                }
+
+                await apiClient.post('/convivencia-reservations', {
+                    block_id: blockId,
+                    date,
+                    subject: sanitizeText(subject),
+                    teacher: sanitizeText(teacher),
+                    user_id: user.id,
+                    timestamp: Date.now(),
+                });
+            } else {
+                const currentData = await fetchCollection('convivencia_reservations');
+                const isOccupied = currentData.some(r => r.date === date && r.blockId === blockId);
+
+                if (isOccupied) {
+                    toast.error("Bloque ya reservado por otro usuario!");
+                    return false;
+                }
+
+                await createDocument('convivencia_reservations', {
+                    blockId,
+                    date,
+                    subject: sanitizeText(subject),
+                    teacher: sanitizeText(teacher),
+                    userId: user.id,
+                    timestamp: Date.now(),
+                });
             }
-
-            const newReservation = {
-                blockId,
-                date,
-                subject: sanitizeText(subject),
-                teacher: sanitizeText(teacher),
-                userId: user.id,
-                timestamp: Date.now(),
-            };
-
-            await createDocument('convivencia_reservations', newReservation);
             toast.success("Reserva confirmada.");
 
             const block = TIME_BLOCKS.find(b => b.id === blockId);
@@ -202,7 +304,11 @@ export function ConvivenciaProvider({ children }) {
             const teacherInfo = resolveTeacherEmail(reservation.teacher);
             const convAdmin = getConvivenciaAdmin();
 
-            await removeDocument('convivencia_reservations', reservationId);
+            if (FLAGS.USE_NEW_API_CONVIVENCIA) {
+                await apiClient.delete(`/convivencia-reservations/${reservationId}`);
+            } else {
+                await removeDocument('convivencia_reservations', reservationId);
+            }
             toast.success("Reserva eliminada.");
 
             sendConvivenciaEmail({
