@@ -3631,6 +3631,17 @@ export async function exportAgendaTabularPDF({
         }
     });
 
+    // Overrides de hora de salida por curso (días fijos)
+    const SALIDA_CURSO = {
+        '2° Básico': { lunes: '15:10', martes: '15:10', miercoles: '15:10', jueves: '15:10' },
+    };
+    if (selectedCurso && SALIDA_CURSO[selectedCurso]) {
+        const overrides = SALIDA_CURSO[selectedCurso];
+        DIAS_ORDER_AGENDA.forEach(dia => {
+            if (overrides[dia]) salidaFinal[dia] = overrides[dia];
+        });
+    }
+
     // Overrides excepcionales de hora de salida por fecha específica
     const SALIDA_OVERRIDES = {
         '2026-05-20': '13:10',  // miércoles 20 mayo — salida anticipada
