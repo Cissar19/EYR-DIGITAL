@@ -3662,12 +3662,12 @@ export async function exportAgendaTabularPDF({
         const notas = byDia[dia] || [];
         if (!evals.length && !notas.length) return;
         let h = 3; // padding superior
-        // Notas (máx 2, máx 2 líneas c/u)
-        notas.slice(0, 2).forEach(nota => {
+        // Notas (sin límite)
+        notas.forEach(nota => {
             const lbl = ASIG_FULL_PDF[nota.asignatura] || nota.asignatura || '';
             doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
             const ls = doc.splitTextToSize(`${lbl}: ${nota.texto || ''}`, DCOL - 8);
-            h += ls.slice(0, 2).length * 4.3 + 2;
+            h += ls.length * 4.3 + 2;
         });
         // Tarjeta evaluación
         if (evals.length > 0) {
@@ -3680,7 +3680,7 @@ export async function exportAgendaTabularPDF({
         }
         maxNotasH = Math.max(maxNotasH, h + 2); // +2 padding inferior
     });
-    const H_NT = Math.min(maxNotasH, 42); // cap para no salir de página
+    const H_NT = maxNotasH; // sin cap — se ajusta al contenido real
 
     // ── Helpers de dibujo ─────────────────────────────────────────────────────
 
@@ -3912,8 +3912,8 @@ export async function exportAgendaTabularPDF({
         } else {
             let ny = y + 3;
 
-            // Notas de agenda (máx 2)
-            notas.slice(0, 2).forEach(nota => {
+            // Notas de agenda (todas)
+            notas.forEach(nota => {
                 if (ny + 4.3 > y + H_NT - 1) return;
                 const lbl = ASIG_FULL_PDF[nota.asignatura] || nota.asignatura || '';
                 const texto = (nota.texto || '').trim();
@@ -3931,12 +3931,13 @@ export async function exportAgendaTabularPDF({
                 if (firstLineParts[0]) {
                     doc.text(firstLineParts[0], cx + 4 + lblW, ny + 4.3);
                     lineCount = 1;
+                    // Render all remaining lines
                     if (firstLineParts.length > 1) {
                         const rest = doc.splitTextToSize(firstLineParts.slice(1).join(' '), DCOL - 8);
-                        if (rest[0]) {
-                            doc.text(rest[0], cx + 4, ny + 4.3 + 4.3);
-                            lineCount = 2;
-                        }
+                        rest.forEach((line, li) => {
+                            doc.text(line, cx + 4, ny + 4.3 + (li + 1) * 4.3);
+                        });
+                        lineCount += rest.length;
                     }
                 } else if (lblStr) {
                     lineCount = 1;
